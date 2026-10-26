@@ -6,6 +6,7 @@ import {
   WebUploadTokenSchema,
 } from "@shared/web-files-contracts";
 import type { WebValue } from "@shared/web-serialization";
+import pLimit from "p-limit";
 import { z } from "zod";
 
 type Json = z.infer<ReturnType<typeof z.json>>;
@@ -106,6 +107,7 @@ function pickDeviceFiles(directory = false, multiple = true): Promise<File[]> {
 }
 
 export function createBrowserFiles(transport: FileTransport) {
+  const uploadLimit = pLimit(4);
   const files = new Map<string, { file: File; upload?: Promise<string> }>();
   const downloaded = new Set<string>();
   function pathForFile(file: File) {
@@ -117,7 +119,7 @@ export function createBrowserFiles(transport: FileTransport) {
     if (WebUploadTokenSchema.safeParse(token).success) return token;
     const selected = files.get(token);
     if (!selected) throw new Error("Choose this file again on your device.");
-    selected.upload ??= (async () => {
+    selected.upload ??= uploadLimit(async () => {
       const response = await fetch("/web/upload", {
         method: "PUT",
         headers: {
@@ -138,7 +140,7 @@ export function createBrowserFiles(transport: FileTransport) {
         );
       }
       return WebUploadSchema.parse(await response.json()).token;
-    })().catch((error) => {
+    }).catch((error) => {
       selected.upload = undefined;
       throw error;
     });
@@ -171,6 +173,18 @@ export function createBrowserFiles(transport: FileTransport) {
   }
   async function importSelected(name: string, params: Record<string, Json>) {
     const prepared = { ...params };
+    if (name === "saves.importFiles") {
+      prepared.relativePaths = Object.fromEntries(
+        await Promise.all(
+          StringList.parse(prepared.paths).flatMap((path) => {
+            const relative = files.get(path)?.file.webkitRelativePath;
+            return relative
+              ? [upload(path).then((token) => [token, relative])]
+              : [];
+          }),
+        ),
+      );
+    }
     for (const key of ["paths", "filePaths"]) {
       if (prepared[key] !== undefined)
         prepared[key] = await Promise.all(

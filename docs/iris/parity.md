@@ -13,7 +13,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Canvas CRUD, autosave and export | Host + browser | HTTP CRUD, rename retention and stale content rejection passed; dedicated host render job exports PNG/PDF with actual Board tiles; shared Chrome PNG download passed; broader board-tool and cross-client matrix pending |
 | Image/video viewing and seeking | Host media + browser | Actual shared viewers and original media; authenticated HEAD, 206/416 and byte ranges verified |
 | Video frames and compatible previews | Host FFmpeg | HTTP decoded frame, sampled frames, cross-Save thumbnail rejection and Save-bound preview ranges passed; clipboard/frame UI matrix pending |
-| Visiting-device upload/import | Browser + host | Bounded streaming, opaque Library-bound tickets, restart-readable staging, traversal/overflow tests and real image import passed; folder hierarchy and interruption matrix pending |
+| Visiting-device upload/import | Browser + host | Bounded uploads and Library-bound tickets; nested folder and same-name originals retained, request retry reuses Saves/folders, traversal denied; real Chrome picker and duplicate-review import passed; interruption matrix pending |
 | Pond packages, original files and CSV | Host + browser download | Real export/importers retained; ZIP envelope, Capture identity, selected file retention, same-Library dedup and artifact auth/ranges passed; fresh-Library round trip pending |
 | Eagle/bookmarks/Mymind import | Host | Browser upload adapters implemented; format-specific browser fixtures still pending |
 | Conversion and compression | Host | Existing job owner retained; image conversion and downloadable ZIP passed over HTTP; full format/UI matrix pending |
@@ -26,7 +26,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Assistant attachments and chat export | Browser + host | Uploaded attachment registration retains names and hides host paths; Markdown download adapter implemented; provider vision and full browser flow pending |
 | Assistant review, stop and recovery | Host + browser | Live Chrome Stop, persisted review after host restart, Apply and exact-value Undo passed; empty reviews and nullable-note conflict defects fixed; broader question/provider/device matrix pending |
 | Authentication, origins and session lifecycle | Host | Exact Host/Origin checks, Library binding, Secure HTTPS cookie, login limits, immediate stream revocation and logout tests passed |
-| Deep links and reload | Browser + host | Real browser history and application fallback; HTTP document/body tests for Save/assistant/settings paths; shared Chrome saved-item reload passed |
+| Deep links and reload | Browser + host | Real browser history and application fallback; Save/assistant/settings paths and saved-item reload passed; folder contents persist but the active folder resets on reload, pending navigation adaptation |
 | Private Tailscale HTTPS | Host | Serve on port 9443; same-machine authenticated HTTPS/restart check passed; existing Serve routes preserved; second-device test pending |
 | Mobile browser composition | Browser | Earlier Chromium 390×844 milestone passed; expanded workflow matrix and physical phone remain pending |
 | Archive replay | Needs isolated browser equivalent | Electron webview retained for desktop; browser replay is not enabled until separate-origin authentication and hostile-content isolation are proven |

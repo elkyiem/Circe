@@ -106,6 +106,9 @@ Additional finite checks against the running host:
 ```sh
 pnpm --filter @pond/desktop exec node scripts/smoke-web-parity.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-canvas.mjs
+pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs
+# After restarting the same disposable host:
+pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs --after-restart
 # Live model use; requires the explicitly authorized, connected subscription:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-agent.mjs
 IRIS_WEB_ORIGIN=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop exec node scripts/smoke-web.mjs --after-restart

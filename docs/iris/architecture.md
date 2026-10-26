@@ -65,7 +65,12 @@ Archive replay is still deferred until its separate-origin isolation is proven.
 
 Visiting-device files are streamed to bounded, Library-bound staging using opaque
 tickets. Existing importers own persistence and duplicate handling; replaying one
-staged file import preserves its Save. Existing export operations produce
+staged file import preserves its Save. Directory picks carry validated relative
+names, resolved to Library folders through the existing folder owner. These
+names are never used as host filesystem paths. Retried trees reuse folders by
+name and parent, and uploads are bounded below host admission limits. Folder
+creation, imports and membership stay inside one Library transfer so switching
+must wait for settlement. Existing export operations produce
 host-owned downloadable artifacts. ZIP is a transport envelope around the Pond
 package, not a new Library format. Extraction rejects traversal and symlinks and
 bounds expanded bytes. Conversion exports finish on the host and become

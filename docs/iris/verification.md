@@ -164,3 +164,30 @@ Screenshots are local ignored artifacts:
 `shared-chrome-combine.png`, `shared-chrome-canvas.png`, and
 `shared-chrome-agent-stopped.png` under `.artifacts/web-verification/`, with
 additional `shared-chrome-combine-mobile.png` and `shared-chrome-agent-applied.png`.
+
+## Directory import follow-up — 2026-10-26
+
+The visiting-device adapter now bounds upload concurrency and retains validated
+relative folder names. The host resolves those names to Library folders, never
+filesystem locations, and holds transfer admission across creation/import and
+assignment. Folder trees and staged-file identities are reused on retry.
+
+- Unit checks cover nested names, retry identity, the host upload admission limit,
+  traversal, ambiguous selections and missing destinations.
+- `smoke-web-imports.mjs` imported two different originals named `same.png` into
+  separate nested folders in the real isolated Library, compared original bytes,
+  retried without additional Saves/folders and verified traversal rejection.
+- Shared Chrome used the native folder picker and actual Duplicate File dialog,
+  selected Keep Both for the two purpose-built files and displayed the complete
+  hierarchy. Evidence: `shared-chrome-directory-import.png`. Reload retained the
+  data but reset the active folder; that separate navigation gap remains recorded.
+- `pnpm check`: all 25 tasks passed; desktop 602 files passed, 2 skipped,
+  4,124 tests passed, 5 skipped. Electron-ABI database/vector tests: 8 passed.
+- Root production build passed all 11 tasks and five budgets. The native desktop
+  smoke passed visible startup, preload operations and detached preview with
+  `--use-mock-keychain`. Its first invocation without that sandbox flag stalled
+  before readiness and was terminated; no normal keystore access was approved.
+- Directory Save identities and memberships survived the same host's restart.
+  The finite browser again showed the disconnection banner when the host stopped.
+  An initial manually orchestrated attempt missed its 20-second stop window;
+  stopping directly when the readiness signal arrived passed without test changes.

@@ -11,7 +11,10 @@ import { conversationMarkdown } from "../../shared/conversation-markdown";
 import { ConversionRequestSchema } from "../../shared/conversion-contracts";
 import type { QueryName, QueryResult } from "../../shared/query-contracts";
 import { WebCanvasRenderSchema } from "../../shared/web-canvas-contracts";
-import { WebFileQuerySchema } from "../../shared/web-files-contracts";
+import {
+  WebFileImportSchema,
+  WebFileQuerySchema,
+} from "../../shared/web-files-contracts";
 import { stringifyWebValue } from "../../shared/web-serialization";
 import { registerLocalAttachments } from "../core/agent/local-attachments";
 import { listChats, listMessages } from "../core/agent/persist";
@@ -26,8 +29,6 @@ import {
   exportSavesToDirectory,
   exportSavesToEaglePackage,
 } from "../core/export-saves";
-import { createFolder, setSaveFolders } from "../core/folders";
-import { importFiles } from "../core/import-files";
 import { createManualSave, type ManualSaveInput } from "../core/manual-import";
 import { importMymindExport } from "../core/mymind-import";
 import { readSave } from "../core/pipeline/workers/apply";
@@ -41,21 +42,13 @@ import { libraryId, libraryRoot } from "../paths";
 import { unzipWebDirectory, zipWebDirectory } from "./archives";
 import { renderWebCanvas } from "./canvas-render";
 import { WebRequestError } from "./errors";
+import { importUploadedFiles } from "./import-files";
 import { indexedMediaPath } from "./media";
 import { createWebUploads } from "./uploads";
 
 const Token = z.string().regex(/^iris-upload:[0-9a-f-]{36}$/);
 const Selection = z.object({
   ids: z.array(z.string().min(1).max(200)).max(100000),
-});
-const FileInput = z.object({
-  paths: z.array(Token).min(1).max(10000),
-  tags: z.array(z.string()).default([]),
-  folderIds: z.array(z.string()).default([]),
-  duplicatePolicy: z.enum(["use-existing", "keep-both"]).default("keep-both"),
-  duplicateDecisions: z
-    .record(z.string(), z.enum(["use-existing", "keep-both"]))
-    .default({}),
 });
 const Download = z
   .object({
@@ -400,7 +393,7 @@ export function createWebFiles(root: string) {
         if (staged[0]) manual.sourceId = `web-upload:${staged[0].id}`;
         result = await createManualSave(manual);
       } else {
-        const input = FileInput.parse(params);
+        const input = WebFileImportSchema.parse(params);
         const staged = await Promise.all(
           input.paths.map((token) => uploads.get(token, expected)),
         );
@@ -417,40 +410,7 @@ export function createWebFiles(root: string) {
             })),
           };
         } else if (name === "saves.importFiles") {
-          const candidates = await reviewImportDuplicates(
-            staged.map((file) => file.path),
-          );
-          const useExisting = Object.fromEntries(
-            candidates.flatMap((candidate) =>
-              (input.duplicateDecisions[toToken.get(candidate.path) ?? ""] ??
-                input.duplicatePolicy) === "use-existing"
-                ? [[candidate.path, candidate.existingId]]
-                : [],
-            ),
-          );
-          const imported = await importFiles(
-            {
-              paths: staged.map((file) => file.path),
-              tags: input.tags,
-              folderIds: input.folderIds,
-              useExisting,
-            },
-            {
-              createFolder,
-              assignFolders: setSaveFolders,
-              importFile: (data) =>
-                createManualSave({
-                  ...data,
-                  sourceId: `web-upload:${staged.find((file) => file.path === data.filePaths[0])?.id}`,
-                }),
-            },
-          );
-          result = {
-            ...imported,
-            failedPaths: imported.failedPaths?.map(
-              (path) => toToken.get(path) ?? "Uploaded file",
-            ),
-          };
+          result = await importUploadedFiles(input, staged, expected);
         } else {
           const file = staged[0];
           if (!file || staged.length !== 1)
