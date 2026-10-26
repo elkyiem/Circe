@@ -57,7 +57,12 @@ export function TransferJobsPanel({ search = "" }: { search?: string }) {
     .slice(0, 30);
   if (!visible.length && !jobs.isError) return null;
   return (
-    <section className={styles.panel} aria-label="Library transfers">
+    <section
+      className={styles.panel}
+      aria-label="Library transfers"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll transfer history independently of the download table.
+      tabIndex={0}
+    >
       <h2>Library Transfers</h2>
       {jobs.isError ? (
         <p role="alert">Couldn't load transfer history.</p>

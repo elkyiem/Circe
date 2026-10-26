@@ -132,7 +132,9 @@ function StatusCell({ row }: { row: DownloadViewRow }) {
       <span className={styles.mark} data-status={status}>
         <StatusGlyph status={status} />
       </span>
-      <span className={styles["status-label"]}>{label}</span>
+      <span className={styles["status-label"]} title={label}>
+        {label}
+      </span>
     </span>
   );
   if (!reason) return content;

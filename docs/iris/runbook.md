@@ -188,7 +188,20 @@ the host address or active Library. Never paste credentials into logs or chat.
 Without a paired extension, New Source explains that pairing is required; it
 does not automatically open a separate host window. The desktop path remains
 unchanged. Do not manually extract browser cookies or repoint the installed Pond
-native host. Remote Firefox pairing and live Source coverage remain pending.
+native host. The owner has loaded and paired this Chromium build; live Twitter
+connection, a full list walk and a manual duplicate capture passed. Other Sources,
+automatic like/bookmark hooks and remote Firefox pairing remain pending.
+
+A first list sync can finish while media are still being processed. Downloads
+shows those Save jobs separately. Pond's existing hourly/daily Source budgets
+may defer them; leave the host running for their scheduled resume rather than
+repeatedly restarting or forcing retries. A successful list walk does not prove
+that every original is still available on the Source.
+
+The current direct-download path also has an upstream 50 MiB ceiling even when
+the video preference allows larger files. Oversized originals are now classified
+as size-limit failures; older stored failures may still say “permanently
+unavailable.” Increasing that preference alone does not remove this ceiling.
 
 Finite transport/queue/restart verification, without a live Source session:
 
@@ -202,3 +215,6 @@ The fixture creates a separate temporary extension credential and a generated
 image through the existing capture queue. The restart check verifies the Save
 and credential survived, then revokes only that test credential. Its private
 state file stays in the ignored sandbox with mode 0600 until cleanup.
+Run this setup check in a fresh disposable profile before connecting real
+Accounts: it assumes no previous pairing and temporarily requests a Source
+connection. Do not run it against an active live import.

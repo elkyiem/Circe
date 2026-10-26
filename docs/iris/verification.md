@@ -44,20 +44,106 @@ The audited upstream commit remains
   unpaired, without creating an Account or opening the separate host sign-in
   flow. The desktop's existing native connection path is unchanged.
 
-Actual Chrome loading/pairing and live X connection/capture are **pending**.
-Computer use rejected opening `chrome://extensions/`: its URL policy allows only
-HTTP/HTTPS and explicitly forbids alternate automation to bypass that denial.
-The owner authorized installation, but that did not remove the tool restriction.
-The built folder and private file-picker pairing instructions were supplied for
-manual loading. No Source Account is connected in the isolated profile, and no
-live sync is claimed. Remote Firefox pairing also remains deferred; its native
-path is preserved. This record supersedes earlier architecture statements that
-only the isolated host sign-in window exists.
+At the transport commit, actual Chrome loading/pairing and live X verification
+were pending. Computer use rejected opening `chrome://extensions/`: its URL
+policy allows only HTTP/HTTPS and forbids alternate automation to bypass that
+denial. The built folder and private file-picker instructions were supplied for
+manual loading. The owner subsequently loaded and paired it; the live follow-up
+below supersedes that pending state. Remote Firefox pairing remains deferred;
+its native path is preserved.
 
 Logs: `.local/verification/extension-{baseline-check,check,build,iris-build,
 browser-build,http,restart}.log`. Generated files and credential state remain in
 ignored directories. The extension transport is reviewable local work on `web`;
-it is not promoted to `dev` while actual browser acceptance remains pending.
+it is not promoted to `dev` while the broader acceptance matrix remains pending.
+
+## Live Twitter connection and capture — 2026-10-26
+
+The owner manually loaded the separate Iris extension, paired it with the private
+Tailscale host, then chose Twitter in the web app and confirmed the import scope.
+The host confirmed one paired browser, imported the requested session into its
+isolated Account partition, and matched the expected signed-in handle. No Chrome
+profile files were read and the installed Pond native host was not redirected.
+The web page was on loopback while the extension was paired to private HTTPS;
+the Library-bound polling path successfully delivered this connection request.
+
+- The existing host collector finished its list walk and queued **4,102** live
+  Saves. The Account was connected, no longer awaiting import choices, and had
+  no sync-level error. This proves list collection/enqueue, not full media ingest.
+- Live image/video samples retained matching Save URL, Source ID and structured
+  Capture ID. Both native light/dark React cards were present. Authenticated
+  original bytes matched the indexed files; unauthenticated media returned 401.
+  A video byte-range request returned 206 and the requested 256 bytes.
+- In shared Chrome, the original 1280×720 video played and sought to about ten
+  seconds of its 10.71-second duration without a media error. A live 1200×630
+  original image decoded and remained visible after reload. Screenshots:
+  `.artifacts/web-verification/live-twitter-{video,image}-chrome.png`.
+- A separate quoted-post sample retained distinct parent/quote IDs and authors.
+  Its downloaded clip's yt-dlp asset ID matched the quoted clip; its webpage URL
+  matched the parent Save. All four parent/quote light/dark PNGs and original
+  video matched authenticated HTTP bytes. The parent PNG visibly contained the
+  correct quoted author/content. This sample used Pond's existing actual-X
+  screenshot fallback, whereas the image/video samples used native React cards.
+  The fallback's video file has no `sourceUrl`; the yt-dlp identity established
+  that relationship instead of treating that absent field as a mismatch.
+- The installed Iris popup's **Harvest Post → Save** sent an already-saved post
+  through the real capture queue. Its persisted receipt completed with
+  `duplicateCount: 1` and the original Save ID. A revision-fenced Undo restored
+  the original title, notes, rating, tags and user-title lock exactly; no social
+  like/bookmark action was made. Private per-item evidence remains ignored in
+  the sandbox, outside commits.
+- At 19:27 UTC, the Library contained 995 completed Twitter Saves (including
+  three existing fixtures), 23 failed live Saves, and 3,087 ingesting live Saves.
+  The queue had 7,489 completed tasks, 115 dead tasks and no running task. These
+  task counts are not Save counts. Read-only inspection showed `source_budget`
+  deferral after 150 hourly permits, with the earliest resume at 19:50:38 UTC.
+  The global queue was not paused. The existing governor and recovery schedule
+  were left intact; the host was not restarted during the import.
+
+Further read-only inspection matched **all 23 failed Saves** to
+`DownloadSizeError` warnings for their captured media URLs. Pond's direct blob
+path caps a file at 50 MiB (or a lower configured image limit), then loses that
+reason and reports “permanently unavailable.” This does not establish that those
+originals were deleted. The follow-up retains `size_limit` through the batch and
+task error, with focused tests of an oversized HTTP response and task settlement.
+It preserves the ceiling and existing retry/terminal policy. Supporting larger
+direct videos while honoring video preferences remains a separate required fix.
+The running host and its earlier stored failures have not been rewritten or
+restarted to apply that classification change during this import.
+
+Background X requests also emitted 429s, and native
+enrichment logged transcript/frame errors on separate items. Full ingest
+settlement, automatic bookmark/like hooks, other Sources, and enrichment recovery
+remain pending. This is live Chromium/X evidence, not a claim of full parity.
+
+The follow-up exposes the existing Source-budget reason and resume countdown in
+Downloads instead of the generic “Waiting for Twitter.” Real Chrome testing
+caught the renderer's Save parser discarding that reason; the regression now
+passes through the same parser. The accumulated transfer history also squeezed
+the download grid to zero height. That panel now has a bounded, keyboard-scrollable
+area so active Save jobs retain space. The extension toolbar and popup now derive
+their titles from the manifest name so Iris can be distinguished
+from the separately installed Pond extension. Normal Pond retains its title.
+These title changes take effect when the unpacked extension is reloaded.
+
+At 19:51 UTC the queue had resumed automatically: two tasks were running and
+the sync generation had 7,868 completed tasks. No restart, manual retry or budget
+change was needed. Full settlement is still pending.
+
+Shared Chrome reloaded the rebuilt app at 1280×900 and 390×844. The Downloads
+grid retained about 476 and 408 pixels of height respectively, the transfer
+history scrolled independently by keyboard, and the mobile document stayed
+390 pixels wide. The mobile table retains its existing horizontal column scroll;
+the open Assistant overlay was closed for inspection and restored afterward.
+Screenshots: `live-twitter-budget-{desktop,mobile}-chrome.png` in the ignored
+verification directory. The temporary viewport override was reset. These are
+Chromium viewport checks, not physical-phone coverage.
+
+Focused download-state checks passed 15 tests across two files. Size/transfer
+checks passed 13 tests across three files. The full follow-up `pnpm check` passed
+25 tasks: desktop 608 test files passed, 2 skipped; 4,149 tests passed, 5 skipped.
+`pnpm build` passed all 11 tasks and all five budgets; the browser and separate
+Iris extension builds passed. Local logs use `.local/verification/live-source-*`.
 
 ## Original kickoff baseline
 

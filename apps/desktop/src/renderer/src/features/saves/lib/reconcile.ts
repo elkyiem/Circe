@@ -35,6 +35,7 @@ const SaveTaskSchema = z.object({
   status: z.enum(TASK_STATUSES),
   attempts: z.number(),
   maxAttempts: z.number(),
+  deferredReason: z.string().nullable().optional(),
   lastError: z.string().nullable(),
   nextRunAt: z.number(),
   updatedAt: z.number(),

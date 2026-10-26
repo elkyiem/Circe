@@ -124,9 +124,12 @@ processing pipeline. Host filesystem paths are removed from extension replies.
 
 When no extension is paired, the browser reports that pairing is required;
 it no longer automatically opens a separate host sign-in window. The original
-desktop sign-in path is unchanged. Loading and pairing the Chromium extension and live
-Source verification still require the owner; the HTTP and restart fixtures do
-not prove live X sync. Firefox's native path remains available; remote Firefox
+desktop sign-in path is unchanged. The owner loaded and paired the Chromium
+build, then connected Twitter through the browser. The isolated host imported
+the requested session and queued 4,102 live Saves. Actual Chrome capture/dedup,
+original image/video delivery and quoted-content identity were checked separately
+from fixtures; the full ingest and other Sources remain unverified. Firefox's
+native path remains available; remote Firefox
 pairing is deferred until its per-install extension-origin behavior is verified.
 
 The browser Library-logo picker uploads one visiting-device image using the same

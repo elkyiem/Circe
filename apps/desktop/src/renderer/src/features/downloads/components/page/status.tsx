@@ -59,19 +59,28 @@ export function downloadTableStatus(
 export function downloadStatusLabel(row: DownloadRow, paused: boolean): string {
   if (isDownloadStopped(row, paused)) return "Paused";
   if (row.status === "waiting") return "Waiting";
-  if (row.status === "parked") return `Waiting for ${sourceLabel(row.source)}`;
+  if (row.status === "parked") {
+    const source = sourceLabel(row.source);
+    if (row.deferredReason === "source_budget") {
+      if (row.nextRunAt == null || row.nextRunAt <= Date.now())
+        return `Checking ${source} limit`;
+      return `${source} limit · ${waitDuration(row.nextRunAt)}`;
+    }
+    return `Waiting for ${source}`;
+  }
   if (row.status === "retrying") {
     if (row.nextRunAt == null) return "Retrying";
-    const seconds = Math.max(
-      0,
-      Math.ceil((row.nextRunAt - Date.now()) / 1_000),
-    );
-    if (seconds < 60) return `Retrying in ${seconds}s`;
-    const minutes = Math.ceil(seconds / 60);
-    if (minutes < 60) return `Retrying in ${minutes}m`;
-    return `Retrying in ${Math.ceil(minutes / 60)}h`;
+    return `Retrying in ${waitDuration(row.nextRunAt)}`;
   }
   if (row.status === "dead")
     return `Stopped after ${row.attempts} attempt${row.attempts === 1 ? "" : "s"}`;
   return STATUS_LABELS[downloadTableStatus(row, paused)];
+}
+
+function waitDuration(nextRunAt: number): string {
+  const seconds = Math.max(0, Math.ceil((nextRunAt - Date.now()) / 1_000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.ceil(minutes / 60)}h`;
 }

@@ -12,6 +12,21 @@ it("fails the task when every captured media URL is permanently unavailable", ()
   ).toThrow(TerminalError);
 });
 
+it("keeps oversized media distinct from unavailable media", () => {
+  expect(() =>
+    requireFetchedMedia(
+      [
+        {
+          url: "https://example.com/video.mp4",
+          file: null,
+          miss: "size_limit",
+        },
+      ],
+      1,
+    ),
+  ).toThrow("1/1 media exceed the download size limit");
+});
+
 const tweetWithVideo = storedAsRawJson({
   capture: {
     media: [

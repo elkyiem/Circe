@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalise, SavePatchSchema } from "@/features/saves/lib/reconcile";
 import type { Save } from "@/features/saves/types";
 import {
   defaultDownloadFilters,
@@ -34,6 +35,47 @@ function save(partial: Partial<Save> & Pick<Save, "id" | "status">): Save {
 }
 
 describe("projectLiveDownloads", () => {
+  it("retains the budget wait reason and resume time from the next task", () => {
+    const limited = normalise(
+      SavePatchSchema.parse(
+        save({
+          id: "budget",
+          status: "ingesting",
+          tasks: [
+            {
+              op: "harvest_metadata",
+              status: "done",
+              attempts: 1,
+              maxAttempts: 5,
+              lastError: null,
+              nextRunAt: 0,
+              updatedAt: 0,
+            },
+            {
+              op: "capture_tweet",
+              status: "deferred",
+              deferredReason: "source_budget",
+              attempts: 0,
+              maxAttempts: 5,
+              lastError: null,
+              nextRunAt: 180_000,
+              updatedAt: 0,
+            },
+          ],
+        }),
+      ),
+    );
+    if (!limited) throw new Error("Expected the deferred Save");
+    const rows = projectLiveDownloads([limited]);
+    expect(rows[0]).toMatchObject({
+      status: "parked",
+      op: "capture_tweet",
+      deferredReason: "source_budget",
+      nextRunAt: 180_000,
+      error: null,
+    });
+  });
+
   it("projects ingesting as waiting, running, retrying, or blocked", () => {
     const rows = projectLiveDownloads([
       save({

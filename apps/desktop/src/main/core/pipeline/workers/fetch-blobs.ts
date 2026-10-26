@@ -194,6 +194,14 @@ export function requireFetchedMedia(
       `fetch-blobs: ${transientMisses}/${requestedCount} media transiently unavailable`,
     );
   }
+  const oversized = results.filter(
+    (result) => result.miss === "size_limit",
+  ).length;
+  if (oversized > 0) {
+    throw new TerminalError(
+      `fetch-blobs: ${oversized}/${requestedCount} media exceed the download size limit`,
+    );
+  }
   throw new TerminalError(
     `fetch-blobs: ${requestedCount}/${requestedCount} media permanently unavailable`,
   );

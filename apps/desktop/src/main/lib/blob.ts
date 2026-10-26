@@ -19,9 +19,10 @@ const DOWNLOAD_TIMEOUT_MS = 30_000;
 interface FetchMediaOptions extends TransferOptions {
   fileCount?: number;
   imageMaxBytes?: number | null;
+  fetcher?: typeof fetch;
 }
 
-type BlobMiss = "transient" | "permanent";
+type BlobMiss = "transient" | "permanent" | "size_limit";
 
 function classifyHttpStatus(status: number): BlobMiss {
   if (status === 408 || status === 425 || status === 429) return "transient";
@@ -79,7 +80,7 @@ async function fetchMediaToTxFile(
     if (options.signal?.aborted) throw error;
     log.warn("[pond blob] fetch failed", mediaUrl, error);
     return {
-      miss: error instanceof DownloadSizeError ? "permanent" : "transient",
+      miss: error instanceof DownloadSizeError ? "size_limit" : "transient",
     };
   }
   const { response: res, bytes: buf } = result;

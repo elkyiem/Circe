@@ -66,6 +66,7 @@ export interface DownloadRow {
   ts: number;
   durationMs: number | null;
   nextRunAt?: number | null;
+  deferredReason?: WireTask["deferredReason"];
   live: boolean;
   interactive?: boolean;
 }
@@ -202,6 +203,7 @@ export function projectLiveDownloads(saves: readonly Save[]): DownloadRow[] {
     const attempts = tasks.reduce((max, t) => Math.max(max, t.attempts), 0);
     const ts = save.ingestStartedAt ?? save.savedAt ?? save.createdAt;
     const rawError = rowError(save);
+    const next = tasks.find((task) => task.status !== "done");
     rows.push({
       id: save.id,
       saveId: save.id,
@@ -216,8 +218,8 @@ export function projectLiveDownloads(saves: readonly Save[]): DownloadRow[] {
       error: rawError ? humanizeError(rawError) : null,
       ts,
       durationMs: null,
-      nextRunAt:
-        tasks.find((task) => task.status !== "done")?.nextRunAt ?? null,
+      nextRunAt: next?.nextRunAt ?? null,
+      deferredReason: next?.deferredReason ?? null,
       live: true,
       interactive: tasks.some((t) => t.interactive),
     });

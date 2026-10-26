@@ -46,9 +46,13 @@ must remain explicit in the ledger; they must not be silently counted as done.
 The first milestone already shares the actual renderer, uses typed HTTP queries,
 cookie-authenticated media and SyncAction SSE, and exercises a disposable Library.
 Browsing, folder assignment, image/video fixtures and restart persistence work.
-No live Source session has been verified. Shared Chrome sign-in and Library
-visibility were subsequently confirmed; the complete Chrome workflow is still a
-separate acceptance task.
+Subsequent slices verified shared Chrome sign-in, organization, representative
+viewers, assistant streaming/review and a paired Iris extension. On 2026-10-26
+the owner connected Twitter through that extension; the resident host queued
+4,102 live Saves. Live original image/video playback and seeking, quote identity
+and a manual duplicate capture passed. Full ingest settlement, automatic hooks,
+other Sources and the remaining parity matrix are still open. The dated evidence
+and current boundaries live in `docs/iris/{verification,parity}.md`.
 
 Key owners to inspect before changing a phase:
 
@@ -460,9 +464,17 @@ and its proposed equivalent for a product decision rather than hiding it.
 
 ## Recommended next implementation slice
 
-Start with Phases 0 and 1: exhaustive capability coverage plus complete ordinary
-Library editing, tag/Smart Folder management, bulk changes and reliable Undo.
-This makes the web client useful for daily organization and establishes the
-mutation boundary needed by uploads, Canvas, Agent and administration. Investigate
-host Account connection alongside it so live Source verification is available
-when Phase 3 begins.
+Updated after live Twitter acceptance on 2026-10-26:
+
+1. Fix oversized direct-video ingestion. The blob path's 50 MiB ceiling currently
+   fails the Save before the existing yt-dlp task can run, despite a larger video
+   preference. Reuse the existing download/persistence owners, preserve media and
+   quote identity, and verify bounded memory, configured limits, cancellation,
+   cleanup and retries with deterministic files before retrying live failures.
+2. Finish the paced live import and inspect its settled results; verify automatic
+   extension bookmark/like capture separately from the proven manual capture.
+   Preserve the governor rather than accelerating the Account to satisfy a test.
+3. Establish a single host-owned enrichment execution path and verify it with all
+   web tabs closed, then continue the remaining organization, format, host-helper
+   and device acceptance matrix in the ledger. Exposed capabilities alone remain
+   insufficient evidence of parity.

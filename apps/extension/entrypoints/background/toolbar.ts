@@ -8,7 +8,10 @@ export async function applyToolbarAction(action: ToolbarAction): Promise<void> {
     .catch(() => {});
   await browser.action
     .setTitle({
-      title: action === "popup" ? "Pond" : "Save to Pond",
+      title:
+        action === "popup"
+          ? browser.runtime.getManifest().name
+          : `Save to ${browser.runtime.getManifest().name}`,
     })
     .catch(() => {});
 }
