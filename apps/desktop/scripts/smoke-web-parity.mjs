@@ -235,6 +235,50 @@ assert.equal(
   ).status,
   200,
 );
+const combined = await host.call("files", {
+  name: "saves.combineImages",
+  params: {
+    ids: [image.id, imported.ids[0]],
+    folderId: folder.id,
+    options: { output: "create" },
+  },
+});
+assert.equal(combined.ok, true, combined.error);
+assert.equal(
+  (await host.query("saves.get", { id: combined.id })).title,
+  "Combined Images",
+);
+const combinedExport = await host.call("files", {
+  name: "saves.combineImages",
+  params: {
+    ids: [image.id, imported.ids[0]],
+    options: { output: "export", format: "png" },
+  },
+});
+assert.equal(combinedExport.ok, true);
+assert.equal(
+  (
+    await fetch(`${host.origin}${combinedExport.download}`, {
+      headers: host.headers,
+    })
+  ).status,
+  200,
+);
+assert.equal(
+  (
+    await host.request("files", {
+      name: "saves.combineImages",
+      params: {
+        ids: [image.id, imported.ids[0]],
+        options: {
+          output: "export",
+          outputPath: join(host.sandbox, "refused-output.png"),
+        },
+      },
+    })
+  ).status,
+  422,
+);
 const video = page.rows.find((save) => save.sourceId === "900000000000000003");
 const originalVideo = video.files.find((file) => file.kind === "video");
 assert.ok(originalVideo);

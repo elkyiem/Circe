@@ -15,6 +15,8 @@ export const WebFileQuerySchema = z
       "saves.exportFiles",
       "saves.exportCsv",
       "saves.copyFiles",
+      "saves.combineImages",
+      "canvases.render",
       "agent.pickAttachments",
       "agent.exportChat",
       "conversion.start",

@@ -94,9 +94,23 @@ describe("browser host boundary", () => {
       "/web/session",
       "/web/events",
       "/web/media/save/photo.png",
+      "/web/download/00000000-0000-0000-0000-000000000000",
+      "/web/preview/save/missing.mp4",
     ])
       expect((await test.request(path)).status).toBe(401);
-    expect((await test.request("/web/query", { method: "POST" })).status).toBe(
+    for (const path of [
+      "query",
+      "files",
+      "video",
+      "agent",
+      "command",
+      "transactions",
+      "history",
+    ])
+      expect(
+        (await test.request(`/web/${path}`, { method: "POST" })).status,
+      ).toBe(401);
+    expect((await test.request("/web/upload", { method: "PUT" })).status).toBe(
       401,
     );
   });
@@ -136,6 +150,17 @@ describe("browser host boundary", () => {
     });
     expect(response.status).toBe(403);
     expect(test.calls).toEqual([]);
+    expect(
+      (
+        await test.app.request("/web/media/save/image.png", {
+          headers: {
+            host: new URL(test.config.origin).host,
+            cookie,
+            "sec-fetch-site": "same-site",
+          },
+        })
+      ).status,
+    ).toBe(403);
   });
   it("allows only the explicit catalog and never credentials or native paths", async () => {
     const test = await host();

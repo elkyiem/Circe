@@ -12,6 +12,7 @@ it("announces response boundaries without adding a persistent visual control", a
     responseId?: string;
     requiredAction?: string;
     error?: string;
+    stopped?: boolean;
   }) => act(async () => root.render(<ResponseAnnouncement {...props} />));
   try {
     await render({ running: false, responseId: "old" });
@@ -24,6 +25,10 @@ it("announces response boundaries without adding a persistent visual control", a
     );
     expect(host.querySelector("button")).toBeNull();
     expect(document.activeElement).toBe(document.body);
+    await render({ running: false, responseId: "new", stopped: true });
+    expect(host.querySelector('[role="status"]')?.textContent).toBe(
+      "Assistant response stopped.",
+    );
     await render({
       running: false,
       responseId: "new",

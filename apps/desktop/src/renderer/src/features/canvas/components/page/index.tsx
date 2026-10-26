@@ -13,7 +13,16 @@ type Loaded =
   | { id: string; status: "missing" }
   | { id: string; status: "failed" };
 
-export function CanvasPage({ id }: { id: string }) {
+export function CanvasPage({
+  id,
+  onExport,
+}: {
+  id: string;
+  onExport?: (input: {
+    canvas: Canvas;
+    format: "png" | "pdf";
+  }) => Promise<void>;
+}) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -40,7 +49,7 @@ export function CanvasPage({ id }: { id: string }) {
     <div className={styles.page}>
       {current?.status === "ready" ? (
         <ReactFlowProvider key={id}>
-          <Board canvas={current.canvas} />
+          <Board canvas={current.canvas} onExport={onExport} />
         </ReactFlowProvider>
       ) : current ? (
         <Empty.Root className={styles.empty}>

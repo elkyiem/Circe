@@ -6,14 +6,18 @@ import { Readable } from "node:stream";
 import { saves } from "@pond/schema/db";
 import { desc, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { CombineImagesOptionsSchema } from "../../shared/combine-images-contracts";
 import { conversationMarkdown } from "../../shared/conversation-markdown";
 import { ConversionRequestSchema } from "../../shared/conversion-contracts";
-import type { QueryResult } from "../../shared/query-contracts";
+import type { QueryName, QueryResult } from "../../shared/query-contracts";
+import { WebCanvasRenderSchema } from "../../shared/web-canvas-contracts";
 import { WebFileQuerySchema } from "../../shared/web-files-contracts";
 import { stringifyWebValue } from "../../shared/web-serialization";
 import { registerLocalAttachments } from "../core/agent/local-attachments";
 import { listChats, listMessages } from "../core/agent/persist";
 import { importBookmarkFile, parseBookmarkFile } from "../core/bookmarks";
+import { canvasPdf } from "../core/canvas-pdf";
+import { combineImages } from "../core/combine-images";
 import { conversionJobs } from "../core/conversion-jobs";
 import { reviewImportDuplicates } from "../core/duplicate-import";
 import { importEaglePackage } from "../core/eagle-package";
@@ -35,6 +39,7 @@ import { toCsv } from "../lib/csv";
 import { isPathInside } from "../lib/path-identity";
 import { libraryId, libraryRoot } from "../paths";
 import { unzipWebDirectory, zipWebDirectory } from "./archives";
+import { renderWebCanvas } from "./canvas-render";
 import { WebRequestError } from "./errors";
 import { indexedMediaPath } from "./media";
 import { createWebUploads } from "./uploads";
@@ -109,9 +114,25 @@ export function createWebFiles(root: string) {
         );
       const { name, params } = WebFileQuerySchema.parse(raw);
       let result:
-        | QueryResult<z.infer<typeof WebFileQuerySchema>["name"]>
+        | QueryResult<
+            Extract<z.infer<typeof WebFileQuerySchema>["name"], QueryName>
+          >
         | Awaited<ReturnType<typeof finish>>;
-      if (name === "conversion.start" || name === "conversion.status") {
+      if (name === "canvases.render") {
+        const input = WebCanvasRenderSchema.parse(params);
+        const image = await renderWebCanvas(input, expected);
+        const directory = await workDirectory();
+        const filename = `${input.canvas.name.replace(/[/\\:*?"<>|]/g, "-").trim() || "Canvas"}.${input.format}`;
+        const file = `canvas.${input.format}`;
+        await writeFile(
+          join(directory.path, file),
+          input.format === "png"
+            ? image.png
+            : await canvasPdf(image.png, image.width, image.height),
+          { flag: "wx", mode: 0o600 },
+        );
+        result = await finish(directory, filename, file, 1, expected);
+      } else if (name === "conversion.start" || name === "conversion.status") {
         const job =
           name === "conversion.start"
             ? await (async () => {
@@ -189,6 +210,33 @@ export function createWebFiles(root: string) {
           1,
           expected,
         );
+      } else if (name === "saves.combineImages") {
+        const input = z
+          .object({
+            ids: z.array(z.string().min(1).max(200)).min(2).max(1000),
+            folderId: z.string().min(1).max(200).nullable().optional(),
+            options: CombineImagesOptionsSchema.partial()
+              .extend({ outputPath: z.null().optional() })
+              .strict()
+              .optional(),
+          })
+          .strict()
+          .parse(params);
+        const options = CombineImagesOptionsSchema.parse(input.options ?? {});
+        if (options.output === "export") {
+          const directory = await workDirectory();
+          const filename = `Combined Images.${options.format === "jpeg" ? "jpg" : options.format}`;
+          const combined = await combineImages({
+            ...input,
+            options: { ...options, outputPath: join(directory.path, filename) },
+          });
+          result = combined.ok
+            ? {
+                ...(await finish(directory, filename, filename, 1, expected)),
+                skipped: combined.skipped,
+              }
+            : combined;
+        } else result = await combineImages({ ...input, options });
       } else if (name === "saves.copyFiles") {
         const { files } = z
           .object({

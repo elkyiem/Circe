@@ -146,7 +146,7 @@ import {
   type StampKind,
   turned,
 } from "../../lib/edit";
-import { renderBoard } from "../../lib/export";
+import { type BoardImage, renderBoard } from "../../lib/export";
 import type { TextStyle } from "../../lib/text-style";
 import {
   type Box,
@@ -309,9 +309,14 @@ function entryOf(snapshot: CanvasSnapshot, id: string): string {
 
 interface BoardProps {
   canvas: Canvas;
+  onExport?: (input: {
+    canvas: Canvas;
+    format: "png" | "pdf";
+  }) => Promise<void>;
+  snapshot?: { complete(image: BoardImage): void; fail(message: string): void };
 }
 
-export function Board({ canvas }: BoardProps) {
+export function Board({ canvas, onExport, snapshot }: BoardProps) {
   const flow = useReactFlow<CanvasNode, ConnectorEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<CanvasNode[]>(() =>
@@ -332,6 +337,7 @@ export function Board({ canvas }: BoardProps) {
   const [savesReady, setSavesReady] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [history] = useState(() => createHistory());
+  const snapshotStarted = useRef(false);
 
   const latest = useRef({ nodes, edges });
   latest.current = { nodes, edges };
@@ -489,6 +495,7 @@ export function Board({ canvas }: BoardProps) {
   const lastSaved = useRef(initialContent);
   const save = useCallback(
     (content: CanvasContent) => {
+      if (snapshot) return;
       const serialized = JSON.stringify(content);
       if (serialized === lastSaved.current) return;
       lastSaved.current = serialized;
@@ -505,7 +512,7 @@ export function Board({ canvas }: BoardProps) {
         }
       })();
     },
-    [canvas.id],
+    [canvas.id, snapshot],
   );
   const flush = useCallback(
     () =>
@@ -1007,94 +1014,148 @@ export function Board({ canvas }: BoardProps) {
     beginEdit(section.id, null);
   };
 
-  const exportImage = async (
-    format: "png" | "pdf",
-    scope: "board" | "selection" | undefined,
-  ) => {
-    const surface = wrapper.current;
-    const all = latest.current.nodes;
-    const picked = all.filter((node) => node.selected);
-    const targets =
-      scope === "board" || (!scope && !picked.length) ? all : picked;
-    if (!surface || !targets.length) return;
-    if (document.activeElement instanceof HTMLElement)
-      document.activeElement.blur();
-    const shown = new Set(targets.map((node) => node.id));
-    const wasSelected = new Set(picked.map((node) => node.id));
-    const selectedEdges = new Set(
-      latest.current.edges.flatMap((edge) => (edge.selected ? [edge.id] : [])),
-    );
-    const view = flow.getViewport();
-    const bounds = flow.getNodesBounds(targets);
-    const padding = 48;
-    setExporting(true);
-    setNodes((existing) =>
-      existing.map((node) => ({
-        ...node,
-        selected: false,
-        hidden: !shown.has(node.id) || undefined,
-      })),
-    );
-    setEdges((existing) =>
-      existing.map((edge) => ({ ...edge, selected: false })),
-    );
-    let image: Awaited<ReturnType<typeof renderBoard>>;
-    try {
-      image = await renderBoard({
-        surface,
-        bounds: {
-          x: bounds.x - padding,
-          y: bounds.y - padding,
-          width: bounds.width + padding * 2,
-          height: bounds.height + padding * 2,
-        },
-        setViewport: (next) => {
-          void flow.setViewport(next);
-        },
-      });
-    } catch (error) {
-      notify({
-        id: "canvas-export",
-        title: "Couldn't export the canvas",
-        description: errorCopy(error, "Try exporting again."),
-      });
-      return;
-    } finally {
+  const exportImage = useCallback(
+    async (format: "png" | "pdf", scope: "board" | "selection" | undefined) => {
+      const surface = wrapper.current;
+      const all = latest.current.nodes;
+      const picked = all.filter((node) => node.selected);
+      const targets =
+        scope === "board" || (!scope && !picked.length) ? all : picked;
+      if (!surface || !targets.length) return;
+      if (document.activeElement instanceof HTMLElement)
+        document.activeElement.blur();
+      const shown = new Set(targets.map((node) => node.id));
+      const wasSelected = new Set(picked.map((node) => node.id));
+      const selectedEdges = new Set(
+        latest.current.edges.flatMap((edge) =>
+          edge.selected ? [edge.id] : [],
+        ),
+      );
+      const view = flow.getViewport();
+      const bounds = flow.getNodesBounds(targets);
+      const padding = 48;
+      if (onExport) {
+        setExporting(true);
+        try {
+          await onExport({
+            canvas: {
+              ...canvas,
+              ...contentOf(
+                targets,
+                latest.current.edges.filter(
+                  (edge) => shown.has(edge.source) && shown.has(edge.target),
+                ),
+                viewport.current,
+              ),
+            },
+            format,
+          });
+          notify({
+            id: "canvas-export",
+            title: `${format.toUpperCase()} download requested`,
+          });
+        } catch (error) {
+          notify({
+            id: "canvas-export",
+            title: "Couldn't export the canvas",
+            description: errorCopy(error, "Try exporting again."),
+          });
+        } finally {
+          setExporting(false);
+        }
+        return;
+      }
+      setExporting(true);
       setNodes((existing) =>
         existing.map((node) => ({
           ...node,
-          selected: wasSelected.has(node.id),
-          hidden: undefined,
+          selected: false,
+          hidden: !shown.has(node.id) || undefined,
         })),
       );
       setEdges((existing) =>
-        existing.map((edge) => ({
-          ...edge,
-          selected: selectedEdges.has(edge.id),
-        })),
+        existing.map((edge) => ({ ...edge, selected: false })),
       );
-      void flow.setViewport(view);
-      setExporting(false);
-    }
-    try {
-      const result = await window.pond.query("canvases.export", {
-        name: canvas.name,
-        format,
-        ...image,
-      });
-      if (result.ok)
+      let image: Awaited<ReturnType<typeof renderBoard>>;
+      try {
+        image = await renderBoard({
+          surface,
+          bounds: {
+            x: bounds.x - padding,
+            y: bounds.y - padding,
+            width: bounds.width + padding * 2,
+            height: bounds.height + padding * 2,
+          },
+          setViewport: (next) => {
+            void flow.setViewport(next);
+          },
+        });
+      } catch (error) {
+        if (snapshot) {
+          snapshot.fail(errorCopy(error, "Could not render the Canvas."));
+          return;
+        }
         notify({
           id: "canvas-export",
-          title: format === "png" ? "Exported PNG" : "Exported PDF",
+          title: "Couldn't export the canvas",
+          description: errorCopy(error, "Try exporting again."),
         });
-    } catch (error) {
-      notify({
-        id: "canvas-export",
-        title: "Couldn't export the canvas",
-        description: errorCopy(error, "Try exporting again."),
-      });
-    }
-  };
+        return;
+      } finally {
+        setNodes((existing) =>
+          existing.map((node) => ({
+            ...node,
+            selected: wasSelected.has(node.id),
+            hidden: undefined,
+          })),
+        );
+        setEdges((existing) =>
+          existing.map((edge) => ({
+            ...edge,
+            selected: selectedEdges.has(edge.id),
+          })),
+        );
+        void flow.setViewport(view);
+        setExporting(false);
+      }
+      if (snapshot) {
+        snapshot.complete(image);
+        return;
+      }
+      try {
+        const result = await window.pond.query("canvases.export", {
+          name: canvas.name,
+          format,
+          ...image,
+        });
+        if (result.ok)
+          notify({
+            id: "canvas-export",
+            title: format === "png" ? "Exported PNG" : "Exported PDF",
+          });
+      } catch (error) {
+        notify({
+          id: "canvas-export",
+          title: "Couldn't export the canvas",
+          description: errorCopy(error, "Try exporting again."),
+        });
+      }
+    },
+    [canvas, flow, onExport, snapshot],
+  );
+
+  useEffect(() => {
+    if (!snapshot || !savesReady || snapshotStarted.current) return;
+    snapshotStarted.current = true;
+    void document.fonts.ready
+      .then(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      )
+      .then(() => exportImage("png", "board"));
+  }, [snapshot, savesReady, exportImage]);
 
   const importAt = async (plan: PasteImport, at: XYPosition) => {
     try {
@@ -1968,26 +2029,30 @@ export function Board({ canvas }: BoardProps) {
               onDelete={() => void flow.deleteElements({ nodes: selected })}
             />
           </ReactFlow>
-          <Tools
-            tool={tool}
-            color={color}
-            outline={outline}
-            penMode={penMode}
-            kept={kept}
-            showColors={showColors}
-            showOutlines={tool === "figure"}
-            onCanvas={onCanvas}
-            onTool={(next) => {
-              setKept(false);
-              setTool(next);
-            }}
-            onColor={setColor}
-            onOutline={setOutline}
-            onPenMode={setPenMode}
-            onKeep={setKept}
-            onAddSaves={(saveIds) => addSaves(saveIds)}
-          />
-          <Zoom />
+          {!exporting && (
+            <>
+              <Tools
+                tool={tool}
+                color={color}
+                outline={outline}
+                penMode={penMode}
+                kept={kept}
+                showColors={showColors}
+                showOutlines={tool === "figure"}
+                onCanvas={onCanvas}
+                onTool={(next) => {
+                  setKept(false);
+                  setTool(next);
+                }}
+                onColor={setColor}
+                onOutline={setOutline}
+                onPenMode={setPenMode}
+                onKeep={setKept}
+                onAddSaves={(saveIds) => addSaves(saveIds)}
+              />
+              <Zoom />
+            </>
+          )}
         </div>
       </SpecContextMenu>
     </BoardContext.Provider>

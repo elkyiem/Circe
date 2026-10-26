@@ -141,7 +141,7 @@ export const WEB_QUERY_ACCESS = {
   "saves.classifyLabels": "read",
   "saves.classifyUrl": "write",
   "saves.clipEmbeddings": "read",
-  "saves.combineImages": "host",
+  "saves.combineImages": "browser",
   "saves.copyFile": "browser",
   "saves.copyFiles": "browser",
   "saves.copyImage": "browser",

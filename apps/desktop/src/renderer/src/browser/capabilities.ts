@@ -36,7 +36,7 @@ export const BROWSER_BRIDGE_ACCESS = {
   onSyncAction: "transport",
   onSyncStatus: "transport",
   onUpdateNotice: "transport",
-  openCombineImagesWindow: "host-only",
+  openCombineImagesWindow: "browser",
   openExternal: "browser",
   openPreviewWindow: "host-only",
   openSaveFile: "transport",

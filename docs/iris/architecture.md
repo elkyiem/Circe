@@ -73,7 +73,16 @@ session-authenticated downloads. Clipboard and sharing act on the visiting devic
 
 Canvas autosaves compare a hash of the content read by the client, inside the
 mutation scope. Concurrent renames do not overwrite content, and a stale board
-cannot replace another window's changes. Canvas capture/export is still pending.
+cannot replace another window's changes. Browser PNG/PDF export sends a validated
+snapshot to one dedicated hidden Electron window. Its restricted preload can
+read only snapshot Saves and capture rectangles inside that window. It reuses
+Pond's Board, font loading and tiled renderer; it cannot mutate the Canvas or
+capture the unrelated visible host window. Export retains the visiting device's
+resolved theme. Native desktop export keeps its existing path.
+
+Combine Images opens the same lazy-loaded component in a browser dialog. Create
+uses the existing host compositor; Export returns an authenticated download.
+The browser never supplies an output path on the host.
 
 Source connection opens an isolated, sandboxed host window with no preload or
 Node access. Only cookies entered in that window reach the existing session

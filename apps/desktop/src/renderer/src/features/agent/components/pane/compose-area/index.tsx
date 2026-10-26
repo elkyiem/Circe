@@ -30,6 +30,7 @@ interface ComposeAreaProps {
   chatError: Error | undefined;
   lastAssistantId: string | undefined;
   lastError: string | undefined;
+  lastStopped?: boolean;
   requiredAction: string | undefined;
   referencesOpen: boolean;
   referenceSources: AssistantSource[];
@@ -52,6 +53,7 @@ export function ComposeArea({
   chatError,
   lastAssistantId,
   lastError,
+  lastStopped,
   requiredAction,
   referencesOpen,
   referenceSources,
@@ -72,6 +74,7 @@ export function ComposeArea({
         responseId={lastAssistantId}
         requiredAction={requiredAction}
         error={state.error ?? chatError?.message ?? lastError}
+        stopped={lastStopped}
       />
       <div className={styles.notices}>
         {!provider ? (

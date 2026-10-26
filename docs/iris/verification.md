@@ -123,3 +123,44 @@ and no Android SDK; physical mobile coverage is not claimed. Archive replay,
 Canvas export, host administration, full viewer/format coverage, enrichment
 execution ownership, and the remaining Agent review/cancellation/device matrix
 remain open in the parity ledger. These are not hidden behind a full-parity claim.
+
+## Canvas, composition and assistant follow-up — 2026-10-26
+
+- The real host rendered a Canvas containing an image Save, note, connector and
+  shape beyond the first capture tile to PNG and PDF. The test checks nonblank
+  pixels, second-tile color, authenticated download and exact stored-content
+  equality before/after. The PNG was visually inspected; an export HUD artifact
+  was fixed. Shared Chrome opened the saved Canvas and downloaded its PNG through
+  the actual context menu. `scripts/smoke-web-canvas.mjs` repeats the host check.
+- Shared Chrome selected the quote and image fixtures, opened the shared Combine
+  Images dialog, displayed their original Pond cards and created a new Save.
+  HTTP checks also verified export and rejection of a browser-supplied host path.
+  At 390×844 the settings and preview remained usable and Export downloaded the
+  composed PNG. This is Chromium viewport coverage, not a physical-phone test.
+- Shared Chrome stopped a real ChatGPT subscription turn. The accessible status
+  now says “Assistant response stopped.” A regression test covers this state.
+- Live review testing found an upstream tool returning a pending-review message
+  with zero proposals when the model had not read the Save. The tool now reports
+  a corrective error, and empty results do not claim a review is ready. The
+  failing reproduction and fix are covered by the context test; 47 Agent tests
+  passed across context, operations and completion.
+- The live review then exposed a null/empty-note mismatch at the executor's
+  conflict check. Apply now retains the exact stored original for conflict
+  validation and Undo. Regression cases cover null, empty text and a newer note.
+  Shared Chrome reopened the persisted review after a host restart, applied the
+  fixture note and undid it. Host reads independently verified the applied value
+  and exact restoration to `null`.
+- Focused web/Canvas/status tests passed: 69 across 12 files. A full graph during
+  the render smoke again timed out on the cold filter-store import; its next
+  assertion was contaminated by that timed-out import. This is recorded separately
+  from the new-feature checks; the final isolated graph result is recorded below.
+- Final isolated `pnpm check`: all 25 tasks passed. Desktop: 600 files passed,
+  2 skipped; 4,114 tests passed, 5 skipped. Cold dependency loading in the existing
+  filter-persistence test moved into setup; every case still resets modules and
+  reloads the real store. Default timeouts and assertions are unchanged.
+  `pnpm build`: all 11 tasks and five budgets passed.
+
+Screenshots are local ignored artifacts:
+`shared-chrome-combine.png`, `shared-chrome-canvas.png`, and
+`shared-chrome-agent-stopped.png` under `.artifacts/web-verification/`, with
+additional `shared-chrome-combine-mobile.png` and `shared-chrome-agent-applied.png`.

@@ -54,6 +54,8 @@ try {
     await pause(250);
   }
   await run(process.execPath, ["scripts/smoke-web.mjs"]);
+  await run(process.execPath, ["scripts/smoke-web-parity.mjs"]);
+  await run(process.execPath, ["scripts/smoke-web-canvas.mjs"]);
   await run(electron, ["scripts/smoke-web-browser.cjs"]);
 } finally {
   clearTimeout(deadline);

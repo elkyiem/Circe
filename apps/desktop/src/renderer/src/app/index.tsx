@@ -50,6 +50,11 @@ const OrganizationReviewHost = lazy(() =>
     (module) => ({ default: module.OrganizationReviewHost }),
   ),
 );
+const BrowserCombineHost = lazy(() =>
+  import("./components/browser-combine-host").then((module) => ({
+    default: module.BrowserCombineHost,
+  })),
+);
 declare global {
   interface Window {
     pond: PondApi;
@@ -199,6 +204,7 @@ function LibraryApp() {
               <Suspense fallback={null}>
                 <DuplicateReviewHost />
                 <OrganizationReviewHost />
+                {isBrowserRuntime() && <BrowserCombineHost />}
               </Suspense>
               <ConversionDialogHost />
               <UpdateDialog />

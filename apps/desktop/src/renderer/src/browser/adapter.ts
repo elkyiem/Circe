@@ -18,6 +18,7 @@ import { z } from "zod";
 import type { PondApi, StorageGuardStatusWire } from "../../../preload";
 import { createBrowserCanvases } from "./canvases";
 import { BROWSER_BRIDGE_ACCESS } from "./capabilities";
+import { openBrowserCombine } from "./combine-images";
 import { createBrowserFiles } from "./files";
 import { createBrowserPreferences } from "./preferences";
 
@@ -166,9 +167,19 @@ export async function installBrowserAdapter(libraryId: string) {
     openExternal: async (url) => {
       const parsed = new URL(url);
       if (!["http:", "https:"].includes(parsed.protocol)) return unsupported();
-      return {
-        ok: window.open(parsed.href, "_blank", "noopener,noreferrer") !== null,
-      };
+      const opened = window.open("about:blank", "_blank");
+      if (!opened) {
+        window.dispatchEvent(
+          new CustomEvent("iris-error", {
+            detail:
+              "The browser blocked the new tab. Allow popups for Iris and try again.",
+          }),
+        );
+        return { ok: false };
+      }
+      opened.opener = null;
+      opened.location.replace(parsed.href);
+      return { ok: true };
     },
     appInfo: async () => ({
       name: "Iris",
@@ -178,7 +189,9 @@ export async function installBrowserAdapter(libraryId: string) {
       username: "",
       isPackaged: false,
     }),
-    openCombineImagesWindow: unavailable("openCombineImagesWindow"),
+    openCombineImagesWindow: async (input) => {
+      openBrowserCombine(input);
+    },
     tx: async (transaction) => {
       await webRequest(
         "transactions",

@@ -103,7 +103,9 @@ export function createWebApp(host: WebHost) {
       !expectedOrigin ||
       (c.req.path.startsWith("/web/") &&
         ((origin && origin !== expectedOrigin) ||
-          c.req.header("sec-fetch-site") === "cross-site"))
+          ["cross-site", "same-site"].includes(
+            c.req.header("sec-fetch-site") ?? "",
+          )))
     ) {
       // Only disposable public fixture bytes have a host-only loopback path.
       if (

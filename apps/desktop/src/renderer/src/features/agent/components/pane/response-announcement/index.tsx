@@ -6,6 +6,7 @@ interface ResponseAnnouncementProps {
   responseId?: string;
   requiredAction?: string;
   error?: string | null;
+  stopped?: boolean;
 }
 
 export function ResponseAnnouncement({
@@ -13,12 +14,19 @@ export function ResponseAnnouncement({
   responseId,
   requiredAction,
   error,
+  stopped,
 }: ResponseAnnouncementProps) {
-  const previous = useRef({ running, responseId, requiredAction, error });
+  const previous = useRef({
+    running,
+    responseId,
+    requiredAction,
+    error,
+    stopped,
+  });
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
     const before = previous.current;
-    previous.current = { running, responseId, requiredAction, error };
+    previous.current = { running, responseId, requiredAction, error, stopped };
     if (
       error &&
       (error !== before.error ||
@@ -34,9 +42,18 @@ export function ResponseAnnouncement({
         responseId !== before.responseId)
     )
       setAnnouncement(requiredAction);
-    else if (responseId && (before.running || responseId !== before.responseId))
-      setAnnouncement("Assistant response complete.");
-  }, [running, responseId, requiredAction, error]);
+    else if (
+      responseId &&
+      (before.running ||
+        responseId !== before.responseId ||
+        stopped !== before.stopped)
+    )
+      setAnnouncement(
+        stopped
+          ? "Assistant response stopped."
+          : "Assistant response complete.",
+      );
+  }, [running, responseId, requiredAction, error, stopped]);
   return (
     <span
       className={styles.announcement}

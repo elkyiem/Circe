@@ -208,6 +208,7 @@ function AgentPaneContent({
                 chatError={chatError}
                 lastAssistantId={lastAssistantId}
                 lastError={lastMetadata?.error}
+                lastStopped={lastMetadata?.stopped}
                 requiredAction={requiredAction}
                 referencesOpen={Boolean(referenceSources?.length)}
                 referenceSources={retainedReferenceSources.current}

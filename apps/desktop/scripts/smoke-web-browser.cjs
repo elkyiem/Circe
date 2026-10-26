@@ -167,7 +167,7 @@ app
         'document.querySelector("#fixture-kind") && document.body.innerText.includes("Iris fixture: image")',
       );
       await run("document.querySelector('[data-library-search]').focus()");
-      await win.webContents.insertText("image");
+      await win.webContents.insertText("Iris fixture: image");
       await waitFor('document.querySelectorAll("[data-save-id]").length === 1');
       await snapshot("search-results");
       await click('[aria-label="Clear Search"]');

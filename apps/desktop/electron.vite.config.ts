@@ -105,6 +105,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "src/preload/index.ts"),
           "combine-images": resolve(__dirname, "src/preload/combine-images.ts"),
+          "canvas-render": resolve(__dirname, "src/preload/canvas-render.ts"),
           preview: resolve(__dirname, "src/preload/preview.ts"),
           scrape: resolve(__dirname, "src/preload/scrape.cjs.ts"),
         },
@@ -201,6 +202,10 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "src/renderer/index.html"),
           capture: resolve(__dirname, "src/renderer/capture.html"),
+          "canvas-render": resolve(
+            __dirname,
+            "src/renderer/canvas-render.html",
+          ),
           "combine-images": resolve(
             __dirname,
             "src/renderer/combine-images.html",

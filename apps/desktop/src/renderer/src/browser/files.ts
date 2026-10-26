@@ -1,4 +1,5 @@
 import type { QueryName } from "@shared/query-contracts";
+import { isThumbnailKind } from "@shared/save-file-names";
 import {
   WebFileQuerySchema,
   WebUploadSchema,
@@ -32,6 +33,7 @@ const DEVICE_QUERIES = new Set<string>([
   "saves.copyBase64",
   "saves.copyFile",
   "saves.copyFiles",
+  "saves.combineImages",
   "saves.copyInternalLinks",
   "saves.share",
   "saves.importClipboard",
@@ -64,7 +66,7 @@ const SaveMedia = z.object({
   ),
 });
 
-function downloadInBrowser(url: string, filename: string) {
+export function downloadInBrowser(url: string, filename: string) {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
@@ -144,7 +146,7 @@ export function createBrowserFiles(transport: FileTransport) {
   }
   async function media(
     input: { id: string; fileIndex?: number },
-    thumbnail = false,
+    kind: "selected" | "thumbnail" | "video" = "selected",
   ) {
     const save = SaveMedia.parse(
       await transport.request(
@@ -152,9 +154,15 @@ export function createBrowserFiles(transport: FileTransport) {
         JSON.stringify({ name: "saves.get", params: { id: input.id } }),
       ),
     );
-    const file = thumbnail
-      ? (save.files.find((file) => file.kind === "thumbnail") ?? save.files[0])
-      : save.files[input.fileIndex ?? 0];
+    const file =
+      kind === "thumbnail"
+        ? save.files.find((file) => isThumbnailKind(file.kind ?? ""))
+        : kind === "video"
+          ? save.files.find(
+              (file) =>
+                file.kind === "video" || file.mimeType?.startsWith("video/"),
+            )
+          : save.files[input.fileIndex ?? 0];
     if (!file) throw new Error("This Save has no selected file.");
     return {
       ...file,
@@ -246,6 +254,7 @@ export function createBrowserFiles(transport: FileTransport) {
           name === "video.copyFilePath"
             ? { id: Id.parse(params.saveId) }
             : FileSelection.parse(params),
+          name === "video.copyFilePath" ? "video" : "selected",
         );
         const path = new URL(selected.url, location.origin).href;
         if (name === "video.copyFilePath")
@@ -352,7 +361,7 @@ export function createBrowserFiles(transport: FileTransport) {
       ) {
         const file = await media(
           FileSelection.parse(params),
-          name === "saves.copyThumbnail",
+          name === "saves.copyThumbnail" ? "thumbnail" : "selected",
         );
         const response = await fetch(file.url);
         if (!response.ok) throw new Error("The selected image is unavailable.");
@@ -364,7 +373,9 @@ export function createBrowserFiles(transport: FileTransport) {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
-          await navigator.clipboard.writeText(data);
+          await navigator.clipboard.writeText(
+            data.slice(data.indexOf(",") + 1),
+          );
         } else {
           const bitmap = await createImageBitmap(blob);
           const canvas = document.createElement("canvas");
