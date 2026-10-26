@@ -211,8 +211,9 @@ describe("buildThemeTokens", () => {
     },
   );
 
-  it("raises every gray step's contrast as the slider rises", () => {
-    for (const preset of THEME_PRESETS) {
+  it.each(THEME_PRESETS)(
+    "$id raises every gray step's contrast as the slider rises",
+    (preset) => {
       const levels = CONTRASTS.map((contrast) =>
         build(preset.id, contrast, "srgb"),
       );
@@ -224,8 +225,8 @@ describe("buildThemeTokens", () => {
           expect(ratios[i]).toBeGreaterThanOrEqual((ratios[i - 1] ?? 0) - 0.01);
         }
       }
-    }
-  });
+    },
+  );
 
   it("meets the 3:1 border minimum at full contrast", () => {
     for (const preset of THEME_PRESETS) {

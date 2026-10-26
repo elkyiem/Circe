@@ -30,6 +30,7 @@ interface BoundSocket {
   watcher: FSWatcher;
   restoring: boolean;
 }
+const stoppingServers = new WeakSet<Server>();
 
 const listenPaths = new WeakMap<Server, BoundSocket>();
 const openSockets = new WeakMap<Server, Set<Socket>>();
@@ -73,12 +74,15 @@ function handleConn(socket: Socket, dispatch: NativeDispatch): void {
 }
 
 function bindPath(server: Server, path: string): void {
-  const ino = statSync(path).ino;
+  if (stoppingServers.has(server)) return;
+  // An older Unix listener can unlink the replacement between listen and chmod.
+  const ino = statSync(path, { throwIfNoEntry: false })?.ino ?? 0;
   const existing = listenPaths.get(server);
   if (existing) {
     existing.path = path;
     existing.ino = ino;
     existing.restoring = false;
+    if (!ino) queueMicrotask(() => restoreSocket(server));
     return;
   }
   const restoreMissing = () => {
@@ -95,6 +99,7 @@ function bindPath(server: Server, path: string): void {
   });
   watcher.unref?.();
   listenPaths.set(server, { path, ino, restore, watcher, restoring: false });
+  if (!ino) queueMicrotask(() => restoreSocket(server));
 }
 
 function isNamedPipe(path: string): boolean {
@@ -104,10 +109,17 @@ function isNamedPipe(path: string): boolean {
 /** Recreate the path after Node's unix close() unlinks it, including when an older process exits. */
 function restoreSocket(server: Server): void {
   const bound = listenPaths.get(server);
-  if (!bound || bound.restoring || !server.listening) return;
+  if (
+    !bound ||
+    bound.restoring ||
+    !server.listening ||
+    stoppingServers.has(server)
+  )
+    return;
   bound.restoring = true;
   const path = bound.path;
   server.close((err) => {
+    if (stoppingServers.has(server)) return;
     if (err) {
       bound.restoring = false;
       log.warn("[pond native] restore close failed", err);
@@ -164,7 +176,9 @@ export async function startNativeServer(
 
 export async function stopNativeServer(server: Server | null): Promise<void> {
   if (!server) return;
+  stoppingServers.add(server);
   const bound = listenPaths.get(server);
+  listenPaths.delete(server);
   if (bound) {
     clearInterval(bound.restore);
     bound.watcher.close();
