@@ -226,3 +226,35 @@ their references. Source IDs and structured Capture identities are retained.
 Iris preserves that upstream behavior; copying a complete Library and importing
 a package are different operations. This check does not claim every organization
 attribute or foreign import format has a browser acceptance test.
+
+## Representative file viewers — 2026-10-26
+
+Twelve purpose-built files entered the isolated Library through authenticated
+upload and the original importer: HEIC, PDF, WAV, WOFF2, Unicode text, EPUB, GLB,
+ZIP, Live Photo, offline HTML, DOCX and a generic original. All twelve rendered
+their actual registered viewer at both 1280×900 and 390×844; a fallback would fail
+the check. PDF text search and rotation, audio playback, Live Photo motion and
+seeking, font loading, EPUB content, 3D rendering, ZIP entries, sanitized sandboxed
+HTML and byte-exact generic downloads passed. Native-preview coverage is specific
+to this macOS host. This is representative coverage, not every supported file
+format or viewer control; WARC replay remains a separate deferred boundary.
+
+The browser now labels the original-file action **Download Original**; native
+Open in Default App and Export Original remain on desktop. PDF HUD controls no
+longer overlap when the center slot is empty: narrow toolbars retain every
+control in a horizontally scrollable end slot. Both widths exercised rotation
+through that toolbar. Shared Chrome independently confirmed PDF search; the
+finite test initially omitted the Return character event, which was corrected
+in its input harness without changing product search behavior.
+
+The finite viewer matrix passed all 24 cases. The original browser workflow
+also passed against the expanded Library, including search, full-image decoding,
+video seeking, folder mutation/reload and mobile width. Its locators now handle
+virtualized results and distinguish the open Save's original from the retained
+Library grid's thumbnails. Evidence: `viewer-results.json` and
+`viewer-<kind>-<width>.png` under `.artifacts/web-verification/`.
+
+The final `pnpm check` passed all 25 tasks: desktop 603 test files passed,
+2 skipped; 4,127 tests passed, 5 skipped. `pnpm build` passed all 11 tasks and
+five performance budgets. The separate production browser build and focused
+viewer tests also passed.

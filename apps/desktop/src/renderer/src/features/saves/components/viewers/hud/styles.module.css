@@ -113,6 +113,24 @@
   justify-content: flex-end;
 }
 
+.bar:has(> .center:empty) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.bar:has(> .center:empty) > .center {
+  display: none;
+}
+
+.bar:has(> .center:empty) > .end {
+  justify-content: safe flex-end;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.bar:has(> .center:empty) > .end > * {
+  flex-shrink: 0;
+}
+
 @container (max-width: 620px) {
   .bar[data-collapse-center] {
     grid-template-columns: auto 1fr;

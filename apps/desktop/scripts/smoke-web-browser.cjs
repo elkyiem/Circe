@@ -20,10 +20,13 @@ mkdirSync(evidence, { recursive: true });
 app.setPath("userData", profile);
 app.commandLine.appendSwitch("use-mock-keychain");
 process.once("exit", () => rmSync(profile, { recursive: true, force: true }));
-const timer = setTimeout(() => {
-  console.error("WEB_BROWSER_FAILED: timed out");
-  app.exit(1);
-}, 120000);
+const timer = setTimeout(
+  () => {
+    console.error("WEB_BROWSER_FAILED: timed out");
+    app.exit(1);
+  },
+  process.argv.includes("--viewers") ? 300000 : 120000,
+);
 
 app
   .whenReady()
@@ -97,8 +100,26 @@ app
         ...point,
       });
     };
+    const titles = new Map();
     const openSave = async (id) => {
       const selector = `[data-save-id="${id}"] [role="option"]`;
+      if (
+        !(await run(
+          `Boolean(document.querySelector(${JSON.stringify(selector)}))`,
+        ))
+      ) {
+        if (
+          await run(
+            "Boolean(document.querySelector('[aria-label=\"Clear Search\"]'))",
+          )
+        )
+          await click('[aria-label="Clear Search"]');
+        const title = titles.get(id);
+        assert.ok(title, "The fixture must have a searchable title.");
+        await run("document.querySelector('[data-library-search]').focus()");
+        await win.webContents.insertText(title);
+        await waitFor(`document.querySelector(${JSON.stringify(selector)})`);
+      }
       await click(selector);
       await click(selector, 2);
     };
@@ -145,6 +166,7 @@ app
         return response.json();
       };
       const page = await query("saves.listPage", { limit: 100 });
+      for (const save of page.rows) titles.set(save.id, save.title);
       const image = page.rows.find(
         (save) => save.sourceId === "900000000000000002",
       );
@@ -164,11 +186,39 @@ app
       });
       await win.loadURL(origin);
       await waitFor(
-        'document.querySelector("#fixture-kind") && document.body.innerText.includes("Iris fixture: image")',
+        'document.querySelector("#fixture-kind") && document.querySelector("[data-library-search]")',
       );
+      if (process.argv.includes("--viewers")) {
+        const { verifyBrowserViewers } = require("./web-viewer-cases.cjs");
+        const registered = JSON.parse(
+          readFileSync(join(sandbox, "viewer-fixtures.json"), "utf8"),
+        );
+        const only = process.argv
+          .find((value) => value.startsWith("--viewer="))
+          ?.slice(9);
+        const fixtures = only
+          ? registered.filter((fixture) => fixture.kind === only)
+          : registered;
+        assert.ok(fixtures.length, "Choose a registered viewer fixture.");
+        await verifyBrowserViewers({
+          win,
+          run,
+          waitFor,
+          click,
+          snapshot,
+          fixtures,
+          origin,
+          evidence,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
       await run("document.querySelector('[data-library-search]').focus()");
       await win.webContents.insertText("Iris fixture: image");
-      await waitFor('document.querySelectorAll("[data-save-id]").length === 1');
+      await waitFor(
+        `document.querySelector('[data-save-id="${image.id}"]') && !document.querySelector('[data-save-id="${video.id}"]')`,
+      );
       await snapshot("search-results");
       await click('[aria-label="Clear Search"]');
       await waitFor('document.querySelectorAll("[data-save-id]").length >= 3');
@@ -243,7 +293,7 @@ app
       await snapshot("folder-created");
       await openSave(image.id);
       await waitFor(
-        `Array.from(document.querySelectorAll('img')).some(img => img.src.includes('${image.id}/media-1.png') && img.complete && img.naturalWidth > 0)`,
+        `Array.from(document.querySelectorAll('[data-save-details] img')).some(img => new URL(img.src).pathname === '/web/media/${image.id}/media-1.png' && img.complete && img.naturalWidth > 0)`,
       );
       await snapshot("image-viewer");
       if (
@@ -286,7 +336,9 @@ app
         JSON.stringify({ folderId: folder.id, saveId: image.id }),
       );
       await click('[aria-label="Back"]');
-      await waitFor(`document.querySelector('[data-save-id="${video.id}"]')`);
+      await waitFor(
+        `location.pathname === '/' && document.querySelector('[data-library-search]')`,
+      );
       await click(`[data-folder-sortable="${folder.id}"] [role="treeitem"]`);
       await waitFor(
         `new URLSearchParams(location.search).get('folder') === '${folder.id}' && document.querySelector('[data-save-id="${image.id}"]')`,
@@ -302,7 +354,7 @@ app
       await snapshot("folder-reloaded");
       await click('[aria-label="Back"]');
       await waitFor(
-        `!location.search.includes('folder=') && document.querySelector('[data-save-id="${video.id}"]')`,
+        `!location.search.includes('folder=') && document.querySelector('[data-library-search]')`,
       );
       await openSave(video.id);
       await waitFor(

@@ -108,6 +108,9 @@ pnpm --filter @pond/desktop exec node scripts/smoke-web-parity.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-canvas.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-package.mjs
+# Add purpose-built files to the disposable Library, then verify each viewer:
+pnpm --filter @pond/desktop exec node scripts/prepare-web-viewers.mjs
+env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --viewers
 # After restarting the same disposable host:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs --after-restart
 # Live model use; requires the explicitly authorized, connected subscription:
@@ -125,6 +128,13 @@ into a new temporary Library, re-exports, deduplicates and reopens it in a secon
 finite host process. It verifies Capture identity, original bytes, folder paths
 and organization names. The live assistant check
 uses only disposable fixture metadata and validates persisted sources and tool steps.
+
+Viewer preparation adds twelve tagged Saves through the real upload/import path.
+Run it once per fresh disposable Library; subsequent viewer checks reuse its
+sandbox manifest. The finite viewer check covers desktop and mobile widths and
+writes per-viewer screenshots and `viewer-results.json` under the evidence
+directory. HEIC/Office preview and 3D rendering depend on the host platform and
+graphics environment; the recorded acceptance run used macOS and Chromium.
 
 To connect a Source, use **Sources → New Source**. Sign-in opens on the host in an
 isolated window; being signed in to Twitter in normal Chrome does not connect
