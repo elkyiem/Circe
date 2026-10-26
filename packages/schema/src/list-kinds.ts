@@ -1,4 +1,5 @@
-export const LIST_KINDS = ["liked", "saved"] as const;
+/** `subscription` marks a post Pond picked up from a publication you follow rather than one you saved. */
+export const LIST_KINDS = ["liked", "saved", "subscription"] as const;
 export type ListKind = (typeof LIST_KINDS)[number];
 
 const ALIASES = new Map<string, ListKind>([
@@ -16,11 +17,17 @@ const ALIASES = new Map<string, ListKind>([
   ["favorites", "saved"],
   ["favourite", "saved"],
   ["favourites", "saved"],
+  ["star", "saved"],
+  ["starred", "saved"],
+  ["stars", "saved"],
+  ["subscription", "subscription"],
+  ["subscriptions", "subscription"],
 ]);
 
 export const LIST_KIND_LABELS = {
   liked: "Liked",
   saved: "Saved",
+  subscription: "Subscription",
 } satisfies Record<ListKind, string>;
 
 export type ListKindInput =

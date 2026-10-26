@@ -56,6 +56,18 @@ function file(kind: string, path: string, bytes: Uint8Array) {
   };
 }
 
+async function gradient(size: number, reverse: boolean) {
+  const pixels = Buffer.alloc(size * size);
+  for (let y = 0; y < size; y += 1)
+    for (let x = 0; x < size; x += 1) {
+      const value = Math.round((x / (size - 1)) * 255);
+      pixels[y * size + x] = reverse ? 255 - value : value;
+    }
+  return sharp(pixels, { raw: { width: size, height: size, channels: 1 } })
+    .png()
+    .toBuffer();
+}
+
 describe("Library integrity repair previews", () => {
   it("preserves a verified custom thumbnail in a plaintext fixture", async () => {
     const root = await fixtureRoot();
@@ -96,6 +108,64 @@ describe("Library integrity repair previews", () => {
         runtime: runtime(root),
       }),
     ).resolves.toBeNull();
+  });
+
+  it.each([
+    { name: "a resized copy", reverse: false, custom: false, flagged: false },
+    { name: "another image", reverse: true, custom: false, flagged: true },
+    { name: "a picked image", reverse: true, custom: true, flagged: false },
+  ])("compares a thumbnail of $name with the original", async (fixture) => {
+    const root = await fixtureRoot();
+    const directory = join(root, "items", "save-1.info");
+    const original = await gradient(64, false);
+    const thumbnail = await gradient(32, fixture.reverse);
+    await Promise.all([
+      writeFile(join(directory, "photo.png"), original),
+      writeFile(join(directory, "photo.png_thumbnail.png"), thumbnail),
+    ]);
+    const row = fixtureSave([
+      file("image", "photo.png", original),
+      {
+        ...file("thumbnail", "photo.png_thumbnail.png", thumbnail),
+        custom: fixture.custom || undefined,
+      },
+    ]);
+
+    const issue = await inspectSaveIntegrity({
+      kind: "thumbnails",
+      row,
+      runtime: runtime(root),
+    });
+
+    if (fixture.flagged)
+      expect(issue).toMatchObject({
+        summary: "Thumbnail doesn't match this save",
+        action: { kind: "thumbnail", source: "photo.png" },
+      });
+    else expect(issue).toBeNull();
+  });
+
+  it("flags a text card left beside an image", async () => {
+    const root = await fixtureRoot();
+    const directory = join(root, "items", "save-1.info");
+    const original = await gradient(64, false);
+    const card = await gradient(32, false);
+    await Promise.all([
+      writeFile(join(directory, "photo.png"), original),
+      writeFile(join(directory, "thumbnail-dark.png"), card),
+    ]);
+    const row = fixtureSave([
+      file("image", "photo.png", original),
+      file("thumbnail_dark", "thumbnail-dark.png", card),
+    ]);
+
+    await expect(
+      inspectSaveIntegrity({
+        kind: "thumbnails",
+        row,
+        runtime: runtime(root),
+      }),
+    ).resolves.toMatchObject({ summary: "Thumbnail doesn't match this save" });
   });
 
   it("reads payloads before offering metadata recovery", async () => {

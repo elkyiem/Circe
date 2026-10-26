@@ -117,6 +117,10 @@ continuity another way rather than adding decorative motion.
 - **Do** pull from the shared motion vocabulary, the `--ds-duration-*` / `--ds-easing-*`
   tokens and the presets in [`lib/motion.ts`](./lib/motion.ts), rather than one-off
   values.
+- **Do** give pressed controls physical feedback. Icons answer a click with `pop()`
+  from `@pond/ui`; presses squish fast and release on `--ds-easing-bounce`. Keep that
+  overshoot off anything that travels far, like sliding indicators, which use
+  `--ds-easing-spring` instead.
 - **Do** respect reduced motion. The global `MotionConfig reducedMotion="user"` in
   [`App.tsx`](./App.tsx) and the `data-reduce-motion` CSS overrides in
   [`styles.css`](./styles.css) must cover every new animation. Nothing may depend on

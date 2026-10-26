@@ -6,7 +6,7 @@
 
 .label {
   font-size: var(--ds-text-sm);
-  font-weight: var(--ds-weight-normal-plus);
+  font-weight: var(--ds-weight-lg);
   color: var(--ds-gray-11);
 }
 
@@ -23,6 +23,6 @@
 
 .error {
   font-size: var(--ds-text-sm);
-  font-weight: var(--ds-weight-normal-plus);
+  font-weight: var(--ds-weight-lg);
   color: var(--ds-red-11);
 }

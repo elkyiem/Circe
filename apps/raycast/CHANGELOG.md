@@ -9,6 +9,6 @@
 - Browse images and videos as a grid, and search tags, folders, and saved views.
 - Save URLs with tags and a folder, follow the capture, and create quicklinks for tagged quick saves.
 - Save the current browser tab or the URL on your clipboard, and open a random save.
-- Switch libraries, and see recent saves and capture progress in the menu bar.
+- Switch libraries from Raycast.
 - Use 14 Raycast AI tools to search, read, tag, file, trash, and open saves, plus Pond's native MCP server.
 - Get a clear next step when Pond isn't installed, isn't running, needs an update, or rejects the token.

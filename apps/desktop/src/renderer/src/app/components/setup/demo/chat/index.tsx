@@ -6,7 +6,7 @@ export function Chat({ connected = true }: { connected?: boolean }) {
   return (
     <div className={styles.chat}>
       <PaneHeader>
-        <span className={styles["pane-title"]}>Assistant</span>
+        <span className={styles["pane-title"]}>Koi</span>
       </PaneHeader>
       {connected ? (
         <div className={styles.thread}>

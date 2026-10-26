@@ -11,7 +11,7 @@ interface EpubViewerProps {
   url: string;
   onUnavailable: () => void;
   toolbarStart?: ReactNode;
-  toolbarEnd?: ReactNode;
+  toolbarActions?: ReactNode;
   toolbarNavigation?: ReactNode;
 }
 
@@ -29,7 +29,7 @@ export function EpubViewer({
   url,
   onUnavailable,
   toolbarStart,
-  toolbarEnd,
+  toolbarActions,
   toolbarNavigation,
 }: EpubViewerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -112,30 +112,32 @@ export function EpubViewer({
           label="Book"
           start={toolbarStart}
           center={
-            <div className={styles.size}>
-              <ViewerHud.Scale>{fontSize}%</ViewerHud.Scale>
-              <Slider.Root
-                min={75}
-                max={175}
-                step={1}
-                value={fontSize}
-                onValueChange={(next) => {
-                  const value = Array.isArray(next) ? (next[0] ?? 100) : next;
-                  setFontSize(value);
-                }}
-              >
-                <Slider.Control>
-                  <Slider.Track>
-                    <Slider.Indicator />
-                    <Slider.Thumb aria-label="Book font size" />
-                  </Slider.Track>
-                </Slider.Control>
-              </Slider.Root>
-            </div>
-          }
-          end={
             <ViewerToolbarGroups
-              actions={toolbarEnd}
+              controls={
+                <div className={styles.size}>
+                  <ViewerHud.Scale>{fontSize}%</ViewerHud.Scale>
+                  <Slider.Root
+                    min={75}
+                    max={175}
+                    step={1}
+                    value={fontSize}
+                    onValueChange={(next) => {
+                      const value = Array.isArray(next)
+                        ? (next[0] ?? 100)
+                        : next;
+                      setFontSize(value);
+                    }}
+                  >
+                    <Slider.Control>
+                      <Slider.Track>
+                        <Slider.Indicator />
+                        <Slider.Thumb aria-label="Book font size" />
+                      </Slider.Track>
+                    </Slider.Control>
+                  </Slider.Root>
+                </div>
+              }
+              actions={toolbarActions}
               view={
                 <>
                   <ViewerHud.Tool
@@ -152,9 +154,9 @@ export function EpubViewer({
                   </ViewerHud.Tool>
                 </>
               }
-              navigation={toolbarNavigation}
             />
           }
+          end={toolbarNavigation}
         />
       </ChromePortal>
       {chapters.length > 0 ? (

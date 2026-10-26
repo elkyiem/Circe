@@ -112,5 +112,7 @@ export const CaptureReceiptSchema = z.object({
   error: z.string().optional(),
   saveIds: z.array(z.string()),
   duplicateCount: z.number(),
+  /** Set when the save exists but its tags, notes or folders didn't apply. */
+  warning: z.string().optional(),
 });
 export type CaptureReceipt = z.infer<typeof CaptureReceiptSchema>;

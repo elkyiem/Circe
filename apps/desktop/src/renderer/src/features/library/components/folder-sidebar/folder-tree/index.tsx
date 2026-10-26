@@ -22,7 +22,10 @@ import { useReducedMotionConfig } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { enterFolders } from "@/features/library/operations/enter-folder";
-import { SpecContextMenu } from "@/shared/components/spec-context-menu";
+import {
+  SidebarSectionMenu,
+  useRevealSidebarSection,
+} from "@/features/settings";
 import {
   SIDEBAR_SORTABLE_KEYBOARD_CODES,
   SIDEBAR_SORTABLE_SCREEN_READER_INSTRUCTIONS,
@@ -146,6 +149,7 @@ export function FolderTree({ folderRows, libraryPage, nav }: FolderTreeProps) {
   useEffect(() => {
     if (editingFolderId) setFoldersOpen(true);
   }, [editingFolderId]);
+  useRevealSidebarSection("folders", editingFolderId !== null);
 
   function previewFolderDrop({ active, over }: DragOverEvent): void {
     if (!over) {
@@ -196,190 +200,197 @@ export function FolderTree({ folderRows, libraryPage, nav }: FolderTreeProps) {
         libraryPage={libraryPage}
         nav={nav}
       />
-      <Sidebar.CollapsibleGroup
-        open={foldersOpen}
-        onOpenChange={setFoldersOpen}
-      >
-        <SpecContextMenu
-          buildItems={() => folderGroupMenuItems(tree.sort, tree.setSort)}
+      {sidebar.sections.folders ? (
+        <Sidebar.CollapsibleGroup
+          open={foldersOpen}
+          onOpenChange={setFoldersOpen}
         >
-          <Sidebar.GroupHeader>
-            <Sidebar.CollapsibleGroupLabel>
-              Folders
-            </Sidebar.CollapsibleGroupLabel>
-            {organization.selected.length > 1 ? (
-              <Sidebar.Count aria-live="polite">
-                {organization.selected.length} selected
-              </Sidebar.Count>
-            ) : null}
-            <Button
-              icon
-              size="sm"
-              variant="ghost"
-              aria-label="New Folder"
-              disabled={creatingFolder}
-              onClick={() => void createFolder()}
-            >
-              <IconPlus />
-            </Button>
-          </Sidebar.GroupHeader>
-        </SpecContextMenu>
-        <DndContext
-          accessibility={{
-            screenReaderInstructions:
-              SIDEBAR_SORTABLE_SCREEN_READER_INSTRUCTIONS,
-            announcements: folderDndAnnouncements(folderRows, pointerY),
-          }}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          sensors={folderSensors}
-          onDragStart={({ active, activatorEvent }) => {
-            setActiveFolderId(String(active.id));
-            setKeyboardDrag(activatorEvent.type.startsWith("key"));
-            pointerStartY.current =
-              "clientY" in activatorEvent
-                ? Number(activatorEvent.clientY)
-                : null;
-            pointerY.current = pointerStartY.current;
-          }}
-          onDragMove={({ delta }) => {
-            pointerY.current =
-              pointerStartY.current == null
-                ? null
-                : pointerStartY.current + delta.y;
-          }}
-          onDragOver={previewFolderDrop}
-          onDragCancel={() => {
-            setActiveFolderId(null);
-            setKeyboardDrag(false);
-            drag.clearFolderDrop();
-            pointerStartY.current = null;
-            pointerY.current = null;
-          }}
-          onDragEnd={finishFolderDrop}
-        >
-          <SortableContext
-            items={tree.nested.map(({ folder }) => folder.id)}
-            strategy={verticalListSortingStrategy}
+          <SidebarSectionMenu
+            section="folders"
+            buildItems={() => folderGroupMenuItems(tree.sort, tree.setSort)}
           >
-            <Sidebar.CollapsibleGroupContent
-              ref={organization.root}
-              role="tree"
-              aria-label="Folders"
-              aria-multiselectable
-              inert={!foldersOpen}
-              aria-hidden={!foldersOpen}
-              data-folder-drag={activeFolderId || undefined}
+            <Sidebar.GroupHeader>
+              <Sidebar.CollapsibleGroupLabel>
+                Folders
+              </Sidebar.CollapsibleGroupLabel>
+              {organization.selected.length > 1 ? (
+                <Sidebar.Count aria-live="polite">
+                  {organization.selected.length} selected
+                </Sidebar.Count>
+              ) : null}
+              <Button
+                icon
+                size="sm"
+                variant="ghost"
+                aria-label="New Folder"
+                disabled={creatingFolder}
+                onClick={() => void createFolder()}
+              >
+                <IconPlus />
+              </Button>
+            </Sidebar.GroupHeader>
+          </SidebarSectionMenu>
+          <DndContext
+            accessibility={{
+              screenReaderInstructions:
+                SIDEBAR_SORTABLE_SCREEN_READER_INSTRUCTIONS,
+              announcements: folderDndAnnouncements(folderRows, pointerY),
+            }}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            sensors={folderSensors}
+            onDragStart={({ active, activatorEvent }) => {
+              setActiveFolderId(String(active.id));
+              setKeyboardDrag(activatorEvent.type.startsWith("key"));
+              pointerStartY.current =
+                "clientY" in activatorEvent
+                  ? Number(activatorEvent.clientY)
+                  : null;
+              pointerY.current = pointerStartY.current;
+            }}
+            onDragMove={({ delta }) => {
+              pointerY.current =
+                pointerStartY.current == null
+                  ? null
+                  : pointerStartY.current + delta.y;
+            }}
+            onDragOver={previewFolderDrop}
+            onDragCancel={() => {
+              setActiveFolderId(null);
+              setKeyboardDrag(false);
+              drag.clearFolderDrop();
+              pointerStartY.current = null;
+              pointerY.current = null;
+            }}
+            onDragEnd={finishFolderDrop}
+          >
+            <SortableContext
+              items={tree.nested.map(({ folder }) => folder.id)}
+              strategy={verticalListSortingStrategy}
             >
-              {tree.nested.map(({ folder, depth }) => {
-                const viewing =
-                  libraryPage && nav.kind === "folder" && nav.id === folder.id;
-                const presentation = folderViews[folder.id];
-                const includeThisFolder = viewing
-                  ? includeSubfolders
-                  : (presentation?.includeSubfolders ?? true);
-                return (
-                  <FolderTreeRow
-                    key={folder.id}
-                    rowProps={organization.rowProps(
-                      folder.id,
-                      depth,
-                      tree.parentIds.has(folder.id)
-                        ? !tree.collapsed.has(folder.id)
-                        : undefined,
-                      () => tree.toggleFolder(folder.id),
-                    )}
-                    selectionItems={
-                      organization.selected.includes(folder.id) &&
-                      organization.selected.length > 1
-                        ? () => selectionItems(organization.selected)
-                        : undefined
-                    }
-                    collapsed={tree.collapsed.has(folder.id)}
-                    count={counts.folders[folder.id] ?? 0}
-                    downloading={counts.foldersDownloading[folder.id] ?? 0}
-                    badgeStyle={sidebar.badgeStyle}
-                    creating={creatingFolder}
-                    depth={depth}
-                    editing={editingFolderId === folder.id}
-                    exportIds={folderIdsForExport(
-                      folder.id,
-                      folderRows,
-                      includeThisFolder,
-                    )}
-                    folder={folder}
-                    folderDrop={drag.folderDrop}
-                    folderIcon={presentation?.icon}
-                    folderSortDir={presentation?.sortDir ?? "desc"}
-                    folderSortKey={presentation?.sortKey ?? "savedAt"}
-                    hasChildren={tree.parentIds.has(folder.id)}
-                    includeSubfolders={includeThisFolder}
-                    nav={nav}
-                    quickAccess={presentation?.quickAccess ?? false}
-                    quickAccessFolderIds={quickFolders.map((entry) => entry.id)}
-                    sameLevelHasChildren={folderRows.some(
-                      (row) =>
-                        row.parentId === folder.parentId &&
-                        tree.parentIds.has(row.id),
-                    )}
-                    viewing={viewing}
-                    dragHandlers={drag.handlersFor(folder)}
-                    dragging={activeFolderId === folder.id}
-                    coverSaveId={presentation?.coverSaveId}
-                    onCreateFolder={(parentId) => void createFolder(parentId)}
-                    onCustomize={() => setCustomizingFolderId(folder.id)}
-                    onFinishEditing={() => folders.finishEditing(folder.id)}
-                    onOpenTool={setFolderTool}
-                    onStartEditing={folders.startEditing}
-                    onToggleAll={tree.toggleAllFolders}
-                    onToggleFolder={() => tree.toggleFolder(folder.id)}
-                    doubleClickBehavior={sidebar.doubleClickBehavior}
-                    onToggleSameLevel={(expanded) =>
-                      tree.toggleSameLevel(folder.parentId, expanded)
-                    }
-                  />
-                );
-              })}
-            </Sidebar.CollapsibleGroupContent>
-          </SortableContext>
-          {createPortal(
-            <DragOverlay
-              dropAnimation={
-                reduceMotion || keyboardDrag ? null : SORTABLE_DROP_ANIMATION
-              }
-              modifiers={[restrictToVerticalAxis]}
-            >
-              {activeFolder ? (
-                <FolderDragPreview
-                  folder={activeFolder}
-                  presentation={activeFolderPresentation}
-                  status={
-                    organization.selected.includes(activeFolder.id) &&
-                    organization.selected.length > 1
-                      ? `${organization.selected.length} folders`
-                      : undefined
-                  }
-                  active={
+              <Sidebar.CollapsibleGroupContent
+                ref={organization.root}
+                role="tree"
+                aria-label="Folders"
+                aria-multiselectable
+                inert={!foldersOpen}
+                aria-hidden={!foldersOpen}
+                data-folder-drag={activeFolderId || undefined}
+              >
+                {tree.nested.map(({ folder, depth }) => {
+                  const viewing =
                     libraryPage &&
                     nav.kind === "folder" &&
-                    nav.id === activeFolder.id
-                  }
-                  badgeStyle={sidebar.badgeStyle}
-                  count={
-                    activeFolderCount > 0 &&
-                    (tree.collapsed.has(activeFolder.id) ||
-                      !activeFolderHasChildren)
-                      ? activeFolderCount
-                      : undefined
-                  }
-                  depth={activeFolderDepth}
-                />
-              ) : null}
-            </DragOverlay>,
-            document.body,
-          )}
-        </DndContext>
-      </Sidebar.CollapsibleGroup>
+                    nav.id === folder.id;
+                  const presentation = folderViews[folder.id];
+                  const includeThisFolder = viewing
+                    ? includeSubfolders
+                    : (presentation?.includeSubfolders ?? true);
+                  return (
+                    <FolderTreeRow
+                      key={folder.id}
+                      rowProps={organization.rowProps(
+                        folder.id,
+                        depth,
+                        tree.parentIds.has(folder.id)
+                          ? !tree.collapsed.has(folder.id)
+                          : undefined,
+                        () => tree.toggleFolder(folder.id),
+                      )}
+                      selectionItems={
+                        organization.selected.includes(folder.id) &&
+                        organization.selected.length > 1
+                          ? () => selectionItems(organization.selected)
+                          : undefined
+                      }
+                      collapsed={tree.collapsed.has(folder.id)}
+                      count={counts.folders[folder.id] ?? 0}
+                      downloading={counts.foldersDownloading[folder.id] ?? 0}
+                      badgeStyle={sidebar.badgeStyle}
+                      creating={creatingFolder}
+                      depth={depth}
+                      editing={editingFolderId === folder.id}
+                      exportIds={folderIdsForExport(
+                        folder.id,
+                        folderRows,
+                        includeThisFolder,
+                      )}
+                      folder={folder}
+                      folderDrop={drag.folderDrop}
+                      folderIcon={presentation?.icon}
+                      folderSortDir={presentation?.sortDir ?? "desc"}
+                      folderSortKey={presentation?.sortKey ?? "savedAt"}
+                      hasChildren={tree.parentIds.has(folder.id)}
+                      includeSubfolders={includeThisFolder}
+                      nav={nav}
+                      quickAccess={presentation?.quickAccess ?? false}
+                      quickAccessFolderIds={quickFolders.map(
+                        (entry) => entry.id,
+                      )}
+                      sameLevelHasChildren={folderRows.some(
+                        (row) =>
+                          row.parentId === folder.parentId &&
+                          tree.parentIds.has(row.id),
+                      )}
+                      viewing={viewing}
+                      dragHandlers={drag.handlersFor(folder)}
+                      dragging={activeFolderId === folder.id}
+                      coverSaveId={presentation?.coverSaveId}
+                      onCreateFolder={(parentId) => void createFolder(parentId)}
+                      onCustomize={() => setCustomizingFolderId(folder.id)}
+                      onFinishEditing={() => folders.finishEditing(folder.id)}
+                      onOpenTool={setFolderTool}
+                      onStartEditing={folders.startEditing}
+                      onToggleAll={tree.toggleAllFolders}
+                      onToggleFolder={() => tree.toggleFolder(folder.id)}
+                      doubleClickBehavior={sidebar.doubleClickBehavior}
+                      onToggleSameLevel={(expanded) =>
+                        tree.toggleSameLevel(folder.parentId, expanded)
+                      }
+                    />
+                  );
+                })}
+              </Sidebar.CollapsibleGroupContent>
+            </SortableContext>
+            {createPortal(
+              <DragOverlay
+                dropAnimation={
+                  reduceMotion || keyboardDrag ? null : SORTABLE_DROP_ANIMATION
+                }
+                modifiers={[restrictToVerticalAxis]}
+              >
+                {activeFolder ? (
+                  <FolderDragPreview
+                    folder={activeFolder}
+                    presentation={activeFolderPresentation}
+                    status={
+                      organization.selected.includes(activeFolder.id) &&
+                      organization.selected.length > 1
+                        ? `${organization.selected.length} folders`
+                        : undefined
+                    }
+                    active={
+                      libraryPage &&
+                      nav.kind === "folder" &&
+                      nav.id === activeFolder.id
+                    }
+                    badgeStyle={sidebar.badgeStyle}
+                    count={
+                      activeFolderCount > 0 &&
+                      (tree.collapsed.has(activeFolder.id) ||
+                        !activeFolderHasChildren)
+                        ? activeFolderCount
+                        : undefined
+                    }
+                    depth={activeFolderDepth}
+                  />
+                ) : null}
+              </DragOverlay>,
+              document.body,
+            )}
+          </DndContext>
+        </Sidebar.CollapsibleGroup>
+      ) : null}
       {folderTool ? (
         <FolderToolsDialog
           tool={folderTool}

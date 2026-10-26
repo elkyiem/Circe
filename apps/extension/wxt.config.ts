@@ -32,7 +32,15 @@ export default defineConfig({
   webExt: {
     disabled: true,
   },
+  hooks: {
+    "entrypoints:resolved": (_wxt, entrypoints) => {
+      if (!IRIS_BUILD)
+        for (const entrypoint of entrypoints)
+          if (entrypoint.name === "iris-connect") entrypoint.skipped = true;
+    },
+  },
   vite: () => ({
+    define: { "import.meta.env.IRIS_EXTENSION": JSON.stringify(IRIS_BUILD) },
     resolve: {
       alias: {
         "@pond/ui": resolve(__dirname, "../../packages/ui/src"),
@@ -61,7 +69,7 @@ export default defineConfig({
   },
   manifest: ({ browser }) => ({
     name: IRIS_BUILD ? "Iris" : "Pond",
-    version: "1.6.3",
+    version: "2.0.0",
     ...(browser === "firefox"
       ? {
           browser_specific_settings: {
@@ -79,9 +87,16 @@ export default defineConfig({
             },
           },
         }
-      : STORE_BUILD
-        ? {}
-        : { key: IRIS_BUILD ? IRIS_EXTENSION_KEY : EXTENSION_KEY }),
+      : browser === "safari"
+        ? /** `world: "MAIN"` hooks need Safari 18. */
+          {
+            browser_specific_settings: {
+              safari: { strict_min_version: "18.0" },
+            },
+          }
+        : STORE_BUILD
+          ? {}
+          : { key: IRIS_BUILD ? IRIS_EXTENSION_KEY : EXTENSION_KEY }),
     description:
       "Save pages, screenshots, images, and your bookmarks from X, Instagram, Pinterest, and more into your local Pond library.",
     icons: ICONS,

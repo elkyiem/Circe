@@ -1,15 +1,7 @@
 .section {
   flex-shrink: 0;
-  padding: 14px 0;
+  padding-top: 14px;
   border-top: var(--ds-border-width) solid var(--ds-border-subtle);
-}
-
-.section:first-child {
-  padding-block-start: 0;
-}
-
-.section[data-divider="none"] {
-  border-top: 0;
 }
 
 .item {
@@ -45,19 +37,29 @@
   margin-left: auto;
 }
 
+.static {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 20px;
+}
+
 .title {
   min-width: 0;
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-weight-lg);
   line-height: 1.5;
-  color: var(--ds-gray-11);
+  color: var(--ds-gray-12);
 }
 
 .chevron {
   display: inline-flex;
   flex-shrink: 0;
   color: var(--ds-gray-9);
-  transition: transform var(--ds-duration-fast) var(--ds-easing-standard);
+  opacity: 0;
+  transition:
+    transform var(--ds-duration-fast) var(--ds-easing-standard),
+    opacity var(--ds-duration-fast) var(--ds-easing-standard);
 
   & svg {
     width: 8px;
@@ -69,14 +71,22 @@
   transform: rotate(180deg);
 }
 
+.trigger:is(:hover, :focus-visible) .chevron,
+.trigger:not([data-panel-open]) .chevron {
+  opacity: 1;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  /* Collapsing content must shrink the scroll area with the height animation, not all at once on unmount. */
+  overflow: clip;
+  overflow-clip-margin: 4px;
 
   &[data-static] {
-    margin-top: 8px;
+    margin-top: 10px;
   }
 }
 

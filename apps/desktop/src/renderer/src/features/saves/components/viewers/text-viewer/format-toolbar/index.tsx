@@ -7,7 +7,6 @@ import {
   IconBlockquote,
   IconBulletList,
   IconCaretMinimize,
-  IconChatBubble,
   IconCheckList,
   IconChevronDown,
   IconCode,
@@ -41,7 +40,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { platformGlyphs } from "@/shared/lib/shortcuts";
 import { $inCollapsible } from "../collapsible";
 import {
@@ -541,13 +539,6 @@ export function FormatToolbar() {
                         </Menu.Positioner>
                       </Menu.Portal>
                     </Menu.Root>
-                    <Toolbar.Separator />
-                    <FormatButton
-                      label="Assistant"
-                      onClick={() => saveLibraryBridge.setAgentOpen(true)}
-                    >
-                      <IconChatBubble />
-                    </FormatButton>
                   </Toolbar.Root>
                 )}
               </div>

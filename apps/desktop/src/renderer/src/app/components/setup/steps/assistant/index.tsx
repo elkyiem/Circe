@@ -14,7 +14,7 @@ import {
 } from "@shared/assistant";
 import type { ReactNode } from "react";
 import { ProviderLogo } from "@/features/settings";
-import { THIS_DEVICE } from "@/shared/lib/platform";
+import { IS_MAC, THIS_DEVICE } from "@/shared/lib/platform";
 import type { AssistantChoice, StepProps } from "../../model";
 import styles from "./styles.module.css";
 
@@ -33,6 +33,12 @@ function defaultEndpoint(id: AssistantProvider) {
   return "";
 }
 
+function providersFor(group: ProviderGroup) {
+  return offeredProviders(group).filter(
+    (entry) => !("macOnly" in entry) || IS_MAC,
+  );
+}
+
 function providerName(id: AssistantProvider) {
   return assistantCatalog(id)?.provider ?? id;
 }
@@ -46,7 +52,7 @@ function ProviderSelect({
   value: AssistantProvider;
   onChange: (provider: AssistantProvider) => void;
 }) {
-  const providers = offeredProviders(group);
+  const providers = providersFor(group);
   const items = providers.map(
     (entry): SelectItemSpec<string> => ({
       value: entry.id,
@@ -115,7 +121,7 @@ export function AssistantOptions({ choices, update }: StepProps) {
   const { assistant, provider, apiKey, endpoint } = choices;
   const choose = (next: AssistantChoice) => {
     if (next === "later") return update({ assistant: next });
-    const first = offeredProviders(next)[0]?.id ?? provider;
+    const first = providersFor(next)[0]?.id ?? provider;
     update({
       assistant: next,
       provider: first,
@@ -182,7 +188,14 @@ export function AssistantOptions({ choices, update }: StepProps) {
         ) : null}
         {assistant === "local" ? (
           <>
-            <Row title="Server" description="A model server you run.">
+            <Row
+              title="Server"
+              description={
+                provider === "apple"
+                  ? "Built into macOS. Nothing leaves your Mac."
+                  : "A model server you run."
+              }
+            >
               <ProviderSelect
                 group="local"
                 value={provider}
@@ -191,20 +204,22 @@ export function AssistantOptions({ choices, update }: StepProps) {
                 }
               />
             </Row>
-            <Row title="Address">
-              <Input.Root className={styles.input}>
-                <Input.Field
-                  type="url"
-                  aria-label="Address"
-                  value={endpoint}
-                  onChange={(event) =>
-                    update({ endpoint: event.currentTarget.value })
-                  }
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </Input.Root>
-            </Row>
+            {provider === "apple" ? null : (
+              <Row title="Address">
+                <Input.Root className={styles.input}>
+                  <Input.Field
+                    type="url"
+                    aria-label="Address"
+                    value={endpoint}
+                    onChange={(event) =>
+                      update({ endpoint: event.currentTarget.value })
+                    }
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </Input.Root>
+              </Row>
+            )}
           </>
         ) : null}
       </Settings.List>

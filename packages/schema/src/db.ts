@@ -121,6 +121,8 @@ export interface SaveFile {
   width?: number | null;
   height?: number | null;
   sourceUrl?: string | null;
+  /** Set on a thumbnail you picked, so regeneration and repairs leave it alone. */
+  custom?: boolean | null;
   family?: string | null;
   subfamily?: string | null;
   fontWeight?: number | null;
@@ -473,6 +475,19 @@ export const agentChats = sqliteTable("agent_chats", {
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
 });
+
+export const agentChatFish = sqliteTable(
+  "agent_chat_fish",
+  {
+    chatId: text("chat_id")
+      .primaryKey()
+      .references(() => agentChats.id, { onDelete: "cascade" }),
+    fishId: text("fish_id").notNull(),
+  },
+  (t) => ({
+    fishIdx: index("agent_chat_fish_fish_idx").on(t.fishId),
+  }),
+);
 
 export const agentMessages = sqliteTable(
   "agent_messages",

@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { libraryChrome } from "@/features/library";
-import "@/app/effects/save-library-bridge";
 import { primarySelection, selection } from "@/features/saves/state/selection";
 import {
   clearSaveSelection,
@@ -17,8 +15,6 @@ beforeEach(() => {
   });
   selection.clear();
   primarySelection.set(null);
-  libraryChrome.setInspectorSaveId(null);
-  libraryChrome.closeRightPane();
 });
 
 afterEach(() => {
@@ -33,15 +29,6 @@ describe("clickSave", () => {
     expect(selection.snapshot()).toEqual(["a"]);
     expect(selection.getAnchor()).toBe("a");
     expect(primarySelection.get()).toBe("a");
-    expect(libraryChrome.getState().inspectorSaveId).toBe("a");
-    expect(libraryChrome.getState().rightPane).toBeNull();
-  });
-
-  it("updates Details in place while the panel is open", () => {
-    libraryChrome.setAgentOpen(true);
-    clickSave("a", { meta: false, shift: false }, ["a", "b", "c"]);
-    expect(libraryChrome.getState().rightPane).toBe("inspector");
-    expect(libraryChrome.getState().inspectorSaveId).toBe("a");
   });
 
   it("replaces the previous selection on a plain click", () => {
@@ -71,14 +58,11 @@ describe("clickSave", () => {
 });
 
 describe("clearSaveSelection", () => {
-  it("clears the selection without closing Details", () => {
-    libraryChrome.setAgentOpen(true);
+  it("clears the selection and the primary save", () => {
     selectOnlySave("a");
     clearSaveSelection();
     expect(selection.size()).toBe(0);
     expect(primarySelection.get()).toBeNull();
-    expect(libraryChrome.getState().inspectorSaveId).toBe("a");
-    expect(libraryChrome.getState().rightPane).toBe("inspector");
   });
 });
 

@@ -1,4 +1,3 @@
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { primarySelection, selection } from "@/features/saves/state/selection";
 import { notify, updateNotification } from "@/shared/lib/toast";
@@ -42,7 +41,6 @@ export async function selectResults(mode: "all" | "invert"): Promise<void> {
     primarySelection.set(cursor);
     if (cursor) selection.setAnchor(cursor);
     else selection.clear();
-    if (cursor) saveLibraryBridge.inspectSave(cursor);
     updateNotification({
       id: notificationId,
       title: `${selected.length} Saves selected`,

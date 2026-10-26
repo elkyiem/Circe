@@ -14,5 +14,12 @@
   <true/>
   <key>com.apple.security.cs.allow-dyld-environment-variables</key>
   <true/>
+  <!-- Pond listens for the sandboxed Safari extension in this group's
+       container, the only place outside its own that it may connect to.
+       Keep in lockstep with SAFARI_APP_GROUP in packages/schema/src/native.ts. -->
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>7VFLYD5292.so.pond</string>
+  </array>
 </dict>
 </plist>

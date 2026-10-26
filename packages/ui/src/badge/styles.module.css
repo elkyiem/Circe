@@ -40,6 +40,10 @@
     background: var(--ds-green-9);
   }
 
+  &[data-tone="inverted"] {
+    background: var(--ds-gray-12);
+  }
+
   &[data-tone="negative"] {
     background: var(--ds-red-9);
   }

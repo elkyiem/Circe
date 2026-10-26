@@ -19,6 +19,10 @@ export async function loadModel(input: {
     const { createCliLanguageModel } = await import("./cli-language-model");
     return createCliLanguageModel(input.provider, modelId);
   }
+  if (input.provider === "apple") {
+    const { createAppleLanguageModel } = await import("./apple-language-model");
+    return createAppleLanguageModel();
+  }
   if (input.provider === "anthropic") {
     const { createAnthropic } = await import("@ai-sdk/anthropic");
     return createAnthropic({ apiKey: key })(modelId);

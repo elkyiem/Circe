@@ -1,4 +1,5 @@
 import {
+  ARTICLE_KIND,
   isAuxiliaryKind,
   isPostRenderKind,
   isThumbnailKind,
@@ -53,6 +54,22 @@ export function buildViewerItems(
 
     return [item];
   });
+
+  const articleIndex = save.files.findIndex(
+    (file) => file.kind === ARTICLE_KIND,
+  );
+  const article = save.files[articleIndex];
+  if (article) {
+    return [
+      {
+        key: `${articleIndex}:${article.path}`,
+        fileIndex: articleIndex,
+        url: buildPondUrl(save.id, article),
+        capability: viewerCapabilityFor(article),
+      },
+      ...originals,
+    ];
+  }
 
   if (originals.length > 0) return originals;
 

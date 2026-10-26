@@ -30,6 +30,26 @@ export function pondOperationCatalog(): OperationCatalog {
   return registered;
 }
 
+let external: () => readonly PondOperation[] = () => [];
+
+/** MCP tools join only the Fish catalog; the Local API's `/operations` keeps the base catalog. */
+export function registerExternalOperations(
+  source: () => readonly PondOperation[],
+): void {
+  external = source;
+}
+
+export function fishOperationCatalog(): OperationCatalog {
+  const base = new Set(registered.operations.map((o) => o.name));
+  return {
+    operations: [
+      ...registered.operations,
+      ...external().filter((o) => !base.has(o.name)),
+    ],
+    libraryId: registered.libraryId,
+  };
+}
+
 function findOperation(name: string, catalog: OperationCatalog) {
   const operation = catalog.operations.find((entry) => entry.name === name);
   if (!operation)
@@ -42,7 +62,7 @@ function findOperation(name: string, catalog: OperationCatalog) {
 
 export async function applyPondOperation(
   request: AgentOperationRequest,
-  catalog = registered,
+  catalog = fishOperationCatalog(),
 ): Promise<JsonValue> {
   if (catalog.libraryId() !== request.libraryId)
     throw new PondError(
@@ -113,22 +133,24 @@ export function pondOperationTools(
       reason: string,
     ) => string;
   },
-  catalog = registered,
+  catalog?: OperationCatalog,
 ): ToolSpec[] {
-  const origin = catalog.libraryId();
+  const current = () => catalog ?? fishOperationCatalog();
+  const origin = current().libraryId();
   const results = new Map<string, string>();
   let resultSequence = 0;
   return [
     {
       name: "discoverPondOperations",
       description:
-        "Find Pond capabilities for Saves, folders, tags, Smart Folders, imports, exports, conversion, downloads, sources, settings, storage, navigation, and more. Search by a short feature or action name; omit query to browse. Read the operation schema before calling it. Do not claim Pond cannot do something without checking here.",
+        "Find Pond capabilities for Saves, folders, tags, Smart Folders, imports, exports, conversion, downloads, sources, settings, storage, navigation, tools from your MCP servers, and more. Search by a short feature or action name; omit query to browse. Read the operation schema before calling it. Do not claim Pond cannot do something without checking here.",
       schema: discoverInput,
       execute: async (args) => {
         input.signal.throwIfAborted();
         const { query, offset, limit } = discoverInput.parse(args);
         const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-        const matches = catalog.operations.filter((operation) => {
+        const { operations } = current();
+        const matches = operations.filter((operation) => {
           const text =
             `${operation.name} ${operation.description}`.toLocaleLowerCase();
           return terms.every((term) => text.includes(term));
@@ -136,7 +158,7 @@ export function pondOperationTools(
         return {
           categories: [
             ...new Set(
-              catalog.operations.map(
+              operations.map(
                 (operation) => operation.name.split(".")[0] ?? operation.name,
               ),
             ),
@@ -162,7 +184,7 @@ export function pondOperationTools(
         input.signal.throwIfAborted();
         const operation = findOperation(
           describeInput.parse(args).operation,
-          catalog,
+          current(),
         );
         return {
           name: operation.name,
@@ -184,10 +206,10 @@ export function pondOperationTools(
       schema: runInput,
       execute: async (args) => {
         input.signal.throwIfAborted();
-        if (catalog.libraryId() !== origin)
+        if (current().libraryId() !== origin)
           throw new Error("The Library changed. Start a new request.");
         const parsed = runInput.parse(args);
-        const operation = findOperation(parsed.operation, catalog);
+        const operation = findOperation(parsed.operation, current());
         operation.inputSchema.parse(parsed.arguments);
         const request = {
           operation: operation.name,
@@ -204,7 +226,7 @@ export function pondOperationTools(
             ),
           };
         }
-        const result = await applyPondOperation(request, catalog);
+        const result = await applyPondOperation(request, current());
         input.signal.throwIfAborted();
         const text = JSON.stringify(result);
         if (text.length <= 16_000) return { status: "complete", result };
@@ -235,7 +257,7 @@ export function pondOperationTools(
       schema: resultInput,
       execute: async (args) => {
         input.signal.throwIfAborted();
-        if (catalog.libraryId() !== origin)
+        if (current().libraryId() !== origin)
           throw new Error("The Library changed. Start a new request.");
         const { resultId, offset, limit } = resultInput.parse(args);
         const text = results.get(resultId);

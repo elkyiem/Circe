@@ -79,6 +79,8 @@ const nativeFlows = {
   "library.import-clipboard": "Import from the clipboard",
   "library.import-bookmarks": "Import bookmarks",
   "library.import-mymind": "Import a mymind export",
+  "library.import-data-export":
+    "Import a data export from X, Instagram, TikTok, YouTube, or Reddit",
   "library.import-page-assets": "Import page assets",
   "library.import-eagle": "Import an Eagle library",
   "library.import-package": "Import a package",

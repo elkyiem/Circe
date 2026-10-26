@@ -194,9 +194,11 @@ export interface SystemQueryResults {
   "agent.listAvailableModels": {
     providers: (ProviderModelsResult & { provider: AssistantProvider })[];
   };
-  "agent.chats": Omit<AgentChat, "canonicalTranscript">[];
+  "agent.chats": (Omit<AgentChat, "canonicalTranscript"> & {
+    fishId: string;
+  })[];
   "agent.messages": AgentMessage[];
-  "agent.newChat": Omit<AgentChat, "canonicalTranscript">;
+  "agent.newChat": Omit<AgentChat, "canonicalTranscript"> & { fishId: string };
   "agent.deleteChat": OkResult;
   "agent.renameChat": OkResult;
   "agent.exportChat": CancellableResult;

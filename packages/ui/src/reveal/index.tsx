@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import type { ReactNode } from "react";
+import { pageHidden } from "../shared/page-hidden";
 
 export function Reveal({
   children,
@@ -14,21 +15,21 @@ export function Reveal({
   width?: number;
   initial?: boolean;
 }) {
-  const reduced = useReducedMotionConfig();
+  const instant = useReducedMotionConfig() || pageHidden();
   return (
     <AnimatePresence initial={initial}>
       {visible ? (
         <motion.div
           className={className}
           initial={
-            reduced
+            instant
               ? false
               : { opacity: 0, ...(width ? { width: 0 } : { height: 0 }) }
           }
           animate={{ opacity: 1, ...(width ? { width } : { height: "auto" }) }}
           exit={{ opacity: 0, ...(width ? { width: 0 } : { height: 0 }) }}
           transition={
-            reduced
+            instant
               ? { duration: 0 }
               : { type: "spring", duration: 0.22, bounce: 0 }
           }

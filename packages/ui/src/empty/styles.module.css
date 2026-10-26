@@ -21,7 +21,7 @@
   flex-direction: column;
   gap: var(--empty-copy-gap);
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
   max-width: var(--empty-max-width);
   min-height: var(--ds-empty-min-height);
@@ -30,6 +30,22 @@
   margin-inline: auto;
   text-align: center;
   animation: empty-in var(--ds-duration-medium) var(--ds-easing-decelerate) both;
+
+  /* Free space splits 2:3 so the content sits at the optical center, a little above the true middle. */
+  &::before,
+  &::after {
+    flex: 2 0 0;
+    content: "";
+  }
+
+  &::before {
+    margin-bottom: calc(var(--empty-copy-gap) * -1);
+  }
+
+  &::after {
+    flex-grow: 3;
+    margin-top: calc(var(--empty-copy-gap) * -1);
+  }
 
   &[data-align="start"] {
     align-items: start;
@@ -43,7 +59,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: var(--ds-gray-11);
+  color: var(--ds-gray-9);
   border-radius: var(--ds-radius-sm);
 
   &:not(:last-child) {

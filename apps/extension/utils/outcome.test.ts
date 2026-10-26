@@ -55,6 +55,20 @@ describe("outcomeFromResponse", () => {
     ).toMatchObject({ status: "duplicate", saveId: "s1" });
   });
 
+  it("reports a save as saved even when its folders didn't apply", () => {
+    expect(
+      outcomeFromResponse("c1", {
+        ok: true,
+        data: receipt({ warning: "Saved without your folders." }),
+      }),
+    ).toEqual({
+      status: "saved",
+      id: "c1",
+      saveId: "s1",
+      warning: "Saved without your folders.",
+    });
+  });
+
   it("carries Pond's error for a failed save", () => {
     expect(
       outcomeFromResponse("c1", {

@@ -6,7 +6,11 @@ import log from "electron-log/main.js";
 import { partitionForIngest } from "../../sync/accounts";
 import { harvesterFor } from "../harvest";
 import { HARVEST_TIMEOUT_MS, NAV_TIMEOUT_MS } from "./constants";
-import { looksLikeAuthWall, navigateWithTimeout } from "./navigation";
+import {
+  looksLikeAuthWall,
+  navigateWithTimeout,
+  waitPastInterstitial,
+} from "./navigation";
 import { leaseWindow } from "./pool";
 import { sleep } from "./util";
 
@@ -69,6 +73,9 @@ export async function harvestUrl(args: HarvestArgs): Promise<HarvestResult> {
     if (!navOk) {
       log.warn("[pond refresh:window] navigate failed", args.url);
       return { ok: false, reason: "navigate_failed", sourceId };
+    }
+    if (!(await waitPastInterstitial(lease.win, 20_000))) {
+      return { ok: false, reason: "timeout", sourceId };
     }
 
     if (looksLikeAuthWall(lease.win.webContents.getURL())) {

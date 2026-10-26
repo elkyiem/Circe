@@ -7,7 +7,7 @@
   pointer-events: auto;
   background: var(--ds-gray-1);
   border-radius: var(--ds-radius-sm);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-float);
 }
 
 .map {

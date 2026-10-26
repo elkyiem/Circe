@@ -47,7 +47,7 @@ export function modelColumns({
       id: "model",
       header: "Model",
       sortLabel: "Model",
-      width: "minmax(200px, 1fr)",
+      width: "minmax(0, 1fr)",
       cell: (model) => (
         <Hint label={modelHint(model) || undefined}>
           <label htmlFor={checkboxId(model)} className={styles.name}>
@@ -64,7 +64,7 @@ export function modelColumns({
         </Hint>
       ),
       sortLabel: "Input",
-      width: "96px",
+      width: "72px",
       align: "end",
       cell: (model) => (
         <Metric
@@ -81,7 +81,7 @@ export function modelColumns({
         </Hint>
       ),
       sortLabel: "Output",
-      width: "96px",
+      width: "72px",
       align: "end",
       cell: (model) => (
         <Metric
@@ -98,7 +98,7 @@ export function modelColumns({
         </Hint>
       ),
       sortLabel: "Context",
-      width: "112px",
+      width: "80px",
       align: "end",
       cell: (model) => (
         <Metric
@@ -111,7 +111,7 @@ export function modelColumns({
       id: "show",
       sortLabel: "Show",
       headerHidden: true,
-      width: "48px",
+      width: "40px",
       align: "center",
       cell: (model) => (
         <Checkbox.Root

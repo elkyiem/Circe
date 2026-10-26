@@ -63,6 +63,17 @@
   scroll-padding-block: 4px;
 }
 
+/* A scrolling list owns the popup's edge padding, so rows scroll to the rim instead of clipping above it. */
+.popup > .list:first-child {
+  padding-top: var(--popup-padding-block);
+  margin-top: calc(-1 * var(--popup-padding-block));
+}
+
+.popup > .list:last-child {
+  padding-bottom: var(--popup-padding-block);
+  margin-bottom: calc(-1 * var(--popup-padding-block));
+}
+
 .arrow {
   composes: arrow from "../shared/styles/popup/styles.module.css";
 }

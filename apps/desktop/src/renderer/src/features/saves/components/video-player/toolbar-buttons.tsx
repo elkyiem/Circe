@@ -90,12 +90,14 @@ function FullscreenButton() {
   const { state, actions } = useVideo();
   if (!state.fullscreenSupported) return null;
   return (
-    <ViewerHud.Tool
-      label={state.fullscreen ? "Exit full screen" : "Full screen"}
-      onClick={actions.toggleFullscreen}
-    >
-      <IconFullScreen />
-    </ViewerHud.Tool>
+    <ViewerHud.Pill>
+      <ViewerHud.Tool
+        label={state.fullscreen ? "Exit full screen" : "Full screen"}
+        onClick={actions.toggleFullscreen}
+      >
+        <IconFullScreen />
+      </ViewerHud.Tool>
+    </ViewerHud.Pill>
   );
 }
 

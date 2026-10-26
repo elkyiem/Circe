@@ -124,6 +124,11 @@ const detailsSchema = z.object({
     rating: z.number().int().min(0).max(5),
     tags: z.array(z.string().trim().min(1).max(200)).max(200),
     folderIds: z.array(z.string().min(1)).max(200),
+    fishId: z
+      .string()
+      .regex(/^[a-z0-9-]{1,64}$/)
+      .nullable()
+      .catch(null),
   }),
 });
 
@@ -146,13 +151,18 @@ export async function handleOverlayResult(
     const parsed = detailsSchema.safeParse(result);
     if (!parsed.success) return;
     const { draft, metadata } = parsed.data;
-    await saveDraft({ ...draft, preview: null }, tab.id, {
-      title: metadata.title.trim() || undefined,
-      notes: metadata.notes.trim() || undefined,
-      rating: metadata.rating > 0 ? metadata.rating : undefined,
-      tags: metadata.tags,
-      folderIds: metadata.folderIds,
-    });
+    await saveDraft(
+      { ...draft, preview: null },
+      tab.id,
+      {
+        title: metadata.title.trim() || undefined,
+        notes: metadata.notes.trim() || undefined,
+        rating: metadata.rating > 0 ? metadata.rating : undefined,
+        tags: metadata.tags,
+        folderIds: metadata.folderIds,
+      },
+      metadata.fishId ?? undefined,
+    );
     return;
   }
   const pageUrl = isWebUrl(tab.url) ? tab.url : undefined;

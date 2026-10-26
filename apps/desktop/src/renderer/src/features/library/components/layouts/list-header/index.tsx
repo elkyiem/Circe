@@ -13,6 +13,14 @@ function sortKeyFor(column: ListColumnKey): SortKey | null {
   switch (column) {
     case "name":
       return "title";
+    case "type":
+      return "type";
+    case "source":
+      return "source";
+    case "creator":
+      return "creator";
+    case "duration":
+      return "duration";
     case "tags":
       return "tagName";
     case "dimensions":

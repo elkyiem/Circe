@@ -1,11 +1,11 @@
 .run-status {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   width: fit-content;
   max-width: 100%;
   padding-block: 4px;
-  font-size: var(--ds-text-sm);
+  font-size: var(--ds-text-md);
   color: var(--ds-gray-10);
 }
 
@@ -32,8 +32,8 @@
 }
 
 .run-status > svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .stop-mark {

@@ -113,7 +113,6 @@ export const SHORTCUTS = {
   "view.layout-list": { keys: "4", label: "List Layout", group: "View" },
   "view.inspector": { keys: "Mod+I", label: "Toggle Details", group: "View" },
   "view.sidebar": { keys: "[", label: "Toggle Sidebar", group: "View" },
-  "view.agent": { keys: "]", label: "Toggle Assistant", group: "View" },
   "view.grayscale": {
     keys: "Mod+Alt+G",
     label: "Grayscale Overlay",

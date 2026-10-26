@@ -9,11 +9,13 @@ export function looksLikeAuthWall(currentUrl: string): boolean {
     if (
       p.startsWith("/login") ||
       p.startsWith("/log-in") ||
+      p.startsWith("/log_in") ||
       p.startsWith("/signin") ||
       p.startsWith("/sign-in") ||
       p.startsWith("/sign_in") ||
       p.startsWith("/signup") ||
       p.startsWith("/sign-up") ||
+      p.startsWith("/session/new") ||
       p.startsWith("/register") ||
       p.startsWith("/i/flow/login") ||
       p.startsWith("/accounts/login") ||
@@ -114,4 +116,25 @@ export async function navigateWithTimeout(
     return false;
   }
   return result === true;
+}
+
+/** Anubis serves its proof-of-work page here, then redirects back once the browser solves it. */
+export function isInterstitial(currentUrl: string): boolean {
+  try {
+    return new URL(currentUrl).pathname.startsWith("/.within.website");
+  } catch {
+    return false;
+  }
+}
+
+export async function waitPastInterstitial(
+  win: BrowserWindow,
+  timeoutMs: number,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (!win.isDestroyed() && isInterstitial(win.webContents.getURL())) {
+    if (Date.now() > deadline) return false;
+    await sleep(250);
+  }
+  return !win.isDestroyed();
 }

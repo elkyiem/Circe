@@ -1,4 +1,4 @@
-import { IconGlobe, IconImage } from "@pond/icons";
+import { IconGlobeFill, IconImageFill } from "@pond/icons";
 import { Dialog } from "@pond/ui/dialog";
 import { Input } from "@pond/ui/input";
 import { Keyboard } from "@pond/ui/keyboard";
@@ -79,7 +79,7 @@ function Preview({ draft }: { draft: DetailsDraft }) {
         />
       ) : (
         <div className={styles.placeholder}>
-          {media ? <IconImage size={24} /> : <IconGlobe size={24} />}
+          {media ? <IconImageFill size={32} /> : <IconGlobeFill size={32} />}
           <span className={styles.host}>
             {hostOf(draft.originUrl ?? draft.url)}
           </span>
@@ -100,13 +100,14 @@ export function Details({ draft, library, container, onFinish }: DetailsProps) {
   const [rating, setRating] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [folderIds, setFolderIds] = useState<string[]>([]);
+  const [fishId, setFishId] = useState<string | null>(null);
   const name = useRef<HTMLInputElement>(null);
 
   const save = () =>
     onFinish({
       kind: "details",
       draft,
-      metadata: { title, notes, rating, tags, folderIds },
+      metadata: { title, notes, rating, tags, folderIds, fishId },
     });
 
   return (
@@ -168,6 +169,14 @@ export function Details({ draft, library, container, onFinish }: DetailsProps) {
                 onValueChange={setTags}
                 container={container}
               />
+              {library.fish.length ? (
+                <Targets.Fish
+                  fish={library.fish}
+                  value={fishId}
+                  onValueChange={setFishId}
+                  container={container}
+                />
+              ) : null}
             </div>
             <Targets.Folders
               className={styles.folders}

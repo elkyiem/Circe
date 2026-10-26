@@ -1,6 +1,5 @@
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { useRef } from "react";
-import { libraryChrome } from "@/features/library/state/library-chrome";
 import type { ResultDirection } from "@/features/saves";
 import {
   clearSaveSelection,
@@ -102,7 +101,6 @@ export function useGridHotkeys(filteredIds: ReadonlyArray<string>): void {
       selection.setRange(ids, from, next);
       selection.setCursor(next);
       primarySelection.set(next);
-      libraryChrome.inspectSave(next);
     } else selectOnlySave(next);
     await resultNavigation.reveal(next, { focus: true });
   };
@@ -190,7 +188,6 @@ export function useGridHotkeys(filteredIds: ReadonlyArray<string>): void {
             ? cursor
             : (selection.snapshot()[0] ?? null);
           primarySelection.set(primary);
-          if (primary) libraryChrome.inspectSave(primary);
         },
       },
       {

@@ -5,6 +5,7 @@ import {
   assistantSend,
   gatewayCreator,
   offeredProviders,
+  providerGroup,
 } from "./assistant";
 
 describe("Assistant model policy", () => {
@@ -101,9 +102,11 @@ describe("Assistant model policy", () => {
       "openrouter",
     ]);
     expect(offeredProviders("local").map((model) => model.id)).toEqual([
+      "apple",
       "ollama",
       "lmstudio",
     ]);
+    expect(providerGroup("apple")).toBe("local");
     expect(gatewayCreator("groq")).toBe("groq");
     expect(offeredProviders("subscription").map((model) => model.id)).toEqual([
       "codex",

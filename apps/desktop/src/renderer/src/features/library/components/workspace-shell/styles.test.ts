@@ -15,11 +15,6 @@ function declarations(selector: string) {
 }
 
 describe("desktop shell edge motion", () => {
-  it("lets the right pane shadow paint outside its track", () => {
-    const right = declarations('.shell .right-pane[data-slot="right"]');
-    expect(right).toContain("overflow: visible;");
-  });
-
   it("gives back the entire sidebar column when closed", () => {
     expect(declarations(".shell")).toContain("--window-left-min: 0px;");
   });
@@ -33,13 +28,5 @@ describe("desktop shell edge motion", () => {
       "calc(var(--window-left-width) - var(--window-left-track))",
     );
     expect(left).toContain("transition: none;");
-  });
-
-  it("does not instantly hide or squeeze the exiting right surface", () => {
-    const right = declarations('.shell .right-pane[data-slot="right"] > div');
-    expect(right).toContain("opacity: 1;");
-    expect(right).toContain("width: var(--window-right-track);");
-    expect(right).toContain("min-width: var(--window-right-track);");
-    expect(right).toContain("transform: none;");
   });
 });

@@ -10,6 +10,7 @@ export const EXTENSION_LIKE_SOURCES = [
   "youtube",
   "reddit",
   "threads",
+  "substack",
 ] as const satisfies readonly ExternalSource[];
 
 const sourceFlags = z.partialRecord(z.enum(SOURCES), z.boolean()).catch({});

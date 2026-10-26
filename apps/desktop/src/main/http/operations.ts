@@ -100,11 +100,14 @@ export function operationRoutes(): Hono {
           "The preview expired or changed. Preview the operation again.",
         );
     }
-    const result = await applyPondOperation({
-      operation: selected.name,
-      arguments: parsed.data.arguments,
-      libraryId,
-    });
+    const result = await applyPondOperation(
+      {
+        operation: selected.name,
+        arguments: parsed.data.arguments,
+        libraryId,
+      },
+      pondOperationCatalog(),
+    );
     return c.json({ status: "success", data: result });
   });
 

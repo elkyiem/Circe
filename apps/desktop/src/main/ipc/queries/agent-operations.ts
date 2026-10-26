@@ -7,7 +7,7 @@ import type { QueryHandlerMap } from "./params";
 const descriptions = new Map<string, string>(
   Object.entries({
     "settings.getPrefs":
-      "Read current application preferences, including appearance, layout, shortcuts, download preferences, Assistant provider/model selections, storage, and viewer settings. Contains no provider API keys.",
+      "Read current application preferences, including appearance, layout, shortcuts, download preferences, Fish provider and model selections, storage, and viewer settings. Contains no provider API keys.",
     "settings.setPrefs":
       "Patch application preferences. Read settings.getPrefs and settings.preferenceSchema first, use the same nested field names, and send only the fields the user requested. Provider API keys are managed through the native Integrations screen.",
     "agent.keys":
@@ -38,6 +38,12 @@ const descriptions = new Map<string, string>(
       "Create a Canvas, optionally starting with explicit Save IDs placed in a grid.",
     "canvases.addSaves":
       "Add explicit Save IDs to a Canvas. Saves already on it are skipped; new cards land beside existing content.",
+    "fish.list":
+      "List fish: characters with a name, color, instructions, a folder and tag scope, an optional model, and their routines.",
+    "fish.create":
+      "Create a fish with a name, color, instructions, scope, and model.",
+    "fish.update":
+      "Change a fish's name, color, instructions, scope, or model. Routines change through createRoutine and updateRoutine.",
     "conversion.start":
       "Export converted image or video-to-GIF copies using a preset. Opens a native export directory picker; originals are retained. Returns a job ID for progress and cancellation.",
     "conversion.capabilities":

@@ -1,5 +1,24 @@
+import type { ListKind } from "@pond/schema/db";
 import { describe, expect, it } from "vitest";
-import { mergeEntryListKinds, stampListKind, unionById } from "./harvest-union";
+import {
+  defaultListKind,
+  mergeEntryListKinds,
+  stampListKind,
+  unionById,
+} from "./harvest-union";
+
+describe("defaultListKind", () => {
+  it("labels only entries that carry no list of their own", () => {
+    const entries: Array<{ id: string; listKinds?: ListKind[] }> = [
+      { id: "a" },
+      { id: "b", listKinds: ["liked"] },
+    ];
+    expect(defaultListKind(entries, "saved")).toEqual([
+      { id: "a", listKinds: ["saved"] },
+      { id: "b", listKinds: ["liked"] },
+    ]);
+  });
+});
 
 describe("unionById", () => {
   it("keeps primary order and appends unseen extras", () => {

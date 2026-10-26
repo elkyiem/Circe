@@ -1,15 +1,15 @@
 import log from "electron-log/main.js";
 import { z } from "zod";
 import { sourceIdFromUrl } from "../pipeline/url";
-import { NAV_TIMEOUT_MS } from "../refresh/harvest-window/constants";
+import {
+  NAV_TIMEOUT_MS,
+  PUBLIC_PARTITION,
+} from "../refresh/harvest-window/constants";
 import { navigateWithTimeout } from "../refresh/harvest-window/navigation";
 import { leaseWindow } from "../refresh/harvest-window/pool";
 import type { WatchEntry, WatchHarvestResult } from "./types";
 
 const COLLECT_TIMEOUT_MS = 60_000;
-
-/** Isolated from the shared and per-account jars so a watch can never ride or pollute a signed-in Cosmos session. */
-const PUBLIC_PARTITION = "persist:pond-watch-public";
 
 function pageUrl(handle: string): string {
   const segs = handle

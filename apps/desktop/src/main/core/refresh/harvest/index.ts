@@ -3,14 +3,23 @@ import type { JsonValue } from "@pond/schema/json";
 import type { Capture } from "@pond/schema/raw";
 import { sourceIdFromUrl } from "@pond/schema/sources";
 import * as arena from "./arena";
+import * as behance from "./behance/item";
+import * as bluesky from "./bluesky/item";
 import * as cosmos from "./cosmos";
+import * as dribbble from "./dribbble/item";
 import type { HarvestAdaptCtx } from "./from-page";
+import * as github from "./github/item";
 import * as instagram from "./instagram";
 import * as pinterest from "./pinterest";
 import * as reddit from "./reddit";
+import * as savee from "./savee/item";
+import * as substack from "./substack/item";
 import * as threads from "./threads";
 import * as tiktok from "./tiktok";
+import * as tumblr from "./tumblr/item";
 import * as twitter from "./twitter";
+import * as unsplash from "./unsplash/item";
+import * as vimeo from "./vimeo/item";
 import * as youtube from "./youtube";
 
 interface Harvester {
@@ -64,6 +73,52 @@ const REGISTRY = {
     buildExpression: threads.buildExpression,
     adapt: threads.adapt,
     sourceIdFromUrl: (url) => sourceIdFromUrl("threads", url),
+  },
+  github: {
+    buildExpression: github.buildExpression,
+    adapt: github.adapt,
+    sourceIdFromUrl: (url) =>
+      sourceIdFromUrl("github", url)?.toLowerCase() ?? null,
+  },
+  substack: {
+    buildExpression: substack.buildExpression,
+    adapt: substack.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("substack", url),
+  },
+  tumblr: {
+    buildExpression: tumblr.buildExpression,
+    adapt: tumblr.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("tumblr", url),
+  },
+  savee: {
+    buildExpression: savee.buildExpression,
+    adapt: savee.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("savee", url),
+  },
+  behance: {
+    buildExpression: behance.buildExpression,
+    adapt: behance.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("behance", url),
+  },
+  vimeo: {
+    buildExpression: vimeo.buildExpression,
+    adapt: vimeo.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("vimeo", url),
+  },
+  dribbble: {
+    buildExpression: dribbble.buildExpression,
+    adapt: dribbble.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("dribbble", url),
+  },
+  unsplash: {
+    buildExpression: unsplash.buildExpression,
+    adapt: unsplash.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("unsplash", url),
+  },
+  bluesky: {
+    buildExpression: bluesky.buildExpression,
+    adapt: bluesky.adapt,
+    sourceIdFromUrl: (url) => sourceIdFromUrl("bluesky", url),
   },
   web: {
     buildExpression: () => {

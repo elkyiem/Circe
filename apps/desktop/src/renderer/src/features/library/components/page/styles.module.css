@@ -1,6 +1,7 @@
 .body {
   flex-direction: column;
   min-height: 0;
+  timeline-scope: --library-grid;
 }
 
 .stage {
@@ -28,6 +29,8 @@
 .keep-alive[data-suppressed] {
   position: absolute;
   inset: 0;
+  /* Lay out under Details too, so closing the save leaves the grid at the width it already has. */
+  right: calc(-1 * var(--window-right-width, 0px));
   z-index: 0;
   pointer-events: none;
 }
@@ -47,4 +50,30 @@
   min-height: 0;
   padding-block: 16px 20px;
   padding-inline: 20px;
+  scroll-timeline: --library-grid block;
+}
+
+/* The divider shows only once rows scroll under the chrome, so the resting grid has no edge. */
+.chrome {
+  position: relative;
+
+  &::after {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    pointer-events: none;
+    content: "";
+    background: var(--ds-gray-a4);
+    opacity: 0;
+    animation: divider-show linear both;
+    animation-timeline: --library-grid;
+    animation-range: 0 24px;
+  }
+}
+
+@keyframes divider-show {
+  to {
+    opacity: 1;
+  }
 }

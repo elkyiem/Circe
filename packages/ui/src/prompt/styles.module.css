@@ -1,0 +1,190 @@
+/* Room for the card shadow inside Reveal, which clips overflow. */
+.reveal {
+  padding: 1px 1px 2px;
+  margin: -1px -1px -2px;
+}
+
+.root {
+  overflow: clip;
+  background: var(--ds-gray-1);
+  border-radius: var(--ds-radius-xl);
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 0;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-weight: var(--ds-weight-xl);
+  line-height: 20px;
+  color: var(--ds-gray-12);
+  text-wrap: balance;
+}
+
+.description {
+  margin: -6px 0 10px;
+  line-height: 18px;
+  color: var(--ds-gray-10);
+  text-wrap: pretty;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  margin: 0 -6px;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px;
+  font: inherit;
+  color: var(--ds-gray-11);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  transition: background var(--ds-duration-fast) var(--ds-easing-standard);
+
+  &:hover {
+    background: var(--ds-gray-a2);
+  }
+
+  &:active {
+    background: var(--ds-gray-a3);
+  }
+
+  &[data-selected] {
+    color: var(--ds-gray-12);
+    background: var(--ds-gray-a2);
+  }
+
+  &:focus-visible,
+  &:has(.input:focus-visible) {
+    outline: var(--ds-focus-width) solid var(--ds-focus-outline);
+    outline-offset: calc(var(--ds-focus-width) * -1);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &:disabled:hover,
+  &[data-disabled]:hover {
+    color: var(--ds-gray-11);
+    background: transparent;
+  }
+}
+
+.badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-xl);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-gray-10);
+  background: var(--ds-gray-a3);
+  border-radius: var(--ds-radius-xs);
+  transition:
+    color var(--ds-duration-fast) var(--ds-easing-standard),
+    background var(--ds-duration-fast) var(--ds-easing-standard);
+
+  .choice[data-selected] & {
+    color: var(--ds-accent-11);
+    background: var(--ds-accent-a3);
+  }
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  line-height: 18px;
+  color: var(--ds-gray-12);
+  outline: none;
+  background: transparent;
+  border: 0;
+
+  &::placeholder {
+    color: var(--ds-gray-9);
+  }
+}
+
+.footer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 48px;
+  padding: 12px;
+}
+
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.answer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 2px;
+  column-gap: 8px;
+  align-items: center;
+
+  &:not(:first-child) {
+    padding-top: 12px;
+    border-top: var(--ds-border-width) solid var(--ds-gray-a4);
+  }
+}
+
+.question {
+  grid-column: 1;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-xl);
+  line-height: 16px;
+  color: var(--ds-gray-10);
+  overflow-wrap: anywhere;
+}
+
+.response {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  grid-column: 1;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  line-height: 20px;
+  color: var(--ds-gray-12);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+
+  .answer[data-tone="muted"] & {
+    color: var(--ds-gray-10);
+  }
+}

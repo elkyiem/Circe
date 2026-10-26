@@ -162,6 +162,34 @@ it("lists added and already-connected providers only", async () => {
   }
 });
 
+it("connects Apple Intelligence without a key or endpoint", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const { root, render } = renderSettings(host, {
+    agent: { ...emptyAgent, addedProviders: ["apple"] },
+    keys: keysFor([]),
+    onAdd: () => undefined,
+    onPatchAgent: () => undefined,
+    onRefresh: async () => undefined,
+  });
+  try {
+    await act(async () => render());
+    const card = host.querySelector('[aria-label="Apple"]');
+    expect(card).not.toBeNull();
+    expect(
+      card?.querySelector('input[type="password"], input[type="url"]'),
+    ).toBeNull();
+    expect(card?.textContent).toContain(
+      "Turn on Apple Intelligence in System Settings",
+    );
+    const submit = card?.querySelector('button[type="submit"]');
+    expect(submit?.textContent).toBe("Connect");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
 it("treats saved keys as listed even before addedProviders is stored", () => {
   expect(
     isListedProvider(

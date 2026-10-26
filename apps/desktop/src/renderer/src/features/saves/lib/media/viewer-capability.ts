@@ -3,6 +3,7 @@ import {
   canRequestNativeThumbnail,
   classifyLibraryFile,
 } from "@shared/file-format";
+import { ARTICLE_KIND } from "@shared/save-file-names";
 import type { SaveFile } from "@/features/saves/types";
 
 export type FileViewerKind =
@@ -16,6 +17,7 @@ export type FileViewerKind =
   | "archive"
   | "live-photo"
   | "safe-web"
+  | "article"
   | "native-preview"
   | "generic";
 
@@ -101,6 +103,7 @@ function specialist(kind: SpecialistViewerKind): ViewerCapability {
 }
 
 export function viewerCapabilityFor(file: SaveFile): ViewerCapability {
+  if (file.kind === ARTICLE_KIND) return specialist("article");
   const format = classifyLibraryFile(file.path, file.mimeType);
 
   switch (format.previewKind) {

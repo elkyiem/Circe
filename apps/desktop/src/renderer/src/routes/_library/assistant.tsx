@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AgentPane } from "@/features/agent/components/pane";
+import { DEFAULT_FISH_ID } from "@shared/fish-contracts";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { fishPath } from "@/features/fish";
 
 export const Route = createFileRoute("/_library/assistant")({
-  component: AgentPage,
+  beforeLoad: () => {
+    throw redirect({ href: fishPath(DEFAULT_FISH_ID) });
+  },
 });
-
-function AgentPage() {
-  return <AgentPane layout="page" />;
-}

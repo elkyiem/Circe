@@ -346,19 +346,23 @@ export function scrubbedEnvironment(
   return env;
 }
 
-async function cliEnvironment(codexHome?: string) {
+export async function withCliDirectories(path: string): Promise<string> {
   const home = homedir();
   const versions = await readdir(join(home, ".nvm/versions/node")).catch(
     () => [],
   );
-  const env = scrubbedEnvironment(process.env, process.platform, codexHome);
-  const pathKey = pathEnvKey(env);
-  env[pathKey] = [
-    env[pathKey] ?? "",
+  return [
+    path,
     ...(process.platform === "win32"
       ? windowsCliDirectories()
       : posixCliDirectories(home, process.env, versions)),
   ].join(delimiter);
+}
+
+async function cliEnvironment(codexHome?: string) {
+  const env = scrubbedEnvironment(process.env, process.platform, codexHome);
+  const pathKey = pathEnvKey(env);
+  env[pathKey] = await withCliDirectories(env[pathKey] ?? "");
   return env;
 }
 

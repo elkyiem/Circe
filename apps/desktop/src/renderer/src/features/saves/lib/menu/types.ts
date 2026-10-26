@@ -41,7 +41,7 @@ export interface SaveMenuContext {
   canRemoveVideo: boolean;
   copyLabel: string;
   archivable: boolean;
-  hasCustomThumbnail: boolean;
+  canResetThumbnail: boolean;
   canRename: boolean;
   fontActivated: boolean;
 }

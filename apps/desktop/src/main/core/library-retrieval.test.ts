@@ -125,6 +125,12 @@ describe("LibraryRetrievalService", () => {
     expect(harness.query().params).toContain("video");
   });
 
+  it("lists only untagged Saves when asked", async () => {
+    const harness = fakeDb({ rows: [] });
+    await retrieveLibraryWithStore(harness.db, { untagged: true }, {});
+    expect(harness.query().sql).toContain("json_array_length");
+  });
+
   it("retrieves media candidates with the matching embedding model", async () => {
     const media: RetrievalRecord = {
       id: "media",

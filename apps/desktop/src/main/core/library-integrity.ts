@@ -4,10 +4,13 @@ import { basename, extname, join, relative, resolve, sep } from "node:path";
 import { type Save, saves } from "@pond/schema/db";
 import {
   isAuxiliaryKind,
+  isOriginalImageKind,
+  isTextCardThumbnailPath,
   isThumbnailKind,
   thumbnailFilename,
 } from "@shared/save-file-names";
 import { eq, isNull } from "drizzle-orm";
+import sharp from "sharp";
 import { z } from "zod";
 import type {
   LibraryRepairIssue,
@@ -18,6 +21,7 @@ import { libraryRoot, saveDirIn } from "../paths";
 import { renderThumbnail, thumbnailSource } from "./save-thumbnail-file";
 import {
   libraryMediaMetadata,
+  readLibraryMedia,
   readLibraryMediaRange,
 } from "./storage/library-media-storage";
 
@@ -50,7 +54,63 @@ export interface LibraryIntegrityRuntime {
   getSave(id: string): Promise<RepairSave | null>;
   inspectPayload(path: string, expected: SaveFile): Promise<PayloadInspection>;
   canRenderThumbnail(path: string): Promise<boolean>;
+  /** Null when either image can't be decoded, so the scan never flags what it couldn't compare. */
+  thumbnailMatchesSource?(
+    thumbnailPath: string,
+    sourcePath: string,
+  ): Promise<boolean | null>;
   readInfo(path: string): Promise<InfoInspection>;
+}
+
+/** Out of 64 bits; a resized copy of the same image lands under 10, an unrelated image near 32. */
+const THUMBNAIL_MISMATCH_BITS = 20;
+
+async function differenceHash(input: string | Buffer): Promise<bigint | null> {
+  try {
+    const pixels = await sharp(input, { failOn: "none", pages: 1 })
+      .rotate()
+      .greyscale()
+      .resize(9, 8, { fit: "fill" })
+      .raw()
+      .toBuffer();
+    let hash = 0n;
+    for (let row = 0; row < 8; row += 1) {
+      for (let column = 0; column < 8; column += 1) {
+        const left = pixels[row * 9 + column] ?? 0;
+        const right = pixels[row * 9 + column + 1] ?? 0;
+        hash = (hash << 1n) | (left > right ? 1n : 0n);
+      }
+    }
+    return hash;
+  } catch {
+    return null;
+  }
+}
+
+function hammingDistance(a: bigint, b: bigint): number {
+  let value = a ^ b;
+  let count = 0;
+  while (value > 0n) {
+    count += Number(value & 1n);
+    value >>= 1n;
+  }
+  return count;
+}
+
+async function thumbnailMatchesSource(
+  thumbnailPath: string,
+  sourcePath: string,
+): Promise<boolean | null> {
+  const [thumbnail, source] = await Promise.all([
+    readLibraryMedia(thumbnailPath)
+      .then(differenceHash)
+      .catch(() => null),
+    readLibraryMedia(sourcePath)
+      .then(differenceHash)
+      .catch(() => null),
+  ]);
+  if (thumbnail === null || source === null) return null;
+  return hammingDistance(thumbnail, source) <= THUMBNAIL_MISMATCH_BITS;
 }
 
 export interface PayloadInspection {
@@ -95,6 +155,7 @@ const defaultRuntime: LibraryIntegrityRuntime = {
   async canRenderThumbnail(path) {
     return (await renderThumbnail(path).catch(() => null)) !== null;
   },
+  thumbnailMatchesSource,
   async readInfo(path) {
     let decoded: Buffer;
     try {
@@ -176,6 +237,7 @@ async function inspectThumbnail(
 ): Promise<InternalLibraryRepairIssue | null> {
   const directory = saveDirIn(runtime.root(), row.id);
   const thumbnails = row.files.filter((file) => isThumbnailKind(file.kind));
+  const healthy: SaveFile[] = [];
   for (const thumbnail of thumbnails) {
     const inspection = await runtime.inspectPayload(
       safePayloadPath(directory, thumbnail.path),
@@ -187,7 +249,7 @@ async function inspectThumbnail(
         safePayloadPath(directory, thumbnail.path),
       ))
     )
-      return null;
+      healthy.push(thumbnail);
   }
   const sourceCandidate = thumbnailSource(row.files);
   if (!sourceCandidate) return null;
@@ -197,6 +259,10 @@ async function inspectThumbnail(
   );
   if (!source) return null;
   const sourcePath = safePayloadPath(directory, source.path);
+  const mismatched =
+    healthy.length > 0 &&
+    (await thumbnailsMismatch(healthy, source, sourcePath, directory, runtime));
+  if (healthy.length > 0 && !mismatched) return null;
   const sourceInspection = await runtime.inspectPayload(sourcePath, source);
   if (!sourceInspection.ok || !(await runtime.canRenderThumbnail(sourcePath)))
     return null;
@@ -214,12 +280,50 @@ async function inspectThumbnail(
   return issue({
     kind: "thumbnails",
     row,
-    summary:
-      thumbnails.length === 0 ? "Thumbnail is missing" : "Thumbnail is damaged",
-    detail: "Pond makes a new thumbnail from the original file.",
+    summary: mismatched
+      ? "Thumbnail doesn't match this save"
+      : thumbnails.length === 0
+        ? "Thumbnail is missing"
+        : "Thumbnail is damaged",
+    detail: mismatched
+      ? "The thumbnail shows a different image than this save's media. Pond makes a new one from the original file."
+      : "Pond makes a new thumbnail from the original file.",
     observed,
     action: { kind: "thumbnail", source: source.path, destination },
   });
+}
+
+function isVisualMedia(file: SaveFile): boolean {
+  return (
+    file.kind === "poster" ||
+    file.kind === "video" ||
+    isOriginalImageKind(file.kind) ||
+    file.mimeType?.startsWith("image/") === true ||
+    file.mimeType?.startsWith("video/") === true
+  );
+}
+
+/** A text card only renders for saves without visual media, so one beside a poster or image is stale. */
+async function thumbnailsMismatch(
+  thumbnails: SaveFile[],
+  source: SaveFile,
+  sourcePath: string,
+  directory: string,
+  runtime: LibraryIntegrityRuntime,
+): Promise<boolean> {
+  for (const thumbnail of thumbnails) {
+    if (thumbnail.custom) return false;
+    if (isTextCardThumbnailPath(thumbnail.path)) {
+      if (isVisualMedia(source)) return true;
+      continue;
+    }
+    const matches = await runtime.thumbnailMatchesSource?.(
+      safePayloadPath(directory, thumbnail.path),
+      sourcePath,
+    );
+    if (matches === false) return true;
+  }
+  return false;
 }
 
 async function inspectPhysicalNames(

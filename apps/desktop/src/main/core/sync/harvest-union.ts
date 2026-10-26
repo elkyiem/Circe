@@ -42,6 +42,17 @@ export function stampListKind<T extends ListKindsEntry & object>(
   }));
 }
 
+/** A walk of one list can still say which list it read, such as Likes, so only unlabeled entries take the default. */
+export function defaultListKind<T extends ListKindsEntry & object>(
+  entries: T[],
+  kind: ListKind,
+): Array<T & { listKinds: ListKind[] }> {
+  return entries.map((entry) => ({
+    ...entry,
+    listKinds: entry.listKinds?.length ? entry.listKinds : [kind],
+  }));
+}
+
 export function mergeEntryListKinds<T extends ListKindsEntry>(
   kept: T,
   incoming: T,

@@ -1,8 +1,8 @@
 .shell {
+  /* Sidebar, viewer, and Details headers all center on half this height. */
+  --window-header-height: 56px;
   --window-inset: 8px;
-  --window-gap-right: 16px;
   --window-left-min: 0px;
-  --window-background-primary: var(--ds-gray-2);
 }
 
 :global(html[data-platform="mac"]) .shell {
@@ -17,20 +17,11 @@
   transition: none;
 }
 
-.shell .right-pane[data-slot="right"] {
-  overflow: visible;
-}
-
-.shell .right-pane[data-slot="right"] > div {
-  inset: 0 auto 0 0;
-  width: var(--window-right-track);
-  min-width: var(--window-right-track);
-  overflow: visible;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
+.shell[data-slot="window"] [data-slot="right"] > div {
   opacity: 1;
-  transform: none;
+  transform: translateX(
+    calc(var(--window-right-track) - var(--window-right-width))
+  );
   transition: none;
 }
 

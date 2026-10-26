@@ -8,17 +8,30 @@ Pond can capture saves from the sources below. To add one, run
 The **Sync** column shows how a source's saved list is walked (`cursor` /
 `scroll` / `full`), or a dash for capture-only sources.
 
-| Source | Id | Hosts | URL patterns | Sync |
-| --- | --- | --- | --- | --- |
-| Twitter | `twitter` | `x.com`, `twitter.com` | `^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/[^/]+\/status\/(\d+)`<br>`^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/web\/status\/(\d+)` | `cursor` |
-| Instagram | `instagram` | `instagram.com` | `^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reels?|tv)\/([A-Za-z0-9_-]+)` | `cursor` |
-| Pinterest | `pinterest` | `pinterest.com`, `pin.it` | `^https?:\/\/(?:[a-z]+\.)?pinterest\.[a-z.]+\/pin\/(\d+)`<br>`^https?:\/\/pin\.it\/([A-Za-z0-9]+)` | `scroll` |
-| Are.na | `arena` | `are.na` | `^https?:\/\/(?:www\.)?are\.na\/block\/(\d+)`<br>`^https?:\/\/(?:www\.)?are\.na\/[^/]+\/[^/]+-(\d+)` | `scroll` |
-| Cosmos | `cosmos` | `cosmos.so` | `^https?:\/\/(?:www\.)?cosmos\.so\/e\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.)?cosmos\.so\/(.+?)\/?$` | `cursor` |
-| TikTok | `tiktok` | `tiktok.com` | `^https?:\/\/(?:[a-z]+\.)?tiktok\.com\/[^/]+\/video\/(\d+)`<br>`^https?:\/\/(?:[a-z]+\.)?tiktok\.com\/video\/(\d+)`<br>`^https?:\/\/(?:vm|vt)\.tiktok\.com\/[A-Za-z0-9]+` | `scroll` |
-| YouTube | `youtube` | `youtube.com`, `youtu.be` | `^https?:\/\/(?:www\.|m\.)?youtube\.com\/watch\?[^#]*v=([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.|m\.)?youtube\.com\/shorts\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/youtu\.be\/([A-Za-z0-9_-]+)` | `scroll` |
-| Reddit | `reddit` | `reddit.com`, `redd.it` | `^https?:\/\/(?:[a-z]+\.)?reddit\.com\/r\/[^/]+\/comments\/([a-z0-9]+)`<br>`^https?:\/\/(?:[a-z]+\.)?reddit\.com\/comments\/([a-z0-9]+)`<br>`^https?:\/\/redd\.it\/([a-z0-9]+)` | `cursor` |
-| Threads | `threads` | `threads.net`, `threads.com` | `^https?:\/\/(?:www\.)?threads\.(?:net|com)\/@[^/]+\/post\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.)?threads\.(?:net|com)\/t\/([A-Za-z0-9_-]+)` | `scroll` |
+The **Connect** column shows how you connect an Account: `session` reads the
+site with your signed-in session, and `handle` takes your public handle with
+no sign-in.
+
+| Source | Id | Hosts | URL patterns | Sync | Connect |
+| --- | --- | --- | --- | --- | --- |
+| Twitter | `twitter` | `x.com`, `twitter.com` | `^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/[^/]+\/status\/(\d+)`<br>`^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/web\/status\/(\d+)` | `cursor` | `session` |
+| Instagram | `instagram` | `instagram.com` | `^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reels?|tv)\/([A-Za-z0-9_-]+)` | `cursor` | `session` |
+| Pinterest | `pinterest` | `pinterest.com`, `pin.it` | `^https?:\/\/(?:[a-z]+\.)?pinterest\.[a-z.]+\/pin\/(\d+)`<br>`^https?:\/\/pin\.it\/([A-Za-z0-9]+)` | `scroll` | `session` |
+| Are.na | `arena` | `are.na` | `^https?:\/\/(?:www\.)?are\.na\/block\/(\d+)`<br>`^https?:\/\/(?:www\.)?are\.na\/[^/]+\/[^/]+-(\d+)` | `scroll` | `session` |
+| Cosmos | `cosmos` | `cosmos.so` | `^https?:\/\/(?:www\.)?cosmos\.so\/e\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.)?cosmos\.so\/(.+?)\/?$` | `cursor` | `session` |
+| TikTok | `tiktok` | `tiktok.com` | `^https?:\/\/(?:[a-z]+\.)?tiktok\.com\/[^/]+\/video\/(\d+)`<br>`^https?:\/\/(?:[a-z]+\.)?tiktok\.com\/video\/(\d+)`<br>`^https?:\/\/(?:vm|vt)\.tiktok\.com\/[A-Za-z0-9]+` | `scroll` | `session` |
+| YouTube | `youtube` | `youtube.com`, `youtu.be` | `^https?:\/\/(?:www\.|m\.)?youtube\.com\/watch\?[^#]*v=([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.|m\.)?youtube\.com\/shorts\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/youtu\.be\/([A-Za-z0-9_-]+)` | `scroll` | `session` |
+| Reddit | `reddit` | `reddit.com`, `redd.it` | `^https?:\/\/(?:[a-z]+\.)?reddit\.com\/r\/[^/]+\/comments\/([a-z0-9]+)`<br>`^https?:\/\/(?:[a-z]+\.)?reddit\.com\/comments\/([a-z0-9]+)`<br>`^https?:\/\/redd\.it\/([a-z0-9]+)` | `cursor` | `session` |
+| Threads | `threads` | `threads.net`, `threads.com` | `^https?:\/\/(?:www\.)?threads\.(?:net|com)\/@[^/]+\/post\/([A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.)?threads\.(?:net|com)\/t\/([A-Za-z0-9_-]+)` | `scroll` | `session` |
+| GitHub | `github` | `github.com` | `^https?:\/\/(?:www\.)?github\.com\/(?!(?:about|apps|codespaces|collections|contact|customer-stories|dashboard|enterprise|events|explore|features|issues|login|logout|marketplace|new|notifications|orgs|organizations|pricing|pulls|readme|search|security|settings|signup|site|sponsors|stars|team|topics|trending|watching)\/)([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]+?)(?:\.git)?\/?(?:[?#].*)?$` | `cursor` | `session` |
+| Substack | `substack` | `substack.com` | `^https?:\/\/((?!www\.|open\.)[a-z0-9-]+\.substack\.com\/p\/[A-Za-z0-9_-]+)`<br>`^https?:\/\/(?:www\.)?substack\.com\/(?:@[^/]+|home\/post)\/(p-\d+)` | `cursor` | `session` |
+| Tumblr | `tumblr` | `tumblr.com` | `^https?:\/\/(?:www\.)?tumblr\.com\/(?:blog\/view\/)?[a-z0-9-]+\/(\d{6,20})(?:[/?#]|$)`<br>`^https?:\/\/(?!www\.)[a-z0-9-]+\.tumblr\.com\/(?:post|image)\/(\d{6,20})(?:[/?#]|$)` | `cursor` | `session` |
+| Savee | `savee` | `savee.com`, `savee.it` | `^https?:\/\/(?:www\.)?savee\.(?:com|it)\/i\/([A-Za-z0-9_-]+)\/?(?:[?#]|$)` | `cursor` | `session` |
+| Behance | `behance` | `behance.net`, `be.net` | `^https?:\/\/(?:www\.)?(?:behance|be)\.net\/gallery\/(\d+)` | `cursor` | `session` |
+| Vimeo | `vimeo` | `vimeo.com` | `^https?:\/\/(?:(?:www|player)\.)?vimeo\.com\/(?:video\/|videos\/|channels\/[^/?#]+\/|groups\/[^/?#]+\/videos\/|(?:album|showcase)\/\d+\/video\/|[^/?#]+\/review\/)?(\d{5,12})(?:\/[0-9a-f]{10})?(?:[/?#]|$)` | `cursor` | `session` |
+| Dribbble | `dribbble` | `dribbble.com`, `drbl.in` | `^https?:\/\/(?:www\.)?dribbble\.com\/shots\/(\d+)(?=[-/?#]|$)` | `cursor` | `session` |
+| Unsplash | `unsplash` | `unsplash.com` | `^https?:\/\/(?:www\.)?unsplash\.com\/(?:photos|illustrations)\/(?:[^/?#]*-)?([A-Za-z0-9_-]{11})(?=[/?#]|$)` | `cursor` | `session` |
+| Bluesky | `bluesky` | `bsky.app` | `^https?:\/\/(?:www\.)?bsky\.app\/profile\/[^/?#]+\/post\/([2-7a-z]{13})(?=[/?#]|$)` | `cursor` | `handle` |
 
 `local` is a built-in pseudo-source for files imported directly into the
 library; it has no network extractor.

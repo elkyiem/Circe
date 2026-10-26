@@ -10,7 +10,7 @@
   padding: 10px;
   background: var(--ds-gray-1);
   border-radius: inherit;
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
 }
 
 .body {

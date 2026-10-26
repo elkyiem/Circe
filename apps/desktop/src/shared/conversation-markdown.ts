@@ -11,7 +11,7 @@ export function conversationMarkdown(
       )
       .map(
         (message) =>
-          `## ${message.role === "user" ? "You" : "Assistant"}\n\n${message.content}`,
+          `## ${message.role === "user" ? "You" : "Fish"}\n\n${message.content}`,
       ),
     "",
   ].join("\n\n");

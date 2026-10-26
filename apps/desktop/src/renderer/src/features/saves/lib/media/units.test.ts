@@ -170,6 +170,29 @@ describe("deriveTypeLabel web pages", () => {
     expect(deriveTypeKind(cover, save)).toBe("link");
   });
 
+  it("labels a save with a stored article as Article, not its cover format", () => {
+    const save = makeSave({
+      id: "post-1",
+      source: "substack",
+      mediaType: "image",
+      files: [
+        file("image", "cover.jpeg", "image/jpeg"),
+        file("article", "article.html", "text/html"),
+      ],
+    });
+    expect(deriveTypeLabel(save.files[0] ?? null, save)).toBe("Article");
+  });
+
+  it("labels a GitHub save as a Repository, even with a README article", () => {
+    const save = makeSave({
+      id: "repo-1",
+      source: "github",
+      mediaType: "text",
+      files: [file("article", "article.html", "text/html")],
+    });
+    expect(deriveTypeLabel(save.files[0] ?? null, save)).toBe("Repository");
+  });
+
   it("still uses the file extension for non-web image saves", () => {
     const save = makeSave({
       id: "photo-1",

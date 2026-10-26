@@ -20,7 +20,7 @@ import {
 import { normalise } from "@/features/saves";
 import { pool } from "@/features/saves/pool";
 import { pagingStore } from "@/features/saves/state/bootstrap";
-import { FilterBarView, FilterToggle } from "./";
+import { FilterBarView, FilterToggleView } from "./";
 import { entryFields, FILTER_MENU, FILTER_SECTIONS } from "./options";
 import { filterToolbar } from "./toolbar-state";
 
@@ -66,23 +66,25 @@ describe("filter toolbar", () => {
     vi.unstubAllGlobals();
   });
 
+  const data = {
+    tags: [{ name: "Design" }],
+    tagGroups: [],
+    folders: [{ id: "folder-a", name: "Inspiration" }],
+    facets: {
+      sources: ["youtube.com", "vimeo.com"],
+      tags: [],
+      creators: [],
+      types: [],
+    },
+    refs: [],
+  };
+
   async function render() {
     await act(async () =>
       root.render(
         <>
-          <FilterToggle />
-          <FilterBarView
-            tags={[{ name: "Design" }]}
-            tagGroups={[]}
-            folders={[{ id: "folder-a", name: "Inspiration" }]}
-            facets={{
-              sources: ["youtube.com", "vimeo.com"],
-              tags: [],
-              creators: [],
-              types: [],
-            }}
-            refs={[]}
-          />
+          <FilterToggleView {...data} />
+          <FilterBarView {...data} />
           <State />
         </>,
       ),
@@ -419,6 +421,20 @@ describe("filter toolbar", () => {
       });
     }
 
+    it("shows the chip row only once a filter applies", async () => {
+      await render();
+      expect(host.querySelector("fieldset")).toBeNull();
+      expect(button("Add Filter")).toBeTruthy();
+      await act(async () =>
+        setSearchInput(
+          [{ field: "type", operator: "eq", value: "video" }],
+          "",
+          "type:video",
+        ),
+      );
+      expect(host.querySelector("fieldset")).not.toBeNull();
+    });
+
     it("lists fields directly and hides ones already applied", async () => {
       setSearchInput(
         [{ field: "type", operator: "eq", value: "video" }],
@@ -427,7 +443,7 @@ describe("filter toolbar", () => {
       );
       await render();
       expect(button("Type: Video")).toBeTruthy();
-      await act(async () => button("Add Another Filter").click());
+      await act(async () => button("Add Filter").click());
       const labels = menuItems().map((node) => node.textContent);
       expect(labels).toContain("Tags");
       expect(labels).toContain("Visual Match");

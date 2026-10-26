@@ -86,7 +86,8 @@ it("keeps failure content and original actions inside the existing chrome", asyn
   });
 
   expect(host.textContent).toContain("This preview could not be rendered.");
-  expect(host.textContent).toContain("2 / 3");
+  expect(host.querySelector('[aria-label="Previous Save"]')).not.toBeNull();
+  expect(host.textContent).not.toContain("2 / 3");
   expect(
     host.querySelector('button[aria-label="Open in Default App"]'),
   ).not.toBeNull();

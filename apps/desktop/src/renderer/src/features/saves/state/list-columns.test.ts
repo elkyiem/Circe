@@ -5,16 +5,20 @@ import {
   LIST_COLUMN_DEFAULTS,
 } from "./list-columns";
 
-it("defaults name and date on and the rest off", () => {
+it("defaults the everyday columns on and the rest off", () => {
   expect(LIST_COLUMN_DEFAULTS).toEqual({
     name: true,
-    dateAdded: true,
-    datePublished: false,
+    type: true,
+    source: true,
+    creator: false,
     tags: false,
     dimensions: false,
+    duration: false,
     rating: false,
     extension: false,
-    fileSize: false,
+    fileSize: true,
+    dateAdded: true,
+    datePublished: false,
     annotation: false,
   });
 });

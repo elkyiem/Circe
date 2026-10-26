@@ -16,6 +16,7 @@ import type {
 } from "../../../shared/query-contracts-shared";
 import { deleteSecret, getSecret, getSecrets, setSecret } from "../../keychain";
 import { getPrefs, setPrefs } from "../prefs";
+import { appleStatus } from "./apple-runtime";
 import { checkCliConnection, isCliProvider } from "./cli-runtime";
 import { isLocalProviderConnected } from "./local-provider-state";
 import { catalogModelsForProvider, loadModelCatalog } from "./model-catalog";
@@ -99,10 +100,13 @@ export async function saveKey(
 ): Promise<OkResult> {
   const catalog = assistantCatalog(provider);
   const trimmed = key.trim();
-  if (isCliProvider(provider) && trimmed)
+  if ((isCliProvider(provider) || provider === "apple") && trimmed)
     return {
       ok: false,
-      error: "Sign in through the CLI instead of entering an API key.",
+      error:
+        provider === "apple"
+          ? "Apple Intelligence doesn't use a key."
+          : "Sign in through the CLI instead of entering an API key.",
     };
   if (!trimmed && catalog?.needsKey) {
     return { ok: false, error: "Paste a key first." };
@@ -167,7 +171,7 @@ export async function setKeyEnabled(
 export async function keyFor(
   provider: AgentProviderId,
 ): Promise<string | null> {
-  if (isCliProvider(provider)) return null;
+  if (isCliProvider(provider) || provider === "apple") return null;
   return getSecret(accountFor(provider));
 }
 
@@ -188,6 +192,27 @@ export async function verifyKey(
 export async function listProviderModels(
   provider: AgentProviderId,
 ): Promise<ProviderModelsResult> {
+  if (provider === "apple") {
+    const status = await appleStatus();
+    if (!status.ok) return { ...status, models: [] };
+    return {
+      ok: true,
+      models: [
+        {
+          id: "system",
+          name: "Apple Intelligence",
+          description: "Runs on your Mac. Text only.",
+          contextWindow: status.contextSize,
+          modelCapabilities: {
+            text: true,
+            vision: false,
+            audio: false,
+            tools: true,
+          },
+        },
+      ],
+    };
+  }
   if (isCliProvider(provider)) {
     const check = await checkCliConnection(provider);
     if (!check.ok) return { ...check, models: [] };
@@ -335,6 +360,8 @@ export async function checkProviderKey(
   input: ProviderConnection,
   fetcher: typeof fetch = fetch,
 ): Promise<OkResult> {
+  if (input.provider === "apple")
+    return appleStatus().then((status) => (status.ok ? { ok: true } : status));
   if (isCliProvider(input.provider)) return checkCliConnection(input.provider);
   if (input.provider === "openrouter") {
     try {

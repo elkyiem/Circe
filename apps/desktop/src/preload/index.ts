@@ -19,6 +19,7 @@ import {
   type RecentMenuEntry,
 } from "../shared/constants";
 import { FilterQuery } from "../shared/filter-query";
+import type { FishEvent, FishOpen } from "../shared/fish-contracts";
 import type {
   PreviewNeighborRequest,
   PreviewWindowConfigure,
@@ -58,6 +59,11 @@ ipcRenderer.on(IPC.nav, (_: IpcRendererEvent, path: string) =>
 const openFiles = createNavigationMailbox<string[]>();
 ipcRenderer.on(IPC.openFiles, (_: IpcRendererEvent, paths: string[]) =>
   openFiles.receive(paths),
+);
+/** A browser capture for a fish can open the window before the renderer subscribes. */
+const fishOpen = createNavigationMailbox<FishOpen>();
+ipcRenderer.on(IPC.fishOpen, (_: IpcRendererEvent, open: FishOpen) =>
+  fishOpen.receive(open),
 );
 
 const query: QueryClient = (name, ...args) =>
@@ -305,6 +311,16 @@ const api = {
     return ipcRenderer.invoke(IPC.sourceConnect, source);
   },
 
+  connectSourceHandle(
+    source: string,
+    handle: string,
+  ): Promise<
+    | { ok: true; accountId: string }
+    | { ok: false; reason: "invalid" | "not_found" | "unavailable" }
+  > {
+    return ipcRenderer.invoke(IPC.sourceConnectHandle, source, handle);
+  },
+
   clearPendingSession(source?: string): Promise<{ ok: true }> {
     return ipcRenderer.invoke(IPC.sessionPendingClear, source);
   },
@@ -406,6 +422,16 @@ const api = {
     const listener = (_: IpcRendererEvent, chunk: AssistantChunk) => cb(chunk);
     ipcRenderer.on(IPC.agentChunk, listener);
     return () => ipcRenderer.off(IPC.agentChunk, listener);
+  },
+
+  onFish(cb: (event: FishEvent) => void): () => void {
+    const listener = (_: IpcRendererEvent, event: FishEvent) => cb(event);
+    ipcRenderer.on(IPC.fish, listener);
+    return () => ipcRenderer.off(IPC.fish, listener);
+  },
+
+  onFishOpen(cb: (open: FishOpen) => void): () => void {
+    return fishOpen.subscribe(cb);
   },
 
   agentStream(

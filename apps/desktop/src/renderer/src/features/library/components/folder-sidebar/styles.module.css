@@ -5,8 +5,8 @@
 
 .workspace {
   gap: 4px;
-  height: 44px;
-  padding: 4px 0 4px 20px;
+  height: var(--window-header-height, 44px);
+  padding: 4px 0 4px 18px;
 }
 
 .workspace-actions {

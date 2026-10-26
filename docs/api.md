@@ -6,6 +6,8 @@ Pond runs an HTTP API on your Mac while the app is open. Raycast, the `pond` CLI
 http://127.0.0.1:41610/api/v2
 ```
 
+To save from Shortcuts without a token, use a `pond://save` link instead. See [Shortcuts](shortcuts.md).
+
 The TypeScript client lives in [`packages/api`](../packages/api) and is published as `pond-api`. Every endpoint below has a method on `PondApi`, and each response is validated against the schemas in [`packages/schema/src/api.ts`](../packages/schema/src/api.ts).
 
 ## Authentication
@@ -137,7 +139,7 @@ Pass `nextCursor` back as `cursor` for the next page. `nextCursor` is `null` on 
 
 ### Search
 
-`POST /library/search` ranks Saves by meaning as well as keywords, the same way the Assistant searches:
+`POST /library/search` ranks Saves by meaning as well as keywords, the same way Fish searches:
 
 ```json
 { "query": "red posters with big type", "limit": 20 }
@@ -240,7 +242,7 @@ All of them use `POST` and return `{ "changed": n }`, the number of Saves that a
 
 ## Operations
 
-Operations are the same actions the Assistant and MCP server use, like creating folders or copying a file. They're private: only the Local API Token reaches them, and names follow the app's internals, so they can change in any release.
+Operations are the same actions Fish and the MCP server use, like creating folders or copying a file. They're private: only the Local API Token reaches them, and names follow the app's internals, so they can change in any release.
 
 | Method | Path | Purpose |
 | --- | --- | --- |

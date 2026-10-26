@@ -9,7 +9,7 @@ interface FrameStyle extends React.CSSProperties {
   "--frame-width": string;
 }
 
-export function GridCard({ model, width }: SaveCardViewProps) {
+export function GridCard({ model, width, detail }: SaveCardViewProps) {
   const frameStyle: FrameStyle = {
     "--frame-aspect": String(model.aspect),
     "--frame-width": `${Math.min(1, model.aspect) * 100}%`,
@@ -31,7 +31,7 @@ export function GridCard({ model, width }: SaveCardViewProps) {
         </Card.Frame>
         <Card.Overlay model={model.overlay} />
       </Card.Media>
-      <Card.Meta title={model.title} time={model.time} />
+      <Card.Meta title={model.title} time={detail ?? model.time} />
     </>
   );
 }

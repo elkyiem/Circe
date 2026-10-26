@@ -55,6 +55,7 @@ export function ProviderConnection({
 }) {
   const connected = Boolean(row?.hasKey);
   const subscription = providerGroup(catalog.id) === "subscription";
+  const apple = catalog.id === "apple";
   const setupUrl = catalog.setupUrl;
   const endpointLabel =
     catalog.id === "azure" ? "Resource Name" : "API Base URL";
@@ -263,7 +264,14 @@ export function ProviderConnection({
               }}
             >
               <Settings.CardContent className={styles.content}>
-                {subscription ? (
+                {apple ? (
+                  <p className={styles.instructions}>
+                    Uses the model built into macOS, so nothing leaves your Mac.
+                    Turn on Apple Intelligence in System Settings, then connect
+                    here. Fish can search and read your library but can't change
+                    it.
+                  </p>
+                ) : subscription ? (
                   <p className={styles.instructions}>
                     {catalog.id === "codex" ? (
                       <>
@@ -335,7 +343,7 @@ export function ProviderConnection({
                   Cancel
                 </Button>
                 <Button type="submit" variant="secondary" disabled={!canSave}>
-                  {subscription
+                  {subscription || apple
                     ? "Connect"
                     : catalog.needsKey
                       ? "Save API Key"

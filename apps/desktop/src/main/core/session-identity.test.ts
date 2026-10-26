@@ -73,4 +73,16 @@ describe("identityKeyFromCookies", () => {
       identityKeyFromCookies("reddit", [{ name: "token_v2", value: token }]),
     ).toBeNull();
   });
+
+  it("reads the signed-in unsplash user id and ignores the visitor session", () => {
+    expect(
+      identityKeyFromCookies("unsplash", [
+        { name: "un_sesh", value: "abc" },
+        { name: "auth_user_id", value: "1810446" },
+      ]),
+    ).toBe("1810446");
+    expect(
+      identityKeyFromCookies("unsplash", [{ name: "un_sesh", value: "abc" }]),
+    ).toBeNull();
+  });
 });

@@ -1,5 +1,11 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  CHROMIUM_EXTENSION_IDS,
+  EXTENSION_ID,
+  EXTENSION_KEY,
+} from "@pond/schema/native";
 import { describe, expect, it } from "vitest";
 import {
   chromiumNativeHostManifest,
@@ -253,5 +259,20 @@ describe("native host manifests", () => {
       },
     });
     expect(registry).toEqual([]);
+  });
+
+  it("allows the extension ID that the pinned manifest key derives", () => {
+    const digest = createHash("sha256")
+      .update(Buffer.from(EXTENSION_KEY, "base64"))
+      .digest("hex")
+      .slice(0, 32);
+    const derived = [...digest]
+      .map((hex) => String.fromCharCode(97 + Number.parseInt(hex, 16)))
+      .join("");
+    expect(derived).toBe(EXTENSION_ID);
+    expect(
+      JSON.parse(chromiumNativeHostManifest("/host")).allowed_origins,
+    ).toEqual(CHROMIUM_EXTENSION_IDS.map((id) => `chrome-extension://${id}/`));
+    expect(CHROMIUM_EXTENSION_IDS).toContain(derived);
   });
 });

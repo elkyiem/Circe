@@ -90,11 +90,36 @@ const tiktokItem = z.object({
   ),
 });
 
+const unsplashAsset = z.object({
+  id: z.string(),
+  description: optional(z.nullable(z.string())),
+  alt_description: optional(z.nullable(z.string())),
+  created_at: text,
+  urls: optional(z.object({ raw: text, full: text })),
+  user: optional(
+    z.object({
+      name: text,
+      username: text,
+      links: optional(z.object({ html: text })),
+      profile_image: optional(z.object({ large: text })),
+    }),
+  ),
+});
+
+export type UnsplashAsset = z.infer<typeof unsplashAsset>;
+
+const unsplashBookmarks = z.object({
+  total: number,
+  results: z.catch(z.array(z.catch(z.nullable(unsplashAsset), null)), []),
+});
+
 export const browserValidators = {
   text: z.string(),
   number: z.number(),
   object: z.looseObject({}),
   instagramNode,
   tiktokItem,
+  unsplashAsset,
+  unsplashBookmarks,
 };
 export type BrowserValidators = typeof browserValidators;

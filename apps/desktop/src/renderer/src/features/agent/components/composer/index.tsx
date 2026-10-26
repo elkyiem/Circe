@@ -6,7 +6,13 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import type { AssistantSource } from "@shared/assistant";
-import { CLEAR_HISTORY_COMMAND, SKIP_DOM_SELECTION_TAG } from "lexical";
+import {
+  $getRoot,
+  $getSelection,
+  $isRangeSelection,
+  CLEAR_HISTORY_COMMAND,
+  SKIP_DOM_SELECTION_TAG,
+} from "lexical";
 import {
   type Ref,
   type RefObject,
@@ -25,6 +31,8 @@ import { ComposerSuggestions } from "./suggestions";
 
 export interface ComposerEditorHandle {
   focus: () => void;
+  /** Types `@` at the cursor so the Save search opens. */
+  mention: () => void;
 }
 
 export interface ComposerEditorProps {
@@ -51,7 +59,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
       <div className={styles.root}>
         <ContentEditable
           className={styles.editor}
-          aria-label="Message Assistant"
+          aria-label="Message"
           aria-multiline
           aria-placeholder={props.placeholder}
           placeholder={
@@ -86,7 +94,27 @@ function ComposerDraft({
   const published = useRef(value);
   const change = useRef(onChange);
   change.current = onChange;
-  useImperativeHandle(ref, () => ({ focus: () => editor.focus() }), [editor]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => editor.focus(),
+      mention: () => {
+        editor.update(() => {
+          const current = $getSelection();
+          const selection = $isRangeSelection(current)
+            ? current
+            : $getRoot().selectEnd();
+          const before = selection.anchor
+            .getNode()
+            .getTextContent()
+            .slice(0, selection.anchor.offset);
+          selection.insertText(before && !/\s$/.test(before) ? " @" : "@");
+        });
+        editor.focus();
+      },
+    }),
+    [editor],
+  );
   useEffect(() => {
     editor.setEditable(!disabled);
   }, [editor, disabled]);

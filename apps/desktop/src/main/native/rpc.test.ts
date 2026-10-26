@@ -30,6 +30,21 @@ describe("nativeRequestSchema", () => {
     });
     expect(row).toMatchObject({ type: "enqueue", trigger: "twitter:bookmark" });
   });
+
+  it("accepts files.import with inbox paths", () => {
+    const row = nativeRequestSchema.parse({
+      type: "files.import",
+      paths: ["/tmp/a.png"],
+    });
+    expect(row).toEqual({ type: "files.import", paths: ["/tmp/a.png"] });
+  });
+
+  it("rejects files.import with no paths", () => {
+    expect(
+      nativeRequestSchema.safeParse({ type: "files.import", paths: [] })
+        .success,
+    ).toBe(false);
+  });
 });
 
 describe("dispatchNative", () => {
@@ -104,6 +119,54 @@ describe("dispatchNative", () => {
     ).resolves.toEqual({ ok: false, error: "tags_unavailable" });
   });
 
+  it("returns fish.list from the injected port", async () => {
+    const fishList = vi.fn().mockResolvedValue([{ id: "koi", name: "Koi" }]);
+    await expect(
+      dispatchNative({ type: "fish.list" }, ports({ fishList })),
+    ).resolves.toEqual({ ok: true, data: [{ id: "koi", name: "Koi" }] });
+  });
+
+  it("reports fish.list as unavailable without a port", async () => {
+    await expect(
+      dispatchNative({ type: "fish.list" }, ports()),
+    ).resolves.toEqual({ ok: false, error: "fish_unavailable" });
+  });
+
+  it("passes the chosen fish along with a capture", async () => {
+    const capture = vi.fn().mockResolvedValue({ id: "draft-1" });
+    const draft = {
+      id: "draft-1",
+      items: [{ kind: "url", url: "https://example.com" }],
+    };
+    await dispatchNative(
+      { type: "capture.accept", draft, fishId: "koi" },
+      ports({ capture }),
+    );
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "draft-1" }),
+      undefined,
+      "koi",
+    );
+  });
+
+  it("rejects a capture for a fish id outside the fish id format", async () => {
+    const capture = vi.fn();
+    await expect(
+      dispatchNative(
+        {
+          type: "capture.accept",
+          draft: {
+            id: "draft-1",
+            items: [{ kind: "url", url: "https://example.com" }],
+          },
+          fishId: "../Koi",
+        },
+        ports({ capture }),
+      ),
+    ).resolves.toEqual({ ok: false, error: "invalid" });
+    expect(capture).not.toHaveBeenCalled();
+  });
+
   it("returns the browser extension settings from the injected port", async () => {
     const settings = ExtensionSettingsSchema.parse({ altClick: false });
     const extensionSettings = vi.fn().mockResolvedValue(settings);
@@ -162,5 +225,37 @@ describe("dispatchNative", () => {
       ),
     ).resolves.toEqual({ ok: true, data: rejected });
     expect(sessionImport).toHaveBeenCalledWith("arena", []);
+  });
+});
+
+describe("files.import", () => {
+  it("hands paths to the share inbox port", async () => {
+    const importSharedFiles = vi.fn(async () => ({ ids: ["s1"] }));
+    const response = await dispatchNative(
+      { type: "files.import", paths: ["/inbox/a/b.png"] },
+      ports({ importSharedFiles }),
+    );
+    expect(importSharedFiles).toHaveBeenCalledWith(["/inbox/a/b.png"]);
+    expect(response).toEqual({ ok: true, data: { ids: ["s1"] } });
+  });
+
+  it("reports files_unavailable when the port is missing", async () => {
+    const response = await dispatchNative(
+      { type: "files.import", paths: ["/inbox/a/b.png"] },
+      ports(),
+    );
+    expect(response).toEqual({ ok: false, error: "files_unavailable" });
+  });
+
+  it("reports no_files when nothing was importable", async () => {
+    const response = await dispatchNative(
+      { type: "files.import", paths: ["/etc/hosts"] },
+      ports({
+        importSharedFiles: vi.fn(async () => {
+          throw new Error("no_files");
+        }),
+      }),
+    );
+    expect(response).toEqual({ ok: false, error: "no_files" });
   });
 });

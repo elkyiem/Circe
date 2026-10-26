@@ -1,4 +1,5 @@
 import type { ConnectedAccount, Source } from "@pond/schema/db";
+import { connectsByHandle } from "@pond/schema/sources";
 import { type Cookie, session, shell } from "electron";
 import log from "electron-log/main.js";
 import { z } from "zod";
@@ -41,6 +42,7 @@ export async function isPartitionSignedIn(
 export async function isAccountConnected(
   account: ConnectedAccount,
 ): Promise<boolean> {
+  if (connectsByHandle(account.source)) return account.identityKey !== null;
   return isPartitionSignedIn(account.source, partitionForAccount(account.id));
 }
 
@@ -116,6 +118,31 @@ export async function probeUserHandle(
     const { probeCosmosHandle } = await import("../harvest/cosmos/api");
     return probeCosmosHandle(partition ?? PARTITION);
   }
+  if (source === "github") {
+    const { probeGithubHandle } = await import("../harvest/github/account");
+    const viaCookie = await probeGithubHandle(partition ?? PARTITION);
+    if (viaCookie) return viaCookie;
+  }
+  if (source === "substack") {
+    const { probeSubstackHandle } = await import("../harvest/substack/api");
+    return probeSubstackHandle(partition ?? PARTITION);
+  }
+  if (source === "tumblr") {
+    const { probeTumblrHandle } = await import("../harvest/tumblr/api");
+    return probeTumblrHandle(partition ?? PARTITION);
+  }
+  if (source === "savee") {
+    const { probeSaveeHandle } = await import("../harvest/savee/api");
+    return probeSaveeHandle(partition ?? PARTITION);
+  }
+  if (source === "behance") {
+    const { probeBehanceHandle } = await import("../harvest/behance/api");
+    return probeBehanceHandle(partition ?? PARTITION);
+  }
+  if (source === "vimeo") {
+    const { probeVimeoHandle } = await import("../harvest/vimeo/api");
+    return probeVimeoHandle(partition ?? PARTITION);
+  }
   if (source === "tiktok") {
     const { probeTiktokHandle } = await import("../harvest/tiktok/api");
     const viaApi = await probeTiktokHandle(partition ?? PARTITION);
@@ -166,6 +193,14 @@ function probeUrlForSource(source: Source): string {
   if (source === "reddit") return "https://www.reddit.com/";
   if (source === "threads") return "https://www.threads.com/";
   if (source === "cosmos") return "https://www.cosmos.so/";
+  if (source === "github") return "https://github.com/";
+  if (source === "substack") return "https://substack.com/home";
+  if (source === "tumblr") return "https://www.tumblr.com/";
+  if (source === "savee") return "https://savee.com/you/";
+  if (source === "behance") return "https://www.behance.net/";
+  if (source === "vimeo") return "https://vimeo.com/";
+  if (source === "dribbble") return "https://dribbble.com/";
+  if (source === "unsplash") return "https://unsplash.com/";
   return homeUrlForSource(source);
 }
 

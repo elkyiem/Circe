@@ -17,7 +17,6 @@ function setup() {
   let autoDownload = false;
   const updater: UpdaterPort = {
     autoDownload: () => autoDownload,
-    setChannel: vi.fn(),
     setAutoDownload: vi.fn((value) => {
       autoDownload = value;
     }),
@@ -41,7 +40,7 @@ function setup() {
   const dependencies: UpdaterDependencies = {
     isPackaged: () => true,
     loadUpdater: async () => updater,
-    loadPreferences: async () => ({ autoInstall: false, channel: "stable" }),
+    loadPreferences: async () => ({ autoInstall: false }),
     publish: vi.fn(),
     scheduleTimeout: vi.fn(),
     scheduleInterval: vi.fn(),
@@ -57,29 +56,15 @@ function setup() {
 }
 
 describe("updater coordinator", () => {
-  it("applies stable-channel and automatic-download preferences", async () => {
-    const { coordinator, updater } = setup();
-    await coordinator.applyPrefs();
-
-    expect(updater.setChannel).toHaveBeenCalledWith("stable");
-    expect(updater.setAutoDownload).toHaveBeenCalledWith(false);
-  });
-
-  it("follows the chosen channel and checks right away when it changes", async () => {
+  it("applies automatic-download preferences", async () => {
     const { coordinator, dependencies, updater } = setup();
-    await coordinator.start();
+    await coordinator.applyPrefs();
+    expect(updater.setAutoDownload).toHaveBeenLastCalledWith(false);
+
+    dependencies.loadPreferences = async () => ({ autoInstall: true });
+    await coordinator.applyPrefs();
+    expect(updater.setAutoDownload).toHaveBeenLastCalledWith(true);
     expect(updater.check).not.toHaveBeenCalled();
-
-    dependencies.loadPreferences = async () => ({
-      autoInstall: false,
-      channel: "nightly",
-    });
-    await coordinator.applyPrefs();
-    expect(updater.setChannel).toHaveBeenLastCalledWith("nightly");
-    expect(updater.check).toHaveBeenCalledTimes(1);
-
-    await coordinator.applyPrefs();
-    expect(updater.check).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed when update preferences cannot be read", async () => {
@@ -89,7 +74,6 @@ describe("updater coordinator", () => {
     };
     await coordinator.start();
 
-    expect(updater.setChannel).toHaveBeenLastCalledWith("stable");
     expect(updater.setAutoDownload).toHaveBeenLastCalledWith(false);
     listeners.available?.("1.2.0");
     expect(dependencies.publish).toHaveBeenCalledWith({

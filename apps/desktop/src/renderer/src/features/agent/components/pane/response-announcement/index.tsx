@@ -33,7 +33,7 @@ export function ResponseAnnouncement({
         before.running ||
         responseId !== before.responseId)
     )
-      setAnnouncement(`Assistant response failed: ${error}`);
+      setAnnouncement(`Response failed: ${error}`);
     else if (running) setAnnouncement("");
     else if (
       requiredAction &&
@@ -48,11 +48,7 @@ export function ResponseAnnouncement({
         responseId !== before.responseId ||
         stopped !== before.stopped)
     )
-      setAnnouncement(
-        stopped
-          ? "Assistant response stopped."
-          : "Assistant response complete.",
-      );
+      setAnnouncement(stopped ? "Response stopped." : "Response complete.");
   }, [running, responseId, requiredAction, error, stopped]);
   return (
     <span

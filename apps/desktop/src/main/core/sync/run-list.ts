@@ -2,11 +2,18 @@ import type { ConnectedAccount, Source } from "@pond/schema/db";
 import type { SyncRunEvent } from "@pond/schema/events";
 import { sourceLabel } from "@pond/schema/sources";
 import log from "electron-log/main.js";
-import { accountImportScope } from "../../../shared/import-scope";
+import {
+  accountImportScope,
+  savedSinceStart,
+} from "../../../shared/import-scope";
 import { type EnqueueItem, enqueue } from "../pipeline/enqueue";
-import { mergeListKindsOntoExisting } from "../pipeline/list-kinds";
+import {
+  dropMissingListKind,
+  mergeListKindsOntoExisting,
+} from "../pipeline/list-kinds";
 import { createQueueGeneration } from "../pipeline/queue-generations";
 import type { ListHarvestResult } from "../refresh/harvest/list-types";
+import { harvestSubstackSubscriptions } from "../refresh/harvest/substack/api";
 import {
   harvestInstagramLikedList,
   harvestSourceCollections,
@@ -18,8 +25,18 @@ import { resolveAccountHandle } from "./account-key";
 import { getAccountSync, partitionForAccount } from "./accounts";
 import { fileIntoFolders } from "./collection-folders";
 import { NO_COLLECTION_PASS, walkEveryCollection } from "./every-collection";
-import { mergeEntryListKinds, stampListKind, unionById } from "./harvest-union";
-import { collectionCheckDue, listHarvestPlan } from "./import-scope";
+import {
+  defaultListKind,
+  mergeEntryListKinds,
+  stampListKind,
+  unionById,
+} from "./harvest-union";
+import {
+  COMBINED_LISTS,
+  collectionCheckDue,
+  listHarvestPlan,
+  subscriptionCheck,
+} from "./import-scope";
 import { organizeIncoming } from "./incoming";
 import {
   loadAllKnownIds,
@@ -29,6 +46,9 @@ import {
 } from "./sync-baseline";
 import { emit, listGapNote } from "./sync-status";
 
+/** Caps one subscriptions pass so a busy week of feeds can't flood the library. */
+const SUBSCRIPTION_POSTS_PER_RUN = 50;
+
 export const LIST_HARVEST_SOURCES = new Set<Source>([
   "youtube",
   "cosmos",
@@ -37,6 +57,15 @@ export const LIST_HARVEST_SOURCES = new Set<Source>([
   "instagram",
   "tiktok",
   "reddit",
+  "github",
+  "substack",
+  "tumblr",
+  "savee",
+  "behance",
+  "vimeo",
+  "dribbble",
+  "unsplash",
+  "bluesky",
 ]);
 
 export async function syncListSource(
@@ -63,8 +92,19 @@ export async function syncListSource(
   });
 
   let accountKey: string | undefined;
-  if (source === "arena" || source === "tiktok" || source === "reddit") {
-    accountKey = (await resolveAccountHandle(account)) ?? undefined;
+  if (
+    source === "arena" ||
+    source === "tiktok" ||
+    source === "reddit" ||
+    source === "github" ||
+    source === "dribbble" ||
+    source === "bluesky"
+  ) {
+    /** A handle Source has no session to probe; its Account was keyed by DID when you connected. */
+    accountKey =
+      source === "bluesky"
+        ? (account.identityKey ?? undefined)
+        : ((await resolveAccountHandle(account)) ?? undefined);
     if (!accountKey) {
       log.info(`[pond sync:${source}] could not resolve account from session`);
       await patchAccountSync(accountId, { lastError: "auth_required" });
@@ -72,7 +112,10 @@ export async function syncListSource(
         accountId,
         source,
         state: "auth_required",
-        message: `Sign in to ${source} to enable background sync.`,
+        message:
+          source === "bluesky"
+            ? "Connect Bluesky with your handle to enable background sync."
+            : `Sign in to ${source} to enable background sync.`,
         lastError: "auth_required",
       });
       return;
@@ -83,10 +126,8 @@ export async function syncListSource(
     accountKey = (await resolveAccountHandle(account)) ?? undefined;
   }
 
-  const plan = listHarvestPlan(
-    source,
-    accountImportScope(source, account.sync),
-  );
+  const scope = accountImportScope(source, account.sync);
+  const plan = listHarvestPlan(source, scope);
   const accountSync = await getAccountSync(accountId);
   const { resumeCursor } = accountSync;
   const resuming = plan.primary && baseline.full && Boolean(resumeCursor);
@@ -108,6 +149,8 @@ export async function syncListSource(
   };
   if (resuming && resumeCursor) listArgs.resumeCursor = resumeCursor;
   if (plan.listKinds.length > 0) listArgs.listKinds = plan.listKinds;
+  const savedSince = savedSinceStart(source, scope);
+  if (savedSince) listArgs.savedSince = savedSince.toISOString();
   const harvest: ListHarvestResult = plan.collections
     ? await harvestSourceCollections(
         source,
@@ -177,11 +220,11 @@ export async function syncListSource(
   }
 
   const gaps: string[] = [];
-  const dualHarvest = source === "reddit" || source === "tiktok";
+  const dualHarvest = COMBINED_LISTS.has(source);
   let combined =
     dualHarvest && !plan.collections
       ? harvest.entries
-      : stampListKind(harvest.entries, "saved");
+      : defaultListKind(harvest.entries, "saved");
   if (dualHarvest && plan.collections && plan.primary) {
     const rest = await harvestSourceList(source, listArgs, { partition });
     if (rest.ok) {
@@ -238,6 +281,28 @@ export async function syncListSource(
       gaps.push(listGapNote("Liked videos", liked.reason));
     }
   }
+  const subscriptions = plan.subscriptions
+    ? subscriptionCheck(accountSync)
+    : null;
+  if (source === "substack" && subscriptions?.due) {
+    const checkedAt = new Date().toISOString();
+    const posts = await harvestSubstackSubscriptions(
+      { since: subscriptions.since, limit: SUBSCRIPTION_POSTS_PER_RUN },
+      partition,
+    );
+    if (posts.ok) {
+      combined = unionById(
+        combined,
+        posts.entries,
+        (e) => e.sourceId,
+        mergeEntryListKinds,
+      );
+      await patchAccountSync(accountId, { lastSubscriptionCheckAt: checkedAt });
+    } else {
+      log.warn(`[pond sync:substack] subscriptions failed: ${posts.reason}`);
+      gaps.push(listGapNote("Subscriptions", posts.reason));
+    }
+  }
 
   const collectionPass = plan.fileEveryCollection
     ? await walkEveryCollection("Folders", {
@@ -260,6 +325,16 @@ export async function syncListSource(
 
   for (const id of await mergeListKindsOntoExisting(source, combined)) {
     knownIds.delete(id);
+  }
+  if (harvest.complete) {
+    const dropped = await dropMissingListKind(
+      account,
+      "saved",
+      new Set(harvest.entries.map((e) => e.sourceId)),
+    );
+    if (dropped > 0) {
+      log.info(`[pond sync:${source}] ${dropped} saves left the list`);
+    }
   }
 
   const allFresh = combined.filter((e) => !knownIds.has(e.sourceId));

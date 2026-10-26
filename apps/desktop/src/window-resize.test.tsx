@@ -139,11 +139,18 @@ describe("sidebar resize handle", () => {
     expect(collapsed).not.toHaveBeenCalled();
   });
 
-  it("closes at the minimum before release and reopens at the minimum width", async () => {
+  it("holds at the minimum, closes past it before release, and reopens at the minimum width", async () => {
     const handle = element('[data-slot="handle"]');
     await pointer(handle, "pointerdown", 300);
     await pointer(handle, "pointermove", 221);
-    await pointer(handle, "pointermove", 220);
+    await pointer(handle, "pointermove", 200);
+    expect(collapsed).not.toHaveBeenCalled();
+    expect(
+      element('[data-slot="window"]').style.getPropertyValue(
+        "--window-left-track",
+      ),
+    ).toBe("220px");
+    await pointer(handle, "pointermove", 172);
     expect(collapsed).toHaveBeenCalledTimes(1);
     expect(element('[data-slot="window"]').hasAttribute("data-left-open")).toBe(
       false,

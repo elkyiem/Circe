@@ -3,7 +3,6 @@ import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { act, useLayoutEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { libraryChrome } from "@/features/library/state/library-chrome";
 import { selectOnlySave } from "@/features/saves";
 import { normalise, SavePatchSchema } from "@/features/saves/lib/reconcile";
 import {
@@ -149,10 +148,8 @@ describe("gallery keyboard interaction", () => {
     expect(selection.getAnchor()).toBe("B");
     expect(selection.getCursor()).toBe("D");
     expect(document.activeElement).toBe(collection());
-    libraryChrome.closeRightPane();
     await press("Enter");
-    expect(libraryChrome.getState().inspectorSaveId).toBe("D");
-    expect(libraryChrome.getState().rightPane).toBe("inspector");
+    expect(primarySelection.get()).toBe("D");
     await press("ArrowUp", { shiftKey: true });
     expect(selection.snapshot()).toEqual(["B"]);
     expect(selection.getCursor()).toBe("B");

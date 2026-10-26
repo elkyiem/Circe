@@ -24,6 +24,27 @@ function Body({ className, ...props }: ComponentPropsWithoutRef<"div">) {
   return <div className={cn(styles.body, className)} {...props} />;
 }
 
+interface BubbleProps extends ComponentPropsWithoutRef<"div"> {
+  trailing?: ReactNode;
+}
+
+function Bubble({ className, trailing, ...props }: BubbleProps) {
+  const bubble = (
+    <div
+      data-slot="message-bubble"
+      className={cn(styles.bubble, className)}
+      {...props}
+    />
+  );
+  if (!trailing) return bubble;
+  return (
+    <div className={styles["bubble-row"]}>
+      {bubble}
+      {trailing}
+    </div>
+  );
+}
+
 function Leading({ children }: { children?: ReactNode }) {
   if (!children) return null;
   return <div className={styles.leading}>{children}</div>;
@@ -68,6 +89,7 @@ function View({
 export const Message = {
   Root,
   Body,
+  Bubble,
   Leading,
   Footer,
   Actions,

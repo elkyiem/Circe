@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { type ReactNode, useEffect, useState } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { ViewerToolbarGroups } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import styles from "./styles.module.css";
 
 interface LivePhotoMedia {
@@ -15,12 +16,14 @@ export function LivePhotoViewer({
   url,
   onUnavailable,
   toolbarStart,
-  toolbarEnd,
+  toolbarActions,
+  toolbarNavigation,
 }: {
   url: string;
   onUnavailable: () => void;
   toolbarStart?: ReactNode;
-  toolbarEnd?: ReactNode;
+  toolbarActions?: ReactNode;
+  toolbarNavigation?: ReactNode;
 }) {
   const [media, setMedia] = useState<LivePhotoMedia>({
     image: null,
@@ -112,32 +115,37 @@ export function LivePhotoViewer({
           Reading Live Photo
         </div>
       )}
-      {media.image || media.video || toolbarStart || toolbarEnd ? (
+      {media.image || media.video || toolbarStart || toolbarActions ? (
         <ChromePortal slot="top">
           <ViewerHud.Bar
             label="Live Photo"
             start={toolbarStart}
             center={
-              media.image && media.video ? (
-                <>
-                  <ViewerHud.Tool
-                    label="Photo"
-                    pressed={!motion}
-                    onClick={() => setMotion(false)}
-                  >
-                    <IconImage />
-                  </ViewerHud.Tool>
-                  <ViewerHud.Tool
-                    label="Motion"
-                    pressed={motion}
-                    onClick={() => setMotion(true)}
-                  >
-                    <IconVideo />
-                  </ViewerHud.Tool>
-                </>
-              ) : null
+              <ViewerToolbarGroups
+                controls={
+                  media.image && media.video ? (
+                    <>
+                      <ViewerHud.Tool
+                        label="Photo"
+                        pressed={!motion}
+                        onClick={() => setMotion(false)}
+                      >
+                        <IconImage />
+                      </ViewerHud.Tool>
+                      <ViewerHud.Tool
+                        label="Motion"
+                        pressed={motion}
+                        onClick={() => setMotion(true)}
+                      >
+                        <IconVideo />
+                      </ViewerHud.Tool>
+                    </>
+                  ) : null
+                }
+                actions={toolbarActions}
+              />
             }
-            end={toolbarEnd}
+            end={toolbarNavigation}
           />
         </ChromePortal>
       ) : null}

@@ -1,8 +1,9 @@
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { libraryChrome } from "@/features/library/state/library-chrome";
 import {
   createFolderSidebarHarness,
+  fishList,
   queueSummary,
   sidebarCounts,
 } from "./test-harness";
@@ -13,31 +14,46 @@ describe("folder sidebar navigation", () => {
   beforeEach(() => harness.setup());
   afterEach(() => harness.cleanup());
 
-  it("opens the full Assistant page from the sidebar", async () => {
+  it("opens a fish from the Fish group", async () => {
+    fishList.current = [
+      {
+        id: "default",
+        name: "Koi",
+        color: "orange",
+        species: "koi",
+        instructions: "",
+        scope: { folderIds: [], tags: [] },
+        model: null,
+        routines: [],
+        lastRun: null,
+        createdAt: 0,
+        updatedAt: 0,
+        activity: null,
+        latest: null,
+      },
+    ];
     const router = await harness.mount();
-    const assistant = harness.button("Assistant");
-    expect(assistant.querySelector('[stroke="currentColor"]')).not.toBeNull();
-    await act(async () => assistant.click());
-    expect(router.state.location.pathname).toBe("/assistant");
-    expect(harness.button("Assistant").getAttribute("aria-current")).toBe(
-      "page",
-    );
+    await act(async () => {});
+    await act(async () => harness.button("Koi").click());
+    expect(router.state.location.pathname).toBe("/fish/default");
+    expect(harness.button("Koi").getAttribute("aria-current")).toBe("page");
     expect(harness.button("All").getAttribute("aria-current")).toBeNull();
   });
 
-  it("opens Downloads from the workspace header", async () => {
-    const router = await harness.mount();
-    await act(async () => harness.iconButton("Downloads").click());
-    expect(router.state.location.pathname).toBe("/downloads");
-  });
-
-  it("shows the running download count beside the Harvester mark", async () => {
+  it("shows the running download count on the Downloads row", async () => {
     queueSummary.current = { ...queueSummary.current, running: 12, waiting: 4 };
     const router = await harness.mount();
-    await act(async () => {});
-    const harvester = harness.iconButton("Downloads, 12 downloading");
-    expect(harvester.textContent).toBe("12");
-    await act(async () => harvester.click());
+    expect(harness.host.querySelector('[aria-label^="Downloads"]')).toBeNull();
+    const row = await vi.waitFor(() => {
+      const match = harness.host
+        .querySelector('[title="12 downloading"]')
+        ?.closest("button");
+      if (!match)
+        throw new Error("Expected the Downloads row to show 12 downloading");
+      return match;
+    });
+    expect(row.textContent).toContain("Downloads");
+    await act(async () => row.click());
     expect(router.state.location.pathname).toBe("/downloads");
   });
 
@@ -153,13 +169,11 @@ describe("folder sidebar navigation", () => {
     );
     const library = labels.indexOf("All");
     const uncategorized = labels.indexOf("Uncategorized");
-    const assistant = labels.indexOf("Assistant");
     const untagged = labels.indexOf("Untagged");
     const tags = labels.indexOf("Tags");
     const trash = labels.indexOf("Trash");
     expect(library).toBeLessThan(uncategorized);
-    expect(uncategorized).toBeLessThan(assistant);
-    expect(assistant).toBeLessThan(untagged);
+    expect(uncategorized).toBeLessThan(untagged);
     expect(untagged).toBeLessThan(tags);
     expect(tags).toBeLessThan(trash);
     expect(trash).toBeLessThan(labels.indexOf("Sources"));

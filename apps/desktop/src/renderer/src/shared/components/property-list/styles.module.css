@@ -34,3 +34,60 @@
   text-align: right;
   white-space: nowrap;
 }
+
+.root:is([data-layout="tiles"], [data-layout="grid"]) {
+  gap: 6px;
+
+  & .row {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 3px;
+    align-items: flex-start;
+    justify-content: flex-end;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 0;
+    padding: 8px 10px;
+    background: var(--ds-gray-a2);
+    border-radius: var(--ds-radius-sm);
+  }
+
+  & .row[data-interactive] {
+    cursor: var(--ds-cursor-interactive, pointer);
+    outline: none;
+    transition: background var(--ds-duration-fast) var(--ds-easing-standard);
+
+    &:hover,
+    &[data-popup-open] {
+      background: var(--ds-gray-a3);
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--ds-focus-ring);
+    }
+  }
+
+  & .label {
+    font-size: var(--ds-text-xs);
+    font-weight: var(--ds-weight-lg);
+    color: var(--ds-gray-10);
+  }
+
+  & .value {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+
+.root[data-layout="tiles"] {
+  flex-flow: row wrap;
+}
+
+.root[data-layout="grid"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  & .row[data-span="full"] {
+    grid-column: 1 / -1;
+  }
+}

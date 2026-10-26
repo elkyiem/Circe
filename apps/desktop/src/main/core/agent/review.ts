@@ -39,6 +39,8 @@ import { archiveSiteForSave } from "../refresh/archive-backfill";
 import { createView, listViews, updateView } from "../saved-views";
 import { syncAccount } from "../sync";
 import { createTag, mergeTags, renameTag, setSaveTags } from "../tags";
+import { fishMcp } from "./fish-mcp/live";
+import { isMcpOperation } from "./fish-mcp/operations";
 import { applyPondOperation, summarizeOperationResult } from "./operations";
 import { filterGroup } from "./tools";
 
@@ -97,6 +99,7 @@ export const reviewDependencies = {
   mergeDuplicateSaves,
   undoDuplicateMerge,
   applyPondOperation,
+  prepareTools: () => fishMcp.ensure(),
 };
 type ReviewDependencies = typeof reviewDependencies;
 
@@ -260,6 +263,8 @@ async function writeAction(
     if (action === "undo")
       throw new Error("Use Pond's Undo for this operation.");
     const request = agentOperationRequest.parse(change.payload);
+    /** An idle server closes after 10 minutes, so a late Apply reconnects before it looks the tool up. */
+    if (isMcpOperation(request.operation)) await deps.prepareTools();
     const result = await deps.applyPondOperation(request);
     change.payload = { ...request, result: summarizeOperationResult(result) };
     return;

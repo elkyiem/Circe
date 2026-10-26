@@ -76,7 +76,7 @@ export function HoverVideo({
   }, [active, primed, hoverEnabled]);
 
   const onEnter = useCallback(() => {
-    if (!hoverEnabled) return;
+    if (!hoverEnabled || document.body.dataset.saveDragging) return;
     setActive(true);
     setHoverPrimed(true);
   }, [hoverEnabled]);
@@ -143,6 +143,7 @@ export function HoverVideo({
         playsInline
         preload={primed ? "metadata" : "none"}
         className={styles.media}
+        draggable={false}
         data-fit={prefs.galleryFit}
         data-active={active ? "true" : undefined}
         data-ready={videoReady ? "true" : undefined}
@@ -151,7 +152,7 @@ export function HoverVideo({
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
         onMouseMove={(event) => {
-          if (!hoverEnabled) return;
+          if (!hoverEnabled || document.body.dataset.saveDragging) return;
           const el = internalRef.current;
           if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();

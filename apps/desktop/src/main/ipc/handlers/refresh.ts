@@ -1,4 +1,4 @@
-import { isSource } from "@pond/schema/sources";
+import { connectsByHandle, isSource } from "@pond/schema/sources";
 import log from "electron-log/main.js";
 import { IPC } from "../../../shared/constants";
 import {
@@ -80,6 +80,9 @@ export function registerRefreshHandlers(): void {
   safeHandle(IPC.sourceConnect, async (_, source: string) => {
     try {
       if (!isSource(source)) return { ok: false as const, mode: "external" };
+      if (connectsByHandle(source)) {
+        return { ok: true as const, mode: "external" as const };
+      }
       setPendingSessionSource(source);
       return await signInToSource(source);
     } catch (err) {
@@ -87,6 +90,24 @@ export function registerRefreshHandlers(): void {
       return { ok: false as const, mode: "external" };
     }
   });
+
+  safeHandle(
+    IPC.sourceConnectHandle,
+    async (_, source: string, handle: string) => {
+      try {
+        if (source !== "bluesky") {
+          return { ok: false as const, reason: "invalid" as const };
+        }
+        const { connectByHandle, liveConnectDeps } = await import(
+          "../../core/refresh/harvest/bluesky/connect"
+        );
+        return await connectByHandle(String(handle), liveConnectDeps());
+      } catch (err) {
+        log.warn("[pond ipc] sourceConnectHandle failed", err);
+        return { ok: false as const, reason: "unavailable" as const };
+      }
+    },
+  );
 
   safeHandle(IPC.sourceStatus, async (_, source: string) => {
     try {

@@ -26,7 +26,6 @@ it("renders the shared start, center, and end toolbar zones", async () => {
     root.render(
       <ViewerHud.Bar
         label="Preview controls"
-        collapseCenter
         start={<span>Count</span>}
         center={<span>View</span>}
         end={<button type="button">Action</button>}
@@ -36,7 +35,6 @@ it("renders the shared start, center, and end toolbar zones", async () => {
 
   const toolbar = host.querySelector('[role="toolbar"]');
   expect(toolbar?.getAttribute("aria-label")).toBe("Preview controls");
-  expect(toolbar?.hasAttribute("data-collapse-center")).toBe(true);
   expect(
     toolbar?.querySelector('[data-viewer-bar-slot="start"]')?.textContent,
   ).toBe("Count");

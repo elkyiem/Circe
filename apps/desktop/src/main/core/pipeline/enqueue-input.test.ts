@@ -13,6 +13,29 @@ describe("normalizeUrl", () => {
   it("returns invalid input unchanged", () => {
     expect(normalizeUrl("not a url")).toBe("not a url");
   });
+
+  it.each([
+    "https://github.com/Vercel/Next.js",
+    "https://www.github.com/vercel/next.js/",
+    "https://github.com/vercel/next.js.git",
+    "https://github.com/vercel/next.js?tab=readme-ov-file#install",
+  ])("folds %s onto one repo url", (url) => {
+    expect(normalizeUrl(url)).toBe("https://github.com/vercel/next.js");
+  });
+
+  it("leaves deeper GitHub links alone", () => {
+    expect(normalizeUrl("https://github.com/vercel/next.js/issues/1")).toBe(
+      "https://github.com/vercel/next.js/issues/1",
+    );
+  });
+
+  it("unwraps a Substack share link to the publication's post", () => {
+    expect(
+      normalizeUrl(
+        "https://open.substack.com/pub/lenny/p/how-to-price?utm_source=share",
+      ),
+    ).toBe("https://lenny.substack.com/p/how-to-price");
+  });
 });
 
 describe("normalizeEnqueueItems", () => {

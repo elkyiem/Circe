@@ -251,6 +251,12 @@ export function migratePond(sqlite: Database.Database): void {
 				);
 				CREATE INDEX IF NOT EXISTS agent_messages_chat_idx ON agent_messages(chat_id, created_at);
 
+				CREATE TABLE IF NOT EXISTS agent_chat_fish (
+					chat_id TEXT PRIMARY KEY REFERENCES agent_chats(id) ON DELETE CASCADE,
+					fish_id TEXT NOT NULL
+				);
+				CREATE INDEX IF NOT EXISTS agent_chat_fish_fish_idx ON agent_chat_fish(fish_id);
+
 				CREATE TABLE IF NOT EXISTS saved_views (
 					id TEXT PRIMARY KEY,
 					name TEXT NOT NULL,

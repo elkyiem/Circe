@@ -2,7 +2,6 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import "@/app/effects/save-library-bridge";
-import { libraryChrome } from "@/features/library/state/library-chrome";
 import { primarySelection } from "@/features/saves/state/selection";
 import { ToastHost } from "@/shared/components/toast-host";
 import { toastManager } from "@/shared/lib/toast";
@@ -112,7 +111,7 @@ it("starts a dropped link immediately and does not claim it is saved", async () 
   }
 });
 
-it("starts a pasted link without selecting it or opening its Details", async () => {
+it("starts a pasted link without selecting it", async () => {
   const query = vi.fn(async (operation: string) =>
     operation === "saves.quickAdd" ? { ok: true, id: "pasted-save" } : {},
   );
@@ -149,7 +148,6 @@ it("starts a pasted link without selecting it or opening its Details", async () 
     });
     expect(toastText()).toContain("Downloading");
     expect(primarySelection.get()).toBeNull();
-    expect(libraryChrome.getState().inspectorSaveId).toBeNull();
   } finally {
     await act(async () => root.unmount());
   }

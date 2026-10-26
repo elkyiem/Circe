@@ -36,7 +36,7 @@ export function sourceDetailHref(
   return page ? `${path}?page=${page}` : path;
 }
 
-export function isSourceDetailPath(pathname: string): boolean {
+function isSourceDetailPath(pathname: string): boolean {
   return pathname.startsWith("/sources/");
 }
 

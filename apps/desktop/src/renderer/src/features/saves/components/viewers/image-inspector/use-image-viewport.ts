@@ -9,7 +9,6 @@ import {
   containImage,
   viewToImagePoint,
 } from "@/features/saves/lib/image-regions";
-import { onTransitionMeasure } from "@/features/saves/lib/save-transition";
 import {
   FIT_POSE,
   type ImagePose,
@@ -169,14 +168,10 @@ export function useImageViewport({
       );
     };
     measure();
-    const release = onTransitionMeasure(measure);
-    if (!globalThis.ResizeObserver) return release;
+    if (!globalThis.ResizeObserver) return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    return () => {
-      release();
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
   const wheelState = useRef({

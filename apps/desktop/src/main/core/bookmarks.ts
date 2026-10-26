@@ -1,4 +1,5 @@
 import type { NewSave } from "@pond/schema/db";
+import type { ListKind } from "@pond/schema/list-kinds";
 import type { OkSuccess } from "@shared/query-contracts-shared";
 import type { SavesImportCounts } from "@shared/saves-contracts-shared";
 import { z } from "zod";
@@ -17,6 +18,7 @@ export interface Bookmark {
   url: string;
   addedAt: Date | null;
   folderIds: string[];
+  listKinds?: ListKind[];
 }
 
 export interface BookmarkFile {
@@ -212,14 +214,18 @@ export function parseBookmarkFile(text: string): BookmarkFile | null {
 }
 
 export interface BookmarkImportDependencies {
-  enqueueLink: (url: string) => Promise<EnqueueOneResult>;
+  enqueueLink: (
+    url: string,
+    listKinds: ListKind[] | undefined,
+  ) => Promise<EnqueueOneResult>;
   persistDates: (id: string, patch: Partial<NewSave>) => Promise<void>;
   importFolders: (folders: BookmarkFolder[]) => Promise<Map<string, string>>;
   addToFolder: (folderId: string, saveIds: string[]) => Promise<OkSuccess>;
 }
 
 const defaultDependencies: BookmarkImportDependencies = {
-  enqueueLink: (url) => enqueue(url, { trigger: "user:importBookmarks" }),
+  enqueueLink: (url, listKinds) =>
+    enqueue(url, { trigger: "user:importBookmarks", listKinds }),
   persistDates: async (id, patch) => {
     await persistSave(id, patch, { actorReason: "bookmarks:import" });
   },
@@ -238,7 +244,7 @@ export async function importBookmarkFile(
   for (const bookmark of file.bookmarks) {
     let result: EnqueueOneResult;
     try {
-      result = await dependencies.enqueueLink(bookmark.url);
+      result = await dependencies.enqueueLink(bookmark.url, bookmark.listKinds);
     } catch {
       skipped += 1;
       continue;

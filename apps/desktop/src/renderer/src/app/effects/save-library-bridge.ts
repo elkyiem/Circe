@@ -20,14 +20,9 @@ import { closeSave } from "@/features/saves/lib/save-nav";
 
 registerSaveLibraryBridge({
   getNav: () => libraryChrome.getState().nav,
-  inspectSave: (id) => libraryChrome.inspectSave(id),
-  openSaveDetails: (id) => libraryChrome.openSaveDetails(id),
-  setInspectorSaveId: (id) => libraryChrome.setInspectorSaveId(id),
-  setInspectorTab: (tab) => libraryChrome.setInspectorTab(tab),
   setNav: (nav) => libraryChrome.setNav(nav),
-  setAgentOpen: (open) => libraryChrome.setAgentOpen(open),
-  closeRightPane: () => libraryChrome.closeRightPane(),
   resetFilters,
+  closeDetails: () => libraryChrome.setDetailsOpen(false),
   openFolderPicker,
   openRename: openRenameDialog,
   openConversion: (ids, fileIndex, mode) =>
@@ -38,6 +33,10 @@ registerSaveLibraryBridge({
       combinator: "and",
       rules: [{ field: "color", operator: "near", value: color }],
     });
+    closeSave();
+  },
+  showMatching: (predicate) => {
+    setQuery({ combinator: "and", rules: [predicate] });
     closeSave();
   },
   setVisualProbe: ({ id, label }) =>

@@ -7,9 +7,11 @@ import styles from "./styles.module.css";
 
 export function RunStatus({
   state = "working",
+  icon,
   children,
 }: {
   state?: "working" | "complete" | "stopped";
+  icon?: ReactNode;
   children: ReactNode;
 }) {
   const reduced = useReducedMotionConfig();
@@ -24,7 +26,9 @@ export function RunStatus({
           <IconCheck />
         ) : state === "stopped" ? (
           <IconCircleDashedClock />
-        ) : null}
+        ) : (
+          icon
+        )}
         {state === "working" ? (
           <Shimmer.Root className={styles["working-label"]}>
             {children}

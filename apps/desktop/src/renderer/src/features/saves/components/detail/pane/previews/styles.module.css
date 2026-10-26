@@ -3,7 +3,7 @@
   display: flex;
   justify-content: center;
   height: 190px;
-  margin: 8px 0 14px;
+  margin: 0;
 }
 
 .preview {
@@ -28,14 +28,16 @@
 
 .preview figcaption {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  padding: 2px 5px;
-  font-size: var(--ds-text-sm);
+  top: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  font-size: var(--ds-text-xs);
   font-weight: var(--ds-weight-lg);
   color: white;
-  background: rgb(0 0 0 / 48%);
-  border-radius: var(--ds-radius-xs);
+  letter-spacing: 0.02em;
+  background: rgb(0 0 0 / 56%);
+  border-radius: var(--ds-radius-sm);
+  backdrop-filter: blur(8px);
 }
 
 .list[data-multiple] .preview {

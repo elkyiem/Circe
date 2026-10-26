@@ -49,6 +49,7 @@ import {
   findDuplicates,
   importBookmarks,
   importClipboard,
+  importDataExport,
   importEagle,
   importEaglePackage,
   importLegacyLibrary,
@@ -201,6 +202,14 @@ export function buildNewMenuItems(
           icon: <IconFolderImport />,
           keywords: "mymind cards csv export migrate",
           onClick: () => void runNewAction(importMymind),
+        },
+        {
+          id: "data-export",
+          label: "Import Data Export",
+          icon: <IconFolderImport />,
+          keywords:
+            "archive takeout zip twitter x instagram tiktok youtube reddit likes migrate",
+          onClick: () => void runNewAction(importDataExport),
         },
         {
           id: "page-assets",

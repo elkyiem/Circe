@@ -59,6 +59,7 @@ it("renders actionable copy and opens billing", async () => {
 it("uses a clear fallback for unknown provider failures", () => {
   expect(responseErrorCopy("Connection reset by peer")).toEqual({
     title: "Couldn't finish this response",
-    description: "Check your Assistant provider settings, then try again.",
+    description: "Check your provider in Providers, then try again.",
+    action: { label: "Open Providers", settings: true },
   });
 });

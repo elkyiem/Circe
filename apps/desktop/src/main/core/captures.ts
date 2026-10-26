@@ -1,6 +1,11 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type {
+  CaptureDraft,
+  CaptureMetadata,
+  CaptureReceipt,
+} from "@pond/schema/capture";
 import { saves } from "@pond/schema/db";
 import type { ExtensionCookie } from "@pond/schema/session";
 import type { Transaction } from "@pond/schema/tx";
@@ -8,7 +13,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { libraryRoot } from "../paths";
 import { captureAsset } from "./capture-asset";
-import { createCaptureQueue } from "./capture-queue";
+import { applyAfterSave, createCaptureQueue } from "./capture-queue";
 import { executeBatch } from "./executor";
 import { emitFeedback } from "./feedback";
 import { folderIdsForSave } from "./folder-memberships";
@@ -19,7 +24,12 @@ import { normalizeTagList, prepareTagRegistryUpdates } from "./tags";
 import { recordBatchForUndo } from "./undo";
 import { hasUserTitle } from "./user-metadata";
 
+type CaptureItem = CaptureDraft["items"][number];
+
 const captureCookies = new Map<string, ExtensionCookie[]>();
+const completeListeners = new Set<
+  (receipt: CaptureReceipt) => void | Promise<void>
+>();
 async function writeCaptureQueue(path: string, value: string): Promise<void> {
   await writeFile(path, value, { mode: 0o600 });
 }
@@ -35,12 +45,22 @@ export function attachCaptureCookies(
   setTimeout(() => captureCookies.delete(id), 30 * 60_000).unref();
 }
 
+export function onCaptureComplete(
+  listener: (receipt: CaptureReceipt) => void | Promise<void>,
+): () => void {
+  completeListeners.add(listener);
+  return () => completeListeners.delete(listener);
+}
+
 export const captures = createCaptureQueue({
   root: libraryRoot,
   readStored: readCaptureQueue,
   writeStored: writeCaptureQueue,
   transfer: runLibraryTransfer,
-  onComplete: () => emitFeedback("extensionCapture"),
+  async onComplete(receipt) {
+    emitFeedback("extensionCapture");
+    for (const listener of completeListeners) await listener(receipt);
+  },
   async process(item, metadata, identity, originUrl, trigger) {
     let id: string;
     let duplicate = false;
@@ -107,45 +127,55 @@ export const captures = createCaptureQueue({
     const row = db.select().from(saves).where(eq(saves.id, id)).get();
     if (!row)
       throw new Error("The captured Save is missing. Retry this capture.");
-    const txs: Transaction[] = await prepareTagRegistryUpdates(metadata.tags);
-    const update: Extract<Transaction, { kind: "update"; model: "save" }> = {
-      kind: "update",
-      model: "save",
-      id,
-      before: { tags: row.tags },
-      patch: {
-        tags: normalizeTagList([...(row.tags ?? []), ...metadata.tags]),
-      },
-      meta: { actor: "user", actorReason: "capture:metadata" },
-    };
-    if (metadata.title || item.title) {
-      update.patch.title = metadata.title || item.title;
-      update.before.title = row.title;
-    }
-    if (metadata.title)
-      update.titleLock = { before: hasUserTitle(id), after: true };
-    if (metadata.notes) {
-      update.patch.notes = metadata.notes;
-      update.before.notes = row.notes;
-    }
-    if (metadata.rating !== undefined) {
-      update.patch.rating = metadata.rating;
-      update.before.rating = row.rating;
-    }
-    txs.push(update);
-    if (metadata.folderIds.length) {
-      const before = await folderIdsForSave(id);
-      txs.push({
-        kind: "update",
-        model: "save_folder",
-        id,
-        patch: { folderIds: [...new Set([...before, ...metadata.folderIds])] },
-        before: { folderIds: before },
-        meta: { actor: "user", actorReason: "capture:folders" },
-      });
-    }
-    await executeBatch(txs);
-    recordBatchForUndo(txs);
-    return { id, duplicate };
+    return applyAfterSave({ id, duplicate }, () =>
+      applyCaptureMetadata(id, row, item, metadata),
+    );
   },
 });
+
+async function applyCaptureMetadata(
+  id: string,
+  row: typeof saves.$inferSelect,
+  item: CaptureItem,
+  metadata: CaptureMetadata,
+): Promise<void> {
+  const txs: Transaction[] = await prepareTagRegistryUpdates(metadata.tags);
+  const update: Extract<Transaction, { kind: "update"; model: "save" }> = {
+    kind: "update",
+    model: "save",
+    id,
+    before: { tags: row.tags },
+    patch: {
+      tags: normalizeTagList([...(row.tags ?? []), ...metadata.tags]),
+    },
+    meta: { actor: "user", actorReason: "capture:metadata" },
+  };
+  if (metadata.title || item.title) {
+    update.patch.title = metadata.title || item.title;
+    update.before.title = row.title;
+  }
+  if (metadata.title)
+    update.titleLock = { before: hasUserTitle(id), after: true };
+  if (metadata.notes) {
+    update.patch.notes = metadata.notes;
+    update.before.notes = row.notes;
+  }
+  if (metadata.rating !== undefined) {
+    update.patch.rating = metadata.rating;
+    update.before.rating = row.rating;
+  }
+  txs.push(update);
+  if (metadata.folderIds.length) {
+    const before = await folderIdsForSave(id);
+    txs.push({
+      kind: "update",
+      model: "save_folder",
+      id,
+      patch: { folderIds: [...new Set([...before, ...metadata.folderIds])] },
+      before: { folderIds: before },
+      meta: { actor: "user", actorReason: "capture:folders" },
+    });
+  }
+  await executeBatch(txs);
+  recordBatchForUndo(txs);
+}

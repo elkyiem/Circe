@@ -1,12 +1,13 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect } from "react";
-import { RightPane } from "@/app/components/right-pane";
+import { SaveDetails } from "@/app/components/save-details";
 import { Toolbar } from "@/app/components/toolbar";
 import { Tray } from "@/app/components/tray";
 import { AppHotkeys } from "@/app/effects/app-hotkeys";
 import { EditableHotkeyGuard } from "@/app/effects/editable-hotkey-guard";
 import { MenuBridge } from "@/app/effects/menu-bridge";
 import { UndoRedoBridge } from "@/app/effects/undo-redo-bridge";
+import { fishIdFromPath } from "@/features/fish";
 import { FolderSidebar } from "@/features/library/components/folder-sidebar";
 import { NewMenuDialogHost } from "@/features/library/components/new-menu";
 import { OrganizationRenameDialogHost } from "@/features/library/components/organization-rename-dialog";
@@ -26,6 +27,12 @@ import {
 import { getAppRouter } from "@/shared/lib/app-router";
 import { settingsHref } from "@/shared/lib/open-settings";
 
+const FishDetails = lazy(() =>
+  import("@/app/components/fish-details").then((module) => ({
+    default: module.FishDetails,
+  })),
+);
+
 const SettingsSidebar = lazy(() =>
   import("@/features/settings/components/sidebar").then((module) => ({
     default: module.SettingsSidebar,
@@ -44,6 +51,7 @@ export function RootShell() {
       SourceDetailsPageSchema.safeParse(state.location.search.page).data,
   });
   const sourceDetail = parseSourceDetailPath(pathname, detailPage);
+  const viewingFish = fishIdFromPath(pathname) !== null;
   useEffect(() => {
     return window.pond.onNavigate((path) => {
       const pathname = path.split("?")[0] ?? "";
@@ -86,6 +94,16 @@ export function RootShell() {
       <DuplicateImportReviewHost />
       <AppShell.Root
         header={<Toolbar />}
+        right={
+          viewingFish ? (
+            <Suspense fallback={null}>
+              <FishDetails />
+            </Suspense>
+          ) : (
+            <SaveDetails />
+          )
+        }
+        rightOpen={viewingFish || saveIdFromPath(pathname) !== null}
         left={
           isSettings ? (
             <Suspense fallback={null}>
@@ -100,7 +118,6 @@ export function RootShell() {
             <FolderSidebar />
           )
         }
-        right={isSettings || sourceDetail ? undefined : <RightPane />}
       >
         <Outlet />
       </AppShell.Root>

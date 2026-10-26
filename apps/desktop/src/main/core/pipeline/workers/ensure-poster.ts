@@ -159,7 +159,8 @@ async function ensurePoster(
   if (replacing) options.replaceFilesWithKind = "poster";
   await persistSave(saveId, {}, options);
   const latest = await readSave(saveId);
-  await ensureSaveThumbnail(saveId, latest);
+  /** The thumbnail is rendered from the poster, so a new poster makes the old one stale. */
+  await ensureSaveThumbnail(saveId, latest, { force: true });
   log.info(
     "[pond pipeline:ensure-poster] wrote posters",
     saveId,
@@ -237,7 +238,7 @@ export async function ensureRemotePoster(
       newFiles: [poster],
     },
   );
-  await runtime.ensureSaveThumbnail(saveId, updated);
+  await runtime.ensureSaveThumbnail(saveId, updated, { force: true });
   log.info("[pond pipeline:ensure-poster] wrote remote poster", saveId);
 }
 

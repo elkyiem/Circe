@@ -324,6 +324,28 @@ describe("Pond operation reviews", () => {
     });
   });
 
+  it("reconnects MCP servers before applying a reviewed MCP tool call", async () => {
+    const change = operationChange();
+    if (change.field !== "action") throw new Error("Expected action fixture");
+    const request = {
+      operation: "mcp.github.create_issue",
+      arguments: { title: "Bug" },
+      libraryId: "library",
+    };
+    mock.changes = [{ ...change, after: request.operation, payload: request }];
+    const prepareTools = vi.fn(async () => {});
+    const apply = vi
+      .fn<(typeof reviewDependencies)["applyPondOperation"]>()
+      .mockResolvedValue({ text: "Created #12" });
+    await review(
+      { messageId: "message", changeIds: ["operation"], action: "apply" },
+      { ...deps, prepareTools, applyPondOperation: apply },
+    );
+    expect(prepareTools).toHaveBeenCalledOnce();
+    expect(apply).toHaveBeenCalledExactlyOnceWith(request);
+    expect(mock.changes[0]).toMatchObject({ status: "applied" });
+  });
+
   it("preserves a failed operation as pending and supports dismissal without executing", async () => {
     mock.changes = [operationChange()];
     const apply = vi

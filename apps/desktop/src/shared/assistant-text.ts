@@ -19,3 +19,53 @@ export function sourceExcerpt(
     .slice(0, limit)
     .trim();
 }
+
+/** A fish writes this alone on a line between chat messages it sends separately. */
+export const MESSAGE_BREAK = "[[next]]";
+
+const FENCE = /^\s*(?:```|~~~)/;
+
+/** A reply's separate chat messages, in order; a reply without breaks is one message. */
+export function splitMessages(text: string): string[] {
+  const messages: string[] = [];
+  let current: string[] = [];
+  let fenced = false;
+  for (const line of text.split("\n")) {
+    if (FENCE.test(line)) fenced = !fenced;
+    if (!fenced && line.trim() === MESSAGE_BREAK) {
+      messages.push(current.join("\n"));
+      current = [];
+      continue;
+    }
+    current.push(line);
+  }
+  const tail = current.at(-1)?.trim() ?? "";
+  /** A break still revealing on screen shows as nothing, never as stray brackets. */
+  if (!fenced && tail.startsWith("[[") && MESSAGE_BREAK.startsWith(tail))
+    current.pop();
+  messages.push(current.join("\n"));
+  return messages.map((message) => message.trim()).filter(Boolean);
+}
+
+/** The text a model reads back: separate messages keep their breaks. */
+export function joinMessages(messages: readonly string[]): string {
+  return messages.join(`\n${MESSAGE_BREAK}\n`);
+}
+
+const PREVIEW_LENGTH = 140;
+
+export function plainPreview(markdown: string): string {
+  const text = markdown
+    .split(MESSAGE_BREAK)
+    .join(" ")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/[*_~`]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > PREVIEW_LENGTH
+    ? `${text.slice(0, PREVIEW_LENGTH - 1).trimEnd()}…`
+    : text;
+}

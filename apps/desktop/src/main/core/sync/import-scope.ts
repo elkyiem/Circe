@@ -20,11 +20,21 @@ const SEPARATE_LIKED_LISTS: ReadonlySet<Source> = new Set([
 ]);
 
 /** Sources that read saved and liked items in one walk, which skips the tab or listing you leave out. */
-const COMBINED_LISTS: ReadonlySet<Source> = new Set(["reddit", "tiktok"]);
+export const COMBINED_LISTS: ReadonlySet<Source> = new Set([
+  "reddit",
+  "tiktok",
+  "substack",
+  "vimeo",
+  "bluesky",
+]);
+
+/** Sources that can also import new posts from what you subscribe to, as their own pass. */
+const SUBSCRIPTION_SOURCES: ReadonlySet<Source> = new Set(["substack"]);
 
 export interface ListHarvestPlan {
   primary: boolean;
   liked: boolean;
+  subscriptions: boolean;
   /** What a combined walk reads; empty for Sources that walk their lists separately. */
   listKinds: ListKind[];
   collections: ImportCollection[] | null;
@@ -37,6 +47,8 @@ export function listHarvestPlan(
   scope: ImportScope | undefined,
 ): ListHarvestPlan {
   const saved = importsListKind(scope, "saved");
+  const subscriptions =
+    SUBSCRIPTION_SOURCES.has(source) && importsListKind(scope, "subscription");
   const collections =
     saved && scope?.collections && scope.collections.length > 0
       ? scope.collections
@@ -50,6 +62,7 @@ export function listHarvestPlan(
     return {
       primary: listKinds.length > 0,
       liked: false,
+      subscriptions,
       listKinds,
       collections,
       fileEveryCollection: collectionFiling(source, scope) === "every",
@@ -59,6 +72,7 @@ export function listHarvestPlan(
   return {
     primary: collections === null && (!separateLiked || saved),
     liked: separateLiked && importsListKind(scope, "liked"),
+    subscriptions,
     listKinds: [],
     collections,
     fileEveryCollection: collectionFiling(source, scope) === "every",
@@ -66,6 +80,34 @@ export function listHarvestPlan(
 }
 
 const COLLECTION_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const SUBSCRIPTION_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/** A first read reaches back this far, so connecting shows the last week of posts rather than an archive. */
+const SUBSCRIPTION_FIRST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface SubscriptionCheck {
+  due: boolean;
+  since: string;
+}
+
+/** Reading every subscribed feed costs one request per publication, so it runs a few times a day. */
+export function subscriptionCheck(
+  sync: Pick<SourceSyncPrefs, "lastSubscriptionCheckAt">,
+  now = Date.now(),
+): SubscriptionCheck {
+  const last = sync.lastSubscriptionCheckAt
+    ? Date.parse(sync.lastSubscriptionCheckAt)
+    : Number.NaN;
+  if (!Number.isFinite(last)) {
+    return {
+      due: true,
+      since: new Date(now - SUBSCRIPTION_FIRST_WINDOW_MS).toISOString(),
+    };
+  }
+  return {
+    due: now - last >= SUBSCRIPTION_CHECK_INTERVAL_MS,
+    since: new Date(last).toISOString(),
+  };
+}
 
 /** Collection walks stop at known saves, so a save moved into a collection later only turns up on a daily read to the end. */
 export function collectionCheckDue(

@@ -1,13 +1,34 @@
 import { app } from "electron";
 import { sourcesSkippingLikes } from "../../shared/import-scope";
-import { attachCaptureCookies, captures } from "../core/captures";
+import {
+  attachCaptureCookies,
+  captures,
+  onCaptureComplete,
+} from "../core/captures";
+import { createFishHandoff } from "../fish-handoff";
 import { enqueue, libraryInfo, sessionImport, sessionPending } from "../ops";
 import type { NativePorts } from "./rpc";
+import { importSharedFiles } from "./share-inbox";
+
+const fishHandoff = createFishHandoff({
+  fishExists: async (id) => {
+    const { readFish } = await import("../core/fish/store");
+    return readFish(id) !== null;
+  },
+  openMainWindow: async () => {
+    const { getMainWindow, openLibraryWindow } = await import("../window");
+    await openLibraryWindow();
+    return getMainWindow();
+  },
+  activate: () => app.focus({ steal: true }),
+});
+onCaptureComplete(fishHandoff.complete);
 
 export function liveNativePorts(): NativePorts {
   return {
-    capture: async (draft, cookies) => {
+    capture: async (draft, cookies, fishId) => {
       if (cookies?.length) attachCaptureCookies(draft.id, cookies);
+      if (fishId) fishHandoff.remember(draft.id, fishId);
       return captures.accept(draft);
     },
     captureStatus: (id) => captures.status(id),
@@ -33,6 +54,10 @@ export function liveNativePorts(): NativePorts {
           lastUsedAt: tag.lastUsedAt?.getTime() ?? null,
         }));
     },
+    fishList: async () => {
+      const { listFish } = await import("../core/fish/store");
+      return listFish().map((fish) => ({ id: fish.id, name: fish.name }));
+    },
     extensionSettings: async () => {
       const [{ getPrefs }, { listAccounts }] = await Promise.all([
         import("../core/prefs"),
@@ -46,6 +71,7 @@ export function liveNativePorts(): NativePorts {
     },
     sessionPending,
     sessionImport,
+    importSharedFiles: (paths) => importSharedFiles(paths),
     appVersion: () => app.getVersion(),
   };
 }

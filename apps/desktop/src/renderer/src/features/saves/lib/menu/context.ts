@@ -1,4 +1,4 @@
-import { isAuxiliaryKind, isThumbnailKind } from "@shared/save-file-names";
+import { isAuxiliaryKind } from "@shared/save-file-names";
 import { resolveFileIndex } from "@/features/saves/lib/actions";
 import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { deriveTypeKind } from "@/features/saves/lib/media/units";
@@ -74,10 +74,8 @@ export function createSaveMenuContext(
     (targetFile?.mimeType === "image/webp" ||
       /\.webp(?:$|[?#])/i.test(targetFile?.path ?? ""));
   const isVideo = !batch && deriveTypeKind(targetFile, save) === "video";
-  const hasCustomThumbnail =
-    !batch &&
-    save.files.some((file: SaveFile) => isThumbnailKind(file.kind)) &&
-    save.files.some((file: SaveFile) => !isAuxiliaryKind(file.kind));
+  const canResetThumbnail =
+    !batch && save.files.some((file: SaveFile) => !isAuxiliaryKind(file.kind));
 
   return {
     saves,
@@ -112,7 +110,7 @@ export function createSaveMenuContext(
       saves.some(
         (item) => Boolean(item.url) && item.source === "web" && !item.deletedAt,
       ),
-    hasCustomThumbnail,
+    canResetThumbnail,
     canRename: !batch && save.source === "local",
     fontActivated,
   };

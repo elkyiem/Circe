@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { ViewerToolbarGroups } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import { formatBytes } from "@/shared/lib/format";
 import { archiveSafety } from "./archive";
 import styles from "./styles.module.css";
@@ -13,7 +14,8 @@ interface ArchiveFileViewerProps {
   size: number;
   onUnavailable: () => void;
   toolbarStart?: ReactNode;
-  toolbarEnd?: ReactNode;
+  toolbarActions?: ReactNode;
+  toolbarNavigation?: ReactNode;
 }
 
 interface ArchiveEntry {
@@ -37,7 +39,8 @@ export function ArchiveFileViewer({
   size,
   onUnavailable,
   toolbarStart,
-  toolbarEnd,
+  toolbarActions,
+  toolbarNavigation,
 }: ArchiveFileViewerProps) {
   const [entries, setEntries] = useState<ArchiveEntry[] | null>(null);
   const [query, setQuery] = useState("");
@@ -120,17 +123,26 @@ export function ArchiveFileViewer({
             </>
           }
           center={
-            <Input.Root size="sm" variant="secondary" className={styles.field}>
-              <Input.Field
-                type="search"
-                value={query}
-                placeholder="Filter files…"
-                aria-label="Filter archive files"
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </Input.Root>
+            <ViewerToolbarGroups
+              controls={
+                <Input.Root
+                  size="sm"
+                  variant="secondary"
+                  className={styles.field}
+                >
+                  <Input.Field
+                    type="search"
+                    value={query}
+                    placeholder="Filter files…"
+                    aria-label="Filter archive files"
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </Input.Root>
+              }
+              actions={toolbarActions}
+            />
           }
-          end={toolbarEnd}
+          end={toolbarNavigation}
         />
       </ChromePortal>
       {error ? <div className={styles.status}>{error}</div> : null}

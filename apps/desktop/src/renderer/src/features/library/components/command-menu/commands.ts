@@ -3,6 +3,7 @@ import {
   IconBookmark,
   IconBookmarkSlash,
   IconChatBubble,
+  IconCircleInfo,
   IconCoffee,
   IconCompass,
   IconCopy,
@@ -18,6 +19,8 @@ import {
   IconVersions,
   IconWindowDownload,
 } from "@pond/icons";
+import { DEFAULT_FISH_ID } from "@shared/fish-contracts";
+import { fishPath } from "@/features/fish";
 import {
   importClipboard,
   importEagle,
@@ -31,6 +34,7 @@ import { resetFilters } from "@/features/library/state/view-store";
 import { openSources, pickWatchedFolder } from "@/features/sources";
 import { getAppRouter } from "@/shared/lib/app-router";
 import { openSettings } from "@/shared/lib/open-settings";
+import { fishIntroDialog } from "@/shared/state/fish-intro";
 import { setupFlow } from "@/shared/state/setup";
 import { supportDialog } from "@/shared/state/support";
 import type { CommandSpec } from "./types";
@@ -196,13 +200,13 @@ export const COMMANDS: readonly CommandSpec[] = [
     run: () => navigateTo("/tags"),
   },
   {
-    id: "assistant",
+    id: "fish",
     group: "Navigate",
-    label: "Assistant",
+    label: "Fish",
     detail: "Ask your library",
     icon: IconChatBubble,
-    keywords: "ask chat ai",
-    run: () => navigateTo("/assistant"),
+    keywords: "ask chat ai assistant",
+    run: () => navigateTo(fishPath(DEFAULT_FISH_ID)),
   },
   {
     id: "trash",
@@ -227,6 +231,19 @@ export const COMMANDS: readonly CommandSpec[] = [
     shortcut: "app.settings",
     run: () => openSettings(),
   },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          id: "gallery",
+          group: "App",
+          label: "Open Gallery",
+          detail: "Koi cards in every state",
+          icon: IconAlbum2,
+          keywords: "components cards styles dev playground",
+          run: () => navigateTo("/gallery"),
+        } satisfies CommandSpec,
+      ]
+    : []),
   {
     id: "run-setup",
     group: "App",
@@ -235,6 +252,15 @@ export const COMMANDS: readonly CommandSpec[] = [
     icon: IconCompass,
     keywords: "onboarding welcome guide tour setup",
     run: () => setupFlow.open("existing"),
+  },
+  {
+    id: "about-fish",
+    group: "App",
+    label: "About Fish",
+    detail: "What fish do and where Assistant went",
+    icon: IconCircleInfo,
+    keywords: "assistant chat ai help intro koi",
+    run: () => fishIntroDialog.open(),
   },
   {
     id: "support",

@@ -1,4 +1,4 @@
-import { IconBookmarkFill, IconMagnifier as Magnifier } from "@pond/icons";
+import { IconTagFill, IconMagnifier as Magnifier } from "@pond/icons";
 import { Accordion, Button, DataTable, Empty, Input, Settings } from "@pond/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useMemo, useRef } from "react";
@@ -157,7 +157,7 @@ export function TagsSection() {
             ) : total === 0 ? (
               <Empty.Root>
                 <Empty.Media>
-                  <IconBookmarkFill />
+                  <IconTagFill size={32} />
                 </Empty.Media>
                 <Empty.Title>No tags yet</Empty.Title>
                 <Empty.Description>

@@ -3,6 +3,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import { expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { AssistantSource } from "../../../shared/assistant";
+import { splitMessages } from "../../../shared/assistant-text";
 import {
   type CompletionInput,
   completeWithTools as complete,
@@ -615,4 +616,83 @@ it("discovers app capabilities through the SDK loop and prepares one exact actio
       libraryId: "library",
     },
   });
+});
+
+it("sends the heads-up before a tool call as its own message while the tool runs", async () => {
+  const chunks = toolCallChunks("search-1", "searchLibrary", {
+    query: "posters",
+  });
+  const model = scriptedModel(
+    [
+      ...chunks.slice(0, 1),
+      { type: "text-start", id: "text-1" },
+      { type: "text-delta", id: "text-1", delta: "Looking now." },
+      { type: "text-end", id: "text-1" },
+      ...chunks.slice(1),
+    ],
+    textChunks("Nothing matched posters."),
+  );
+  const input = {
+    ...request(model),
+    messages: [{ role: "user" as const, content: "Find my posters" }],
+  };
+  const search = vi.fn().mockImplementation(async () => {
+    expect(input.onText).toHaveBeenCalledWith("Looking now.\n[[next]]\n");
+    return { results: [] };
+  });
+  const reply = await complete({
+    ...input,
+    tools: [tool("searchLibrary", search)],
+  });
+
+  expect(search).toHaveBeenCalledOnce();
+  expect(splitMessages(reply)).toEqual([
+    "Looking now.",
+    "Nothing matched posters.",
+  ]);
+});
+
+it("sends 'send me 3 separate messages' as three ordered messages after its tool calls", async () => {
+  const search = vi.fn().mockResolvedValue({ results: [] });
+  const model = scriptedModel(
+    toolCallChunks("search-1", "searchLibrary", { query: "greetings" }),
+    textChunks("Hey!\n[[next]]\nHere's the second.\n[[next]]\nAnd the third."),
+  );
+  const input = {
+    ...request(model),
+    messages: [
+      { role: "user" as const, content: "send me 3 separate messages" },
+    ],
+    tools: [tool("searchLibrary", search)],
+  };
+  const reply = await complete(input);
+
+  expect(search).toHaveBeenCalledOnce();
+  expect(promptDump(model)).toContain("[[next]]");
+  expect(splitMessages(reply)).toEqual([
+    "Hey!",
+    "Here's the second.",
+    "And the third.",
+  ]);
+});
+
+it("sends Apple Intelligence the compact prompt and only read-only tools", async () => {
+  const model = textModel("You have 3 posters.");
+  await complete({
+    ...request(model),
+    provider: "apple",
+    model: "system",
+    apiKey: null,
+    controls: {
+      fast: false,
+      contextTokens: 4_096,
+      reasoning: "provider-default",
+    },
+    tools: [tool("searchLibrary"), tool("proposeChanges")],
+  });
+
+  const call = model.doStreamCalls[0];
+  expect(call?.tools?.map((spec) => spec.name)).toEqual(["searchLibrary"]);
+  const system = call?.prompt.find((message) => message.role === "system");
+  expect(system?.content).toMatch(/^You are a fish in Pond, a library/);
 });

@@ -1,4 +1,4 @@
-import { IconCircleCheck, IconWindowDownloadFill } from "@pond/icons";
+import { IconCircleCheckFill, IconWindowDownloadFill } from "@pond/icons";
 import { Button, Empty } from "@pond/ui";
 import { getAppRouter } from "@/shared/lib/app-router";
 
@@ -6,7 +6,7 @@ export function DownloadsEmpty() {
   return (
     <Empty.Root>
       <Empty.Media>
-        <IconWindowDownloadFill />
+        <IconWindowDownloadFill size={32} />
       </Empty.Media>
       <Empty.Title>No downloads yet</Empty.Title>
       <Empty.Description>
@@ -33,7 +33,7 @@ export function DownloadsCompletedHidden({
   return (
     <Empty.Root role="status" aria-live="polite">
       <Empty.Media>
-        <IconCircleCheck />
+        <IconCircleCheckFill size={32} />
       </Empty.Media>
       <Empty.Title>No unfinished downloads</Empty.Title>
       <Empty.Description>

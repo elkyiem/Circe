@@ -61,7 +61,7 @@ export function AgentSection() {
         <Settings.HeaderText>
           <Settings.Title>Providers</Settings.Title>
           <Settings.Description>
-            Connect the AI providers Assistant uses with your keys or a local
+            Connect the AI providers your fish use with your keys or a local
             host you run.
           </Settings.Description>
         </Settings.HeaderText>

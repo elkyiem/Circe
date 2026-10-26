@@ -1,9 +1,8 @@
-import { IconCheck } from "@pond/icons";
 import { Checkbox } from "@pond/ui";
 import type { DuplicateGroupResult } from "@shared/saves-mutation-contracts";
 import { useSelector } from "@tanstack/react-store";
 import { type ReactNode, useEffect, useId } from "react";
-import { CardThumb } from "@/features/saves";
+import { SaveTile } from "@/features/saves";
 import { pickPrimaryFile } from "@/features/saves/media";
 import { ensureSaves, savesStore } from "@/features/saves/pool";
 import type { Save } from "@/features/saves/types";
@@ -68,52 +67,25 @@ function Tile({
   const title = save?.title || "Untitled";
   const file = save ? pickPrimaryFile(save) : null;
   const extension = file?.path.split(".").pop()?.toUpperCase();
-  const details = [extension, file?.size ? formatBytes(file.size) : null]
+  const detail = [
+    extension,
+    file?.size ? formatBytes(file.size) : null,
+    file?.width && file.height ? `${file.width} × ${file.height}` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
-  const size =
-    file?.width && file.height ? `${file.width} × ${file.height}` : null;
-  const body = (
-    <>
-      <span className={styles.frame}>
-        {save ? <CardThumb save={save} width={160} /> : null}
-        {mergeable && keep ? (
-          <span className={styles.tick} aria-hidden>
-            <IconCheck size={12} />
-          </span>
-        ) : null}
-      </span>
-      <span className={styles.caption}>
-        <span className={styles.title} title={title}>
-          {title}
-        </span>
-        {details ? <span className={styles.meta}>{details}</span> : null}
-        {size ? <span className={styles.meta}>{size}</span> : null}
-      </span>
-    </>
-  );
   return (
-    <li
-      className={styles.tile}
-      data-keep={(mergeable && keep) || undefined}
-      data-dimmed={(mergeable && !keep) || undefined}
-      data-save-id={id}
-    >
-      {mergeable ? (
-        <button
-          type="button"
-          className={styles.pick}
-          aria-pressed={keep}
-          aria-label={`Keep ${title}`}
-          disabled={disabled}
-          onClick={onKeep}
-        >
-          {body}
-        </button>
-      ) : (
-        <span className={styles.pick}>{body}</span>
-      )}
-    </li>
+    <SaveTile
+      saveId={id}
+      selected={mergeable && keep}
+      dimmed={mergeable && !keep}
+      detail={detail || undefined}
+      fallback={{ icon: null, title }}
+      aria-pressed={mergeable ? keep : undefined}
+      aria-label={mergeable ? `Keep ${title}` : title}
+      disabled={!mergeable || disabled}
+      onClick={mergeable ? onKeep : undefined}
+    />
   );
 }
 

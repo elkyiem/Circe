@@ -1,7 +1,5 @@
 import { useLayoutEffect, useState } from "react";
 import {
-  useAgentWidth,
-  useRightPane,
   useSidebarOpen,
   useSidebarWidth,
 } from "@/features/library/state/library-chrome";
@@ -9,11 +7,8 @@ import { observeSettledSize } from "@/shared/lib/settled-resize";
 
 const MAIN_PADDING_INLINE = 20;
 const GRID_PADDING = MAIN_PADDING_INLINE * 2;
-const RIGHT_PANE_INSET = 16;
 
 interface PaneWidths {
-  agentOpen: boolean;
-  agentWidth: number;
   sidebarOpen: boolean;
   sidebarWidth: number;
 }
@@ -24,10 +19,7 @@ interface GridMeasurement {
 }
 
 export function occupiedPaneWidth(panes: PaneWidths): number {
-  return (
-    (panes.sidebarOpen ? panes.sidebarWidth : 0) +
-    (panes.agentOpen ? panes.agentWidth + RIGHT_PANE_INSET : 0)
-  );
+  return panes.sidebarOpen ? panes.sidebarWidth : 0;
 }
 
 export function predictGridWidth(
@@ -47,27 +39,18 @@ function fallbackWidth(): number {
 }
 
 function measuredOccupiedPaneWidth(viewport: HTMLElement): number {
-  const root = viewport.closest("[data-slot=window]");
-  const left = root?.querySelector<HTMLElement>("[data-slot=left]");
-  const right = root?.querySelector<HTMLElement>("[data-slot=right]");
   return (
-    (left?.getBoundingClientRect().width ?? 0) +
-    (right?.getBoundingClientRect().width ?? 0) +
-    (right?.hasAttribute("data-open") ? RIGHT_PANE_INSET : 0)
+    viewport
+      .closest("[data-slot=window]")
+      ?.querySelector<HTMLElement>("[data-slot=left]")
+      ?.getBoundingClientRect().width ?? 0
   );
 }
 
 export function useGridWidth(): number {
   const sidebarOpen = useSidebarOpen();
   const sidebarWidth = useSidebarWidth();
-  const agentOpen = useRightPane() !== null;
-  const agentWidth = useAgentWidth();
-  const occupiedWidth = occupiedPaneWidth({
-    agentOpen,
-    agentWidth,
-    sidebarOpen,
-    sidebarWidth,
-  });
+  const occupiedWidth = occupiedPaneWidth({ sidebarOpen, sidebarWidth });
   const [measurement, setMeasurement] = useState<GridMeasurement>(() => ({
     occupiedWidth,
     width: fallbackWidth(),

@@ -116,6 +116,8 @@ export interface SourceSyncPrefs {
   collectionFolders?: Record<string, string>;
   /** Last time every collection was read to its end, which is the only way to find old saves moved into one. */
   lastCollectionCheckAt?: string | null;
+  /** Last time the feeds of publications you subscribe to were read; posts published after it are new. */
+  lastSubscriptionCheckAt?: string | null;
   /** Skipped by scheduled fetches; Fetch New Saves still runs it. */
   paused?: boolean;
   /** Replaces the global interval for this source. Omitted follows the global schedule. */

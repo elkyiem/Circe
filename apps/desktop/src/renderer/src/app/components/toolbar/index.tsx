@@ -3,7 +3,6 @@ import {
   IconBookmark,
   IconBookmarkSlash,
   IconCanvas,
-  IconChatBubble,
   IconDots,
   IconGear3,
   IconHistory,
@@ -13,10 +12,10 @@ import {
 } from "@pond/icons";
 import { Button, Menu } from "@pond/ui";
 import { useRouter, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ChromeHistoryNav } from "@/app/components/chrome-toolbar";
 import { canvasIdFromPath, useCanvas } from "@/features/canvas";
-import { AgentToggle } from "@/features/library/components/agent-toggle";
+import { fishIdFromPath } from "@/features/fish";
 import { FolderCustomizeDialog } from "@/features/library/components/folder-customize-dialog";
 import { SidebarToggle } from "@/features/library/components/sidebar-toggle";
 import { saveFolderPresentation } from "@/features/library/state/folder-presentation";
@@ -26,8 +25,8 @@ import {
 } from "@/features/library/state/folders";
 import {
   libraryChrome,
+  useDetailsOpen,
   useLibraryNav,
-  useRightPane,
   useSidebarOpen,
 } from "@/features/library/state/library-chrome";
 import {
@@ -37,11 +36,12 @@ import {
 import { useSave } from "@/features/saves/hooks/use-saves";
 import { getLastListPath } from "@/features/saves/lib/list-path";
 import { saveIdFromPath } from "@/features/saves/lib/save-nav";
-import { useViewFilteredCount } from "@/features/saves/state/view-context";
 import {
-  isSourceDetailPath,
-  useSourceDetailName,
-} from "@/features/sources/state/source-detail";
+  useResultIndex,
+  useResultTotal,
+} from "@/features/saves/state/result-navigation";
+import { useViewFilteredCount } from "@/features/saves/state/view-context";
+import { useSourceDetailName } from "@/features/sources/state/source-detail";
 import { SpecContextMenu } from "@/shared/components/spec-context-menu";
 import { FOLDER_MENU_ICONS, FOLDER_SWATCHES } from "@/shared/lib/folder-icons";
 import { usePrefs } from "@/shared/state/prefs";
@@ -49,9 +49,14 @@ import { type Breadcrumb, buildBreadcrumbs } from "./breadcrumbs";
 import { computeLabel } from "./labels";
 import styles from "./styles.module.css";
 
+const FishChatActions = lazy(() =>
+  import("@/features/agent/chat-actions").then((module) => ({
+    default: module.FishChatActions,
+  })),
+);
+
 const ROOT_ICONS = {
   "/": IconAlbum2,
-  "/assistant": IconChatBubble,
   "/sources": IconNodes3,
   "/tags": IconBookmark,
   "/untagged": IconBookmarkSlash,
@@ -85,11 +90,12 @@ function Breadcrumbs() {
   const [customizingFolderId, setCustomizingFolderId] = useState<string | null>(
     null,
   );
-  const save = useSave(saveIdFromPath(pathname));
+  const saveId = saveIdFromPath(pathname);
+  const save = useSave(saveId);
+  const resultIndex = useResultIndex(saveId ?? "");
+  const resultTotal = useResultTotal();
   const listPath = getLastListPath();
-  const canvas = useCanvas(
-    canvasIdFromPath(saveIdFromPath(pathname) ? listPath : pathname),
-  );
+  const canvas = useCanvas(canvasIdFromPath(saveId ? listPath : pathname));
   const sourceName = useSourceDetailName();
   const hasActiveSearch = useHasActiveSearch();
   const filteredCount = useViewFilteredCount();
@@ -228,14 +234,20 @@ function Breadcrumbs() {
           }
           const current = index === crumbs.length - 1;
           const menu = folderMenu(crumb);
+          const icon = index > 0 ? null : <RootIcon path={crumb.path} />;
           const segment = current ? (
             <span
               className={styles.current}
               aria-current="page"
               title={crumb.label}
             >
-              {index === 0 ? <RootIcon path={crumb.path} /> : null}
+              {icon}
               <span className={styles.label}>{crumb.label}</span>
+              {saveId && resultIndex >= 0 && resultTotal > 0 ? (
+                <span className={styles.position}>
+                  {resultIndex + 1} / {resultTotal}
+                </span>
+              ) : null}
             </span>
           ) : (
             <Button
@@ -245,7 +257,7 @@ function Breadcrumbs() {
               title={crumb.label}
               onClick={() => navigate(crumb)}
             >
-              {index === 0 ? <RootIcon path={crumb.path} /> : null}
+              {icon}
               <span className={styles.label}>{crumb.label}</span>
             </Button>
           );
@@ -287,32 +299,33 @@ function Breadcrumbs() {
 }
 
 export function Toolbar() {
-  const pathname = useRouterState({
-    select: (s) => s.location.pathname,
-  });
-  const hideInspector =
-    pathname === "/assistant" ||
-    pathname.startsWith("/settings") ||
-    isSourceDetailPath(pathname);
   const sidebarOpen = useSidebarOpen();
-  const rightPane = useRightPane();
+  const detailsOpen = useDetailsOpen();
+  const viewingSave = useRouterState({
+    select: (state) => saveIdFromPath(state.location.pathname) !== null,
+  });
+  const viewingFish = useRouterState({
+    select: (state) => fishIdFromPath(state.location.pathname) !== null,
+  });
   return (
     <div className={styles.bar}>
       <div className={styles.chrome}>
         <SidebarToggle open={sidebarOpen} />
         <ChromeHistoryNav />
       </div>
-      <div className={styles.main}>
-        <Breadcrumbs />
-      </div>
-      <div className={styles.actions}>
-        {hideInspector ? null : (
-          <>
-            <AgentToggle />
-            <SidebarToggle side="right" open={rightPane !== null} />
-          </>
-        )}
-      </div>
+      <div className={styles.main}>{viewingFish ? null : <Breadcrumbs />}</div>
+      {viewingSave ? (
+        <div className={styles.actions}>
+          <SidebarToggle side="right" open={detailsOpen} />
+        </div>
+      ) : viewingFish ? (
+        <div className={styles.actions}>
+          <Suspense fallback={null}>
+            <FishChatActions />
+          </Suspense>
+          <SidebarToggle side="right" open={detailsOpen} />
+        </div>
+      ) : null}
     </div>
   );
 }

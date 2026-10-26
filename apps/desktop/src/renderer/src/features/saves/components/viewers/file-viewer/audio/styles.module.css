@@ -79,3 +79,9 @@
   color: var(--ds-gray-10);
   word-break: break-word;
 }
+
+.dock {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 4px;
+}

@@ -31,6 +31,7 @@ export function useFolderDragDrop({
 }: UseFolderDragDropInput) {
   const [folderDrop, setFolderDrop] = useState<FolderDropState | null>(null);
   const announcedSaveTargetRef = useRef<string | null>(null);
+  const dragDepthRef = useRef(new Map<string, number>());
 
   async function addSavesToFolder(
     folder: Folder,
@@ -120,33 +121,52 @@ export function useFolderDragDrop({
     }
   }
 
+  function leaveFolder(id: string) {
+    dragDepthRef.current.delete(id);
+    setFolderDrop((current) => (current?.id === id ? null : current));
+    if (announcedSaveTargetRef.current === id)
+      announcedSaveTargetRef.current = null;
+  }
+
+  /** Native drags report a null `relatedTarget`, so enter and leave are counted per row instead. */
   function handlersFor(folder: Folder) {
     return {
+      onDragEnter(event: React.DragEvent<HTMLElement>) {
+        if (!isLibrarySaveDrag(event.dataTransfer)) return;
+        const depths = dragDepthRef.current;
+        depths.set(folder.id, (depths.get(folder.id) ?? 0) + 1);
+      },
       onDragOver(event: React.DragEvent<HTMLElement>) {
         if (!isLibrarySaveDrag(event.dataTransfer)) return;
         const ids = saveDropIds(event.dataTransfer);
         if (ids.length === 0) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
-        setFolderDrop({ id: folder.id, kind: "into", saveCount: ids.length });
+        if (!dragDepthRef.current.has(folder.id))
+          dragDepthRef.current.set(folder.id, 1);
+        setFolderDrop((current) =>
+          current?.id === folder.id &&
+          current.kind === "into" &&
+          current.saveCount === ids.length
+            ? current
+            : { id: folder.id, kind: "into", saveCount: ids.length },
+        );
         if (announcedSaveTargetRef.current !== folder.id) {
           announcedSaveTargetRef.current = folder.id;
           announceSaveDragTarget(folder.name, ids.length);
         }
       },
-      onDragLeave(event: React.DragEvent<HTMLElement>) {
-        const next = event.relatedTarget;
-        if (next instanceof Node && event.currentTarget.contains(next)) return;
-        setFolderDrop((current) =>
-          current?.id === folder.id ? null : current,
-        );
-        if (announcedSaveTargetRef.current === folder.id)
-          announcedSaveTargetRef.current = null;
+      onDragLeave() {
+        const depths = dragDepthRef.current;
+        const depth = (depths.get(folder.id) ?? 0) - 1;
+        if (depth > 0) depths.set(folder.id, depth);
+        else leaveFolder(folder.id);
       },
       onDrop(event: React.DragEvent<HTMLElement>) {
         const ids = saveDropIds(event.dataTransfer);
         if (ids.length === 0) return;
         event.preventDefault();
+        dragDepthRef.current.clear();
         setFolderDrop(null);
         announcedSaveTargetRef.current = null;
         endSaveDrag();
@@ -157,7 +177,10 @@ export function useFolderDragDrop({
 
   return {
     folderDrop,
-    clearFolderDrop: () => setFolderDrop(null),
+    clearFolderDrop: () => {
+      dragDepthRef.current.clear();
+      setFolderDrop(null);
+    },
     folderMoveTarget,
     handlersFor,
     moveFolder,

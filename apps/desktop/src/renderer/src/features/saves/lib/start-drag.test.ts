@@ -139,26 +139,44 @@ it("hands saves with files to a native drag and cancels the browser drag", () =>
   expect(query).toHaveBeenCalledWith("saves.startDrag", {
     ids: ["photo"],
     fileIndex: 0,
+    fileIndexes: { photo: 0 },
   });
   expect(data.getData(SAVE_DRAG_TYPE)).toBe("");
   expect(isLibrarySaveDrag(transfer(["Files"]))).toBe(true);
   expect(saveDropIds(transfer(["Files"]))).toEqual(["photo"]);
 });
 
-it("ends a native drag once the pointer moves with no button held", () => {
+it("sends each save's own file index in a native drag", () => {
+  const query = vi.fn(async () => ({ ok: true }));
+  vi.stubGlobal("pond", { query });
+  seedImage("one");
+  seedImage("two");
+  selection.set(["one", "two"]);
+
+  beginSaveDrag("one", start(transfer()));
+
+  expect(query).toHaveBeenCalledWith("saves.startDrag", {
+    ids: ["one", "two"],
+    fileIndex: 0,
+    fileIndexes: { one: 0, two: 0 },
+  });
+});
+
+it("ignores a released pointer until the native drag has crossed the window", () => {
   vi.stubGlobal("pond", { query: vi.fn(async () => ({ ok: true })) });
   seedImage("photo");
   beginSaveDrag("photo", start(transfer()));
 
-  window.dispatchEvent(new PointerEvent("pointermove", { buttons: 1 }));
+  window.dispatchEvent(new PointerEvent("pointermove", { buttons: 0 }));
   expect(draggingSaveIds()).toEqual(["photo"]);
 
+  window.dispatchEvent(new Event("dragover"));
   window.dispatchEvent(new PointerEvent("pointermove", { buttons: 0 }));
   expect(draggingSaveIds()).toEqual([]);
   expect(document.body.dataset.saveDragging).toBeUndefined();
 });
 
-it("ends a native drag on the next click or when the window refocuses", () => {
+it("ends a native drag on the next click or Escape", () => {
   vi.stubGlobal("pond", { query: vi.fn(async () => ({ ok: true })) });
   seedImage("photo");
   beginSaveDrag("photo", start(transfer()));
@@ -166,6 +184,23 @@ it("ends a native drag on the next click or when the window refocuses", () => {
   expect(draggingSaveIds()).toEqual([]);
 
   beginSaveDrag("photo", start(transfer()));
-  window.dispatchEvent(new Event("focus"));
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
   expect(draggingSaveIds()).toEqual([]);
+});
+
+it("ends the drag and explains why when Pond can't start it", async () => {
+  vi.stubGlobal("pond", {
+    query: vi.fn(async () => ({ ok: false, error: "No preview" })),
+  });
+  const titles: string[] = [];
+  const onNotification = (event: Event) => {
+    if (event instanceof CustomEvent) titles.push(event.detail.title);
+  };
+  window.addEventListener("pond:notification", onNotification);
+  seedImage("photo");
+  beginSaveDrag("photo", start(transfer()));
+
+  await vi.waitFor(() => expect(draggingSaveIds()).toEqual([]));
+  window.removeEventListener("pond:notification", onNotification);
+  expect(titles).toContain("Couldn't start the drag");
 });

@@ -4,6 +4,7 @@ import {
   importScopePatch,
   isImportPending,
   listHarvestPlan,
+  subscriptionCheck,
 } from "./import-scope";
 
 const BOARD = { id: "915", name: "Design References" };
@@ -13,6 +14,7 @@ describe("listHarvestPlan", () => {
     expect(listHarvestPlan("instagram", undefined)).toEqual({
       primary: true,
       liked: true,
+      subscriptions: false,
       listKinds: [],
       collections: null,
       fileEveryCollection: false,
@@ -20,6 +22,7 @@ describe("listHarvestPlan", () => {
     expect(listHarvestPlan("pinterest", undefined)).toEqual({
       primary: true,
       liked: false,
+      subscriptions: false,
       listKinds: [],
       collections: null,
       fileEveryCollection: false,
@@ -30,6 +33,7 @@ describe("listHarvestPlan", () => {
     expect(listHarvestPlan("instagram", { listKinds: ["liked"] })).toEqual({
       primary: false,
       liked: true,
+      subscriptions: false,
       listKinds: [],
       collections: null,
       fileEveryCollection: false,
@@ -47,6 +51,7 @@ describe("listHarvestPlan", () => {
     expect(listHarvestPlan("pinterest", { collections: [BOARD] })).toEqual({
       primary: false,
       liked: false,
+      subscriptions: false,
       listKinds: [],
       collections: [BOARD],
       fileEveryCollection: false,
@@ -94,6 +99,7 @@ describe("listHarvestPlan", () => {
     expect(listHarvestPlan("tiktok", { listKinds: ["liked"] })).toEqual({
       primary: true,
       liked: false,
+      subscriptions: false,
       listKinds: ["liked"],
       collections: null,
       fileEveryCollection: false,
@@ -104,11 +110,27 @@ describe("listHarvestPlan", () => {
     ]);
   });
 
+  it("reads Substack subscriptions as their own pass", () => {
+    expect(listHarvestPlan("substack", undefined)).toMatchObject({
+      primary: true,
+      subscriptions: true,
+      listKinds: ["saved", "liked"],
+    });
+    expect(
+      listHarvestPlan("substack", { listKinds: ["subscription"] }),
+    ).toMatchObject({ primary: false, subscriptions: true, listKinds: [] });
+    expect(
+      listHarvestPlan("substack", { listKinds: ["saved"] }).subscriptions,
+    ).toBe(false);
+    expect(listHarvestPlan("reddit", undefined).subscriptions).toBe(false);
+  });
+
   it("swaps the saved tab for picked TikTok collections", () => {
     const collections = [{ id: "7", name: "Recipes" }];
     expect(listHarvestPlan("tiktok", { collections })).toEqual({
       primary: true,
       liked: false,
+      subscriptions: false,
       listKinds: ["liked"],
       collections,
       fileEveryCollection: false,
@@ -239,5 +261,31 @@ describe("collectionCheckDue", () => {
     expect(collectionCheckDue(picked, hoursAgo(6), false, now)).toBe(false);
     expect(collectionCheckDue(every, hoursAgo(23), false, now)).toBe(false);
     expect(collectionCheckDue(every, hoursAgo(24), false, now)).toBe(true);
+  });
+});
+
+describe("subscriptionCheck", () => {
+  const now = Date.parse("2026-10-18T12:00:00Z");
+  const iso = (ms: number) => new Date(ms).toISOString();
+
+  it("reaches back a week the first time", () => {
+    expect(subscriptionCheck({}, now)).toEqual({
+      due: true,
+      since: iso(now - 7 * 24 * 3_600_000),
+    });
+  });
+
+  it("reads new posts since the last check, a few times a day", () => {
+    const last = iso(now - 5 * 3_600_000);
+    expect(subscriptionCheck({ lastSubscriptionCheckAt: last }, now)).toEqual({
+      due: false,
+      since: last,
+    });
+    expect(
+      subscriptionCheck(
+        { lastSubscriptionCheckAt: iso(now - 6 * 3_600_000) },
+        now,
+      ).due,
+    ).toBe(true);
   });
 });

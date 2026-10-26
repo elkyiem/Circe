@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import {
   ChromePortal,
   useViewerChromeRoot,
@@ -17,7 +18,6 @@ import { useSave } from "@/features/saves/hooks/use-saves";
 import { containImage } from "@/features/saves/lib/image-regions";
 import type { ChapterCue } from "@/features/saves/lib/media/chapters-vtt";
 import { buildPondUrl } from "@/features/saves/lib/media/url";
-import { onTransitionMeasure } from "@/features/saves/lib/save-transition";
 import { viewerMemory } from "@/features/saves/lib/viewer-memory";
 import { cardThumbnailFor } from "@/features/saves/state/card-thumbnails";
 import { videoScaleForRotation } from "./geometry";
@@ -56,7 +56,6 @@ function VideoSurface({
   rotation,
   mirrored,
   ratio,
-  hero,
   placeholder,
   onError,
   onLoadedMetadata,
@@ -68,7 +67,6 @@ function VideoSurface({
   rotation: number;
   mirrored: boolean;
   ratio: number | null;
-  hero: boolean;
   placeholder?: string;
   onError?: () => void;
   onLoadedMetadata: ReactEventHandler<HTMLVideoElement>;
@@ -78,7 +76,7 @@ function VideoSurface({
   const shown = useMediaReveal(useFirstFrame(src), src);
   const [viewerSize, setViewerSize] = useState({ width: 0, height: 0 });
   /**
-   * The fitted box must exist before first paint so the open transition lands on the video.
+   * The fitted box must exist before first paint so the video never shows at its unfitted size.
    * @remarks Measures the frame's parent because the root's ref is not attached yet when a child layout effect runs.
    */
   useLayoutEffect(() => {
@@ -94,14 +92,10 @@ function VideoSurface({
       );
     };
     measure();
-    const release = onTransitionMeasure(measure);
-    if (!globalThis.ResizeObserver) return release;
+    if (!globalThis.ResizeObserver) return;
     const observer = new ResizeObserver(measure);
     observer.observe(root);
-    return () => {
-      release();
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
   const scale = videoScaleForRotation(
     viewerSize.width,
@@ -117,7 +111,6 @@ function VideoSurface({
     <div
       ref={frame}
       className={styles.frame}
-      data-save-hero={(hero && fitted && rotation === 0) || undefined}
       style={
         fitted
           ? {
@@ -251,7 +244,6 @@ export function VideoPlayer({
         rotation={rotation}
         mirrored={mirrored}
         ratio={ratio}
-        hero={!!active}
         placeholder={cardThumbnailFor(src) ?? poster}
         onError={onError}
         onLoadedMetadata={onLoadedMetadata}
@@ -276,32 +268,42 @@ export function VideoPlayer({
                 aria-label="Playback"
               >
                 <Video.Row className={styles.row}>
-                  <PlayerButton.Playback />
-                  <VolumeControl />
-                  <Video.CurrentTime
-                    className={styles["current-time"]}
-                    aria-label="Elapsed time"
-                  />
-                  <div className={styles.timeline}>
-                    <Video.Scrubber
-                      renderPreview={(time) => (
-                        <TimelinePreview src={src} time={time} />
-                      )}
+                  <ViewerHud.Pill>
+                    <PlayerButton.Playback />
+                  </ViewerHud.Pill>
+                  <ViewerHud.Pill>
+                    <VolumeControl />
+                  </ViewerHud.Pill>
+                  <ViewerHud.Pill className={styles.scrub}>
+                    <Video.CurrentTime
+                      className={styles["current-time"]}
+                      aria-label="Elapsed time"
                     />
-                  </div>
-                  <Video.Duration
-                    className={styles.duration}
-                    aria-label="Duration"
-                  />
-                  <Video.SpeedSelect />
-                  <PlayerButton.Loop
-                    range={loopRange}
-                    override={activeLoopOverride}
-                    onRangeChange={changeLoop}
-                    onOverrideChange={(enabled) =>
-                      setLoopOverride({ src, enabled })
-                    }
-                  />
+                    <div className={styles.timeline}>
+                      <Video.Scrubber
+                        renderPreview={(time) => (
+                          <TimelinePreview src={src} time={time} />
+                        )}
+                      />
+                    </div>
+                    <Video.Duration
+                      className={styles.duration}
+                      aria-label="Duration"
+                    />
+                  </ViewerHud.Pill>
+                  <ViewerHud.Pill className={styles.speed}>
+                    <Video.SpeedSelect />
+                  </ViewerHud.Pill>
+                  <ViewerHud.Pill>
+                    <PlayerButton.Loop
+                      range={loopRange}
+                      override={activeLoopOverride}
+                      onRangeChange={changeLoop}
+                      onOverrideChange={(enabled) =>
+                        setLoopOverride({ src, enabled })
+                      }
+                    />
+                  </ViewerHud.Pill>
                   <PlayerButton.Fullscreen />
                 </Video.Row>
               </Video.Controls>

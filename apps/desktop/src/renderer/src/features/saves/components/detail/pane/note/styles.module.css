@@ -1,0 +1,17 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  & :global(textarea) {
+    min-height: 0;
+    padding-block: 5px;
+  }
+}
+
+.label {
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-md);
+  color: var(--ds-gray-10);
+}

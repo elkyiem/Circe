@@ -208,6 +208,35 @@ describe("importBookmarkFile", () => {
     ]);
   });
 
+  it("passes each bookmark's list kinds to the enqueue", async () => {
+    const deps = dependencies();
+    await importBookmarkFile(
+      {
+        bookmarks: [
+          {
+            url: "https://x.com/i/web/status/1",
+            addedAt: null,
+            folderIds: [],
+            listKinds: ["liked"],
+          },
+          { url: "https://example.com/plain", addedAt: null, folderIds: [] },
+        ],
+        folders: [],
+      },
+      deps,
+    );
+    expect(deps.enqueueLink).toHaveBeenNthCalledWith(
+      1,
+      "https://x.com/i/web/status/1",
+      ["liked"],
+    );
+    expect(deps.enqueueLink).toHaveBeenNthCalledWith(
+      2,
+      "https://example.com/plain",
+      undefined,
+    );
+  });
+
   it("counts links that fail to queue as skipped", async () => {
     const deps = dependencies();
     deps.enqueueLink.mockRejectedValue(new Error("unsupported"));

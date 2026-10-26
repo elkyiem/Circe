@@ -17,6 +17,7 @@ import {
   type WindowBounds,
 } from "./prefs.types";
 import { SavedViewPresentationSchema } from "./saved-view-presentation";
+import { isSource } from "./sources";
 import { ViewerPrefsSchema } from "./viewer-prefs";
 
 export * from "./prefs.types";
@@ -56,7 +57,6 @@ const preferences = z.object({
 export const SIDEBAR_DESTINATIONS = [
   "all",
   "uncategorized",
-  "assistant",
   "untagged",
   "recentlyAdded",
   "recentlyUsed",
@@ -71,7 +71,6 @@ export type SidebarDestination = (typeof SIDEBAR_DESTINATIONS)[number];
 
 export const LOCKED_SIDEBAR_DESTINATIONS = [
   "all",
-  "assistant",
   "trash",
 ] as const satisfies readonly SidebarDestination[];
 
@@ -81,12 +80,24 @@ export function isLockedSidebarDestination(
   return LOCKED_SIDEBAR_DESTINATIONS.some((locked) => locked === destination);
 }
 
+export const SIDEBAR_SECTIONS = [
+  "smartFolders",
+  "fish",
+  "canvases",
+  "folders",
+] as const;
+
+export type SidebarSection = (typeof SIDEBAR_SECTIONS)[number];
+
 export const SIDEBAR_BADGE_STYLES = ["count", "none"] as const;
 
 export type SidebarBadgeStyle = (typeof SIDEBAR_BADGE_STYLES)[number];
 
-const SidebarDestinationSchema = z.enum(SIDEBAR_DESTINATIONS);
 const SidebarBadgeStyleSchema = z.enum(SIDEBAR_BADGE_STYLES);
+
+function isSidebarDestination(value: string): value is SidebarDestination {
+  return SIDEBAR_DESTINATIONS.some((destination) => destination === value);
+}
 
 export function normalizeSidebarDestinationOrder(
   order: readonly SidebarDestination[],
@@ -109,19 +120,35 @@ export function normalizeSidebarDestinationOrder(
 
 const sidebar = z.object({
   badgeStyle: SidebarBadgeStyleSchema.catch("count"),
+  /** Unknown keys are dropped so a retired destination never resets the rest. */
   badgeOverrides: z
-    .partialRecord(SidebarDestinationSchema, SidebarBadgeStyleSchema)
-    .catch({}),
+    .record(z.string(), SidebarBadgeStyleSchema)
+    .catch({})
+    .transform((overrides) => {
+      const known: Partial<Record<SidebarDestination, SidebarBadgeStyle>> = {};
+      for (const [destination, style] of Object.entries(overrides))
+        if (isSidebarDestination(destination)) known[destination] = style;
+      return known;
+    }),
   order: z
-    .array(SidebarDestinationSchema)
+    .array(z.string())
     .catch([...SIDEBAR_DESTINATIONS])
-    .transform(normalizeSidebarDestinationOrder),
+    .transform((order) =>
+      normalizeSidebarDestinationOrder(order.filter(isSidebarDestination)),
+    ),
   doubleClickBehavior: z.enum(["open", "expand-collapse"]).catch("open"),
+  sections: z
+    .object({
+      smartFolders: z.boolean().catch(true),
+      fish: z.boolean().catch(true),
+      canvases: z.boolean().catch(true),
+      folders: z.boolean().catch(true),
+    })
+    .catch({ smartFolders: true, fish: true, canvases: true, folders: true }),
   destinations: z
     .object({
       all: z.boolean().catch(true),
       uncategorized: z.boolean().catch(true),
-      assistant: z.boolean().catch(true),
       untagged: z.boolean().catch(true),
       recentlyAdded: z.boolean().catch(true),
       recentlyUsed: z.boolean().catch(true),
@@ -134,7 +161,6 @@ const sidebar = z.object({
     .catch({
       all: true,
       uncategorized: true,
-      assistant: true,
       untagged: true,
       recentlyAdded: true,
       recentlyUsed: true,
@@ -275,8 +301,6 @@ const api = z.object({
 
 const updates = z.object({
   autoInstall: z.boolean().catch(true),
-  /** Unset until chosen, so the desktop app can follow the installed build. */
-  channel: z.enum(["stable", "nightly"]).optional().catch(undefined),
 });
 
 const setup = z.object({
@@ -297,7 +321,16 @@ export const FetchRecurrenceSchema = z
   });
 
 const sync = z.object({
-  accounts: z.custom<SyncAccounts>().default({}),
+  /** Accounts for a source this build doesn't know are dropped, so sync never looks up a missing source. */
+  accounts: z
+    .custom<SyncAccounts>()
+    .default({})
+    .transform((accounts) => {
+      const known: SyncAccounts = {};
+      for (const [id, account] of Object.entries(accounts))
+        if (isSource(account.source)) known[id] = account;
+      return known;
+    }),
   watches: z.custom<SyncWatches>().default({}),
   cron: z
     .object({

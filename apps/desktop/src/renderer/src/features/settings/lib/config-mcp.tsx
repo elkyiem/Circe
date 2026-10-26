@@ -2,11 +2,11 @@ import {
   defineCustomSection,
   group,
 } from "@/features/settings/lib/engine-types";
-import { THIS_DEVICE } from "@/shared/lib/platform";
 
 export const mcpSection = defineCustomSection({
   title: "Model Context Protocol",
-  description: `Let Cursor and Claude search this library over stdio on ${THIS_DEVICE}.`,
+  description:
+    "Let Cursor and Claude search this library, and give your fish tools from servers you run.",
   keywords: [
     "mcp",
     "model context protocol",
@@ -34,6 +34,21 @@ export const mcpSection = defineCustomSection({
           key: "agents",
           title: "Agents",
           keywords: ["cursor", "claude", "codex", "gemini", "vscode"],
+          render: () => null,
+        },
+        {
+          control: "custom",
+          key: "fish-servers",
+          title: "Tools for Fish",
+          keywords: [
+            "fish",
+            "tools",
+            "servers",
+            "github",
+            "linear",
+            "stdio",
+            "http",
+          ],
           render: () => null,
         },
         {

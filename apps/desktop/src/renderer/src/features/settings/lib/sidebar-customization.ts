@@ -2,7 +2,38 @@ import type {
   Prefs,
   SidebarBadgeStyle,
   SidebarDestination,
+  SidebarSection,
 } from "@pond/schema";
+import { useEffect } from "react";
+import { getPrefsSnapshot, patchPrefsSection } from "@/shared/state/prefs";
+
+export const SIDEBAR_SECTION_LABELS = {
+  smartFolders: "Smart Folders",
+  fish: "Fish",
+  canvases: "Canvases",
+  folders: "Folders",
+} as const satisfies Record<SidebarSection, string>;
+
+export function setSidebarSectionVisible(
+  section: SidebarSection,
+  visible: boolean,
+): void {
+  const sections = getPrefsSnapshot()?.sidebar.sections;
+  if (!sections || sections[section] === visible) return;
+  void patchPrefsSection("sidebar", {
+    sections: { ...sections, [section]: visible },
+  });
+}
+
+/** Inline rename needs its row on screen, so naming a new item brings a hidden section back. */
+export function useRevealSidebarSection(
+  section: SidebarSection,
+  editing: boolean,
+): void {
+  useEffect(() => {
+    if (editing) setSidebarSectionVisible(section, true);
+  }, [section, editing]);
+}
 
 export const SIDEBAR_DESTINATION_GROUPS = [
   {
@@ -11,7 +42,6 @@ export const SIDEBAR_DESTINATION_GROUPS = [
     destinations: [
       "all",
       "uncategorized",
-      "assistant",
       "untagged",
       "recentlyAdded",
       "recentlyUsed",
@@ -34,7 +64,6 @@ export const SIDEBAR_DESTINATION_GROUPS = [
 export const SIDEBAR_DESTINATION_LABELS = {
   all: "All",
   uncategorized: "Uncategorized",
-  assistant: "Assistant",
   untagged: "Untagged",
   recentlyAdded: "Recently Added",
   recentlyUsed: "Recently Used",

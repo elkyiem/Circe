@@ -4,7 +4,7 @@ import {
   mergeListKinds,
   normalizeListKinds,
 } from "@pond/schema/list-kinds";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { persistSave } from "../persist-save";
 import { releaseListFilteredSaves } from "./import-filter";
@@ -27,6 +27,7 @@ export function listKindsFromTrigger(trigger: string | undefined): ListKind[] {
     suffix === "save" ||
     suffix === "bookmark" ||
     suffix === "favorite" ||
+    suffix === "star" ||
     suffix === "graphql-save"
   ) {
     return ["saved"];
@@ -92,4 +93,38 @@ export async function mergeListKindsOntoExisting(
   }
   await releaseListFilteredSaves(released);
   return relisted;
+}
+
+/** Takes the list label off saves a complete walk no longer found; the saves themselves stay in the library. */
+export async function dropMissingListKind(
+  account: { id: string; source: Source },
+  kind: ListKind,
+  presentIds: ReadonlySet<string>,
+): Promise<number> {
+  const db = await getDb();
+  const rows = db
+    .select({
+      id: saves.id,
+      sourceId: saves.sourceId,
+      listKinds: saves.listKinds,
+    })
+    .from(saves)
+    .where(
+      and(
+        eq(saves.source, account.source),
+        or(eq(saves.accountId, account.id), isNull(saves.accountId)),
+      ),
+    )
+    .all();
+  let dropped = 0;
+  for (const row of rows) {
+    if (presentIds.has(row.sourceId) || !row.listKinds.includes(kind)) continue;
+    await persistSave(
+      row.id,
+      { listKinds: row.listKinds.filter((k) => k !== kind) },
+      { actorReason: "pipeline:list-kinds" },
+    );
+    dropped += 1;
+  }
+  return dropped;
 }

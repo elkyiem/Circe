@@ -108,7 +108,9 @@ it("composes one top video toolbar and one bottom playback toolbar", async () =>
   const volume = host.querySelector('[aria-label="Video Volume"]');
   expect(volume).toBeNull();
   expect(host.querySelector("[data-video-volume-popover]")).toBeNull();
-  expect(mute?.parentElement).toBe(playbackToolbar?.firstElementChild);
+  expect(mute?.parentElement?.parentElement).toBe(
+    playbackToolbar?.firstElementChild,
+  );
   const elapsedTime = host.querySelector('[aria-label="Elapsed time"]');
   const seek = host.querySelector('[aria-label="Seek"]');
   const duration = host.querySelector('[aria-label="Duration"]');
@@ -350,7 +352,7 @@ it("holds the poster until a video frame is presented", async () => {
   }
 });
 
-it("fits the video and its poster into the transition hero before first paint", async () => {
+it("fits the video and its poster before first paint", async () => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(800);
   await act(async () => {
@@ -362,22 +364,14 @@ it("fits the video and its poster into the transition hero before first paint", 
       />,
     );
   });
-  const hero = host.querySelector<HTMLElement>("[data-save-hero]");
-  expect(hero?.style).toMatchObject({
+  const frame = host.querySelector("video")?.parentElement;
+  expect(frame?.style).toMatchObject({
     left: "175px",
     top: "0px",
     width: "450px",
     height: "800px",
   });
-  expect(hero?.querySelector("video")).not.toBeNull();
   expect(
-    hero?.querySelector('img[src="pond://test/poster.jpg"]'),
+    frame?.querySelector('img[src="pond://test/poster.jpg"]'),
   ).not.toBeNull();
-
-  const rotate = [...host.querySelectorAll("button")].find(
-    (button) => button.getAttribute("aria-label") === "Rotate Video",
-  );
-  await act(async () => rotate?.click());
-
-  expect(host.querySelector("[data-save-hero]")).toBeNull();
 });

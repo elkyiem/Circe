@@ -13,6 +13,7 @@ import { isFreshHarvest } from "../harvest-freshness";
 import { applyImportFilter, applyListFilter } from "../import-filter";
 import { saveAuthorFrom, withYtdlpAuthor } from "../ytdlp-author";
 import { readSave } from "./apply";
+import { splitArticle } from "./article-document";
 
 interface HarvestPayload {
   force?: boolean;
@@ -48,7 +49,9 @@ export async function runHarvestMetadata(
           reportActivity: ctx.reportActivity,
           isSignedIn: isPartitionSignedIn,
         });
-  const capture = withYtdlpAuthor(harvested, save.rawJson?.ytdlp);
+  const { capture, files } = splitArticle(
+    withYtdlpAuthor(harvested, save.rawJson?.ytdlp),
+  );
 
   const rawJson: RawJson = {
     capture,
@@ -60,6 +63,7 @@ export async function runHarvestMetadata(
   const patch = buildSavePatch(capture, rawJson, save.url, save.source);
   const updated = await persistSave(saveId, patch, {
     actorReason: `harvest:${extractor.id}`,
+    ...files,
   });
   log.info("[pond pipeline:harvest] captured", {
     saveId,

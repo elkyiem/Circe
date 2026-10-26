@@ -3,8 +3,14 @@ import { Calligraph } from "calligraph";
 import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { setupFlow } from "@/shared/state/setup";
-import { connectAssistant, finishSetup, openExistingLibrary } from "../apply";
+import {
+  connectAssistant,
+  finishSetup,
+  openExistingLibrary,
+  relaunchesLibrary,
+} from "../apply";
 import { type Session, type SetupChoices, STEP_IDS } from "../model";
+import { setupResume } from "../resume";
 import { stepSpec } from "../steps";
 import styles from "./styles.module.css";
 
@@ -91,11 +97,18 @@ export function SetupDialog({
     if (busy || opening) return;
     if (id === "assistant" && !(await run(() => connectAssistant(choices))))
       return;
+    if (id === "library") {
+      const relaunching = relaunchesLibrary(choices, library, profile);
+      if (relaunching) setupResume.mark();
+      const done = await run(() =>
+        finishSetup(choices, session.initial, library, profile),
+      );
+      if (done) return go(1);
+      if (relaunching) setupResume.clear();
+      return;
+    }
     if (!last) return go(1);
-    const done = await run(() =>
-      finishSetup(choices, session.initial, library, profile),
-    );
-    if (done) setupFlow.close();
+    setupFlow.close();
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
@@ -106,7 +119,7 @@ export function SetupDialog({
     void next();
   };
 
-  const busyLabel = id === "assistant" ? "Connecting" : "Finishing";
+  const busyLabel = id === "assistant" ? "Connecting" : "Saving";
   const label = busy ? busyLabel : step.primary[profile];
   const props = { profile, library, choices, update };
   const { Lead, Aside, Body, Extras } = step;
@@ -208,7 +221,7 @@ export function SetupDialog({
               ) : null}
             </div>
             <div className={styles.actions}>
-              {index > 0 ? (
+              {index > 0 && id !== "import" ? (
                 <Button
                   variant="ghost"
                   size="sm"

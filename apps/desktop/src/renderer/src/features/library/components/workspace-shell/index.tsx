@@ -1,16 +1,15 @@
 import { cn, cssVars, Window } from "@pond/ui";
-import { useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
-  AGENT_WIDTH_DEFAULT,
-  AGENT_WIDTH_MAX,
-  AGENT_WIDTH_MIN,
+  DETAILS_WIDTH_DEFAULT,
+  DETAILS_WIDTH_MAX,
+  DETAILS_WIDTH_MIN,
   libraryChrome,
   SIDEBAR_WIDTH_DEFAULT,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
-  useAgentWidth,
-  useRightPane,
+  useDetailsOpen,
+  useDetailsWidth,
   useSidebarOpen,
   useSidebarWidth,
 } from "@/features/library/state/library-chrome";
@@ -22,28 +21,53 @@ interface RootProps {
   children: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
+  rightOpen?: boolean;
   className?: string;
 }
 
-function Root({ header, children, left, right, className }: RootProps) {
+/** Entering or leaving a save snaps Details so the content mounts at its final width instead of reflowing through the resize. */
+function useInstantRouteChange(rightActive: boolean) {
+  const [previous, setPrevious] = useState(rightActive);
+  const [instant, setInstant] = useState(false);
+  if (previous !== rightActive) {
+    setPrevious(rightActive);
+    setInstant(true);
+  }
+
+  useEffect(() => {
+    if (!instant) return;
+    const id = requestAnimationFrame(() => setInstant(false));
+    return () => cancelAnimationFrame(id);
+  }, [instant]);
+
+  return instant;
+}
+
+function Root({
+  header,
+  children,
+  left,
+  right,
+  rightOpen: rightActive = Boolean(right),
+  className,
+}: RootProps) {
   const sidebarWidth = useSidebarWidth();
-  const agentWidth = useAgentWidth();
   const sidebarOpen = useSidebarOpen();
-  const rightPane = useRightPane();
+  const detailsWidth = useDetailsWidth();
+  const detailsOpen = useDetailsOpen();
   const leftOpen = sidebarOpen && Boolean(left);
-  const ownsRightPane = useRouterState({
-    select: (s) => s.location.pathname === "/assistant",
-  });
-  const rightOpen = !ownsRightPane && rightPane !== null && Boolean(right);
+  const rightOpen = detailsOpen && rightActive && Boolean(right);
+  const instant = useInstantRouteChange(rightActive);
 
   return (
     <Window.Root
       className={cn(styles.shell, className)}
       leftOpen={leftOpen}
       rightOpen={rightOpen}
+      data-instant={instant || undefined}
       style={cssVars({
         "--window-left-track": `${sidebarWidth}px`,
-        "--window-right-track": `${agentWidth}px`,
+        "--window-right-track": `${detailsWidth}px`,
       })}
     >
       <Window.Left
@@ -61,22 +85,15 @@ function Root({ header, children, left, right, className }: RootProps) {
       <Window.Top>{header}</Window.Top>
       <Window.Center>{children}</Window.Center>
       <Window.Right
-        className={styles["right-pane"]}
         open={rightOpen}
-        minWidth={AGENT_WIDTH_MIN}
-        maxWidth={AGENT_WIDTH_MAX}
-        defaultWidth={AGENT_WIDTH_DEFAULT}
-        width={agentWidth}
-        resizeLabel={
-          rightPane === "agent" ? "Resize Assistant" : "Resize Details"
-        }
-        collapseShortcut={
-          <ShortcutKeys
-            id={rightPane === "agent" ? "view.agent" : "view.inspector"}
-          />
-        }
-        onResize={libraryChrome.setAgentWidth}
-        onCollapse={libraryChrome.closeRightPane}
+        minWidth={DETAILS_WIDTH_MIN}
+        maxWidth={DETAILS_WIDTH_MAX}
+        defaultWidth={DETAILS_WIDTH_DEFAULT}
+        width={detailsWidth}
+        resizeLabel="Resize Details"
+        collapseShortcut={<ShortcutKeys id="view.inspector" />}
+        onResize={libraryChrome.setDetailsWidth}
+        onCollapse={() => libraryChrome.setDetailsOpen(false)}
       >
         {right}
       </Window.Right>

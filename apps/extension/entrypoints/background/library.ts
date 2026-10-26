@@ -1,9 +1,14 @@
 import { z } from "zod";
 import type { JsonValue } from "@/utils/json";
-import type { Folder, LibraryTargets, Tag } from "@/utils/messaging";
+import type {
+  FishTarget,
+  Folder,
+  LibraryTargets,
+  Tag,
+} from "@/utils/messaging";
 import { nativeCall } from "@/utils/native";
 import { type Appearance, resolveAppearance } from "@/utils/paint-theme";
-import { type ProbeResult, probe } from "@/utils/probe";
+import { OFFLINE, type ProbeResult, probe } from "@/utils/probe";
 import { readRecentTargets } from "@/utils/recent-targets";
 import { getSettings } from "@/utils/settings";
 import { type ThemeVars, themeVarsSchema } from "@/utils/theme";
@@ -37,8 +42,10 @@ const tagsSchema = z.array(
   }),
 );
 
+const fishSchema = z.array(z.object({ id: z.string(), name: z.string() }));
+
 export async function probeLibrary(): Promise<ProbeResult> {
-  const result = await probe().catch((): ProbeResult => ({ state: "offline" }));
+  const result = await probe().catch((): ProbeResult => OFFLINE);
   if (result.state === "connected") {
     void syncSettings(true);
     await browser.storage.session
@@ -91,11 +98,20 @@ async function listTags(): Promise<Tag[]> {
   return tags.success ? tags.data : [];
 }
 
+/** Pond builds before Fish answer `invalid`, so the picker stays hidden. */
+async function listFish(): Promise<FishTarget[]> {
+  const result = await nativeCall({ type: "fish.list" });
+  if (!result.ok) return [];
+  const fish = fishSchema.safeParse(result.data);
+  return fish.success ? fish.data : [];
+}
+
 export async function libraryTargets(): Promise<LibraryTargets> {
-  const [name, folders, tags, recent] = await Promise.all([
+  const [name, folders, tags, fish, recent] = await Promise.all([
     libraryName(),
     listFolders(),
     listTags(),
+    listFish(),
     readRecentTargets(),
   ]);
   const known = new Set(folders.map((folder) => folder.id));
@@ -103,6 +119,7 @@ export async function libraryTargets(): Promise<LibraryTargets> {
     name,
     folders,
     tags,
+    fish,
     recentFolderIds: recent.folderIds.filter((id) => known.has(id)),
     recentTags: recent.tags,
   };

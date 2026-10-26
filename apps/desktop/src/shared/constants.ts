@@ -37,6 +37,7 @@ export const IPC = {
   pipelineCancelSaves: "pond:pipeline-cancel-saves",
   pipelineCancelAll: "pond:pipeline-cancel-all",
   sourceConnect: "pond:source-connect",
+  sourceConnectHandle: "pond:source-connect-handle",
   sourceStatus: "pond:source-status",
   sessionPendingClear: "pond:session-pending-clear",
   sessionImported: "pond:session-imported",
@@ -62,6 +63,8 @@ export const IPC = {
   archiveBackfillStart: "pond:archive-backfill-start",
   archiveSite: "pond:archive-site",
   agentChunk: "pond:agent-chunk",
+  fish: "pond:fish",
+  fishOpen: "pond:fish-open",
   agentStream: "pond:agent-stream",
   agentFilter: "pond:agent-filter",
   agentCite: "pond:agent-cite",
@@ -168,6 +171,7 @@ export type MenuActionId =
   | "library.import-clipboard"
   | "library.import-bookmarks"
   | "library.import-mymind"
+  | "library.import-data-export"
   | "library.import-page-assets"
   | "library.import-eagle"
   | "library.import-package"
@@ -205,7 +209,6 @@ export type MenuActionId =
   | "organize.copy-tags"
   | "organize.paste-tags"
   | "view.sidebar.toggle"
-  | "view.agent.toggle"
   | "view.grayscale"
   | "view.random"
   | "view.subfolders.toggle"

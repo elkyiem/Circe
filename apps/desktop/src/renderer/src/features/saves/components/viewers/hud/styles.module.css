@@ -72,8 +72,14 @@
 
 .pill {
   padding: 2px;
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-tooltip);
+  border-radius: var(--ds-radius-full);
+  box-shadow: var(--ds-shadow-float);
+
+  & :global([data-rounding]) {
+    --button-radius-xs: var(--ds-radius-full);
+    --button-radius-sm: var(--ds-radius-full);
+    --button-radius-md: var(--ds-radius-full);
+  }
 }
 
 .tools {
@@ -94,23 +100,32 @@
   gap: 12px;
   width: 100%;
   min-width: 0;
+  pointer-events: none;
 }
 
 .start,
 .center,
 .end {
-  display: flex;
   gap: 2px;
-  align-items: center;
   min-width: 0;
+  max-width: 100%;
+
+  &:empty {
+    visibility: hidden;
+  }
+}
+
+.start {
+  justify-self: start;
 }
 
 .center {
-  justify-content: center;
+  justify-self: center;
 }
 
 .end {
   justify-content: flex-end;
+  justify-self: end;
 }
 
 .bar:has(> .center:empty) {

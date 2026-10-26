@@ -25,5 +25,7 @@ export interface SourceDescriptor {
   readonly label: string;
   readonly hosts: readonly string[];
   readonly urlPatterns: readonly RegExp[];
+  /** `handle` Sources connect by asking for a public handle instead of importing a browser session. */
+  readonly connect?: "session" | "handle";
   readonly sync?: SourceSyncOverride;
 }

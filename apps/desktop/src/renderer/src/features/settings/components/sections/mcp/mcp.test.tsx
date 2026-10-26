@@ -24,6 +24,7 @@ it("shows all setup hosts without detecting installs or expanding a disclosure",
   vi.stubGlobal("pond", {
     query: async (name: string) => {
       if (name === "settings.getPrefs") return DEFAULT_PREFS;
+      if (name === "fishMcp.list") return [];
       if (name === "agent.mcpSnippet") {
         throw new Error("Snippet unavailable");
       }

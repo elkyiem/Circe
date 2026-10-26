@@ -1,1 +1,1 @@
-export { addSavesToChat } from "./lib/add-to-chat";
+export { addSavesToChat, draftInChat } from "./lib/add-to-chat";

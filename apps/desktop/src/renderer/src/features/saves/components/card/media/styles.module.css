@@ -7,7 +7,7 @@
   height: 100%;
   background-color: var(--ds-gray-2);
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
   isolation: isolate;
 
   &[data-thumbnail-bg="black"] {

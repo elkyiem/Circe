@@ -78,6 +78,20 @@ Right-click one save and choose **Set Thumbnail from File**. Choose an image in 
 
 **Folder Cover** is separate: it is the save chosen to represent a folder in the sidebar.
 
+## Data exports
+
+Choose **New › Import Data Export** or **File › Import Data Export**, then pick the `.zip` or the unzipped folder you downloaded from the platform. Pond detects the platform from the files inside, so one action covers all five. It reads only the files below and never opens media in the archive.
+
+| Platform | Files Pond reads | What imports |
+| --- | --- | --- |
+| X | `data/like.js`, `data/like-part1.js`, and later parts | Liked posts, without dates |
+| Instagram | `saved_posts.json`, `saved_collections.json`, `liked_posts.json` | Saved and liked posts and reels, with the date you saved or liked them |
+| TikTok | `user_data_tiktok.json` or `user_data.json` | Favorite Videos as saved, Like List as liked, with dates |
+| YouTube (Google Takeout) | `YouTube and YouTube Music/playlists/*.csv` | Each playlist as a folder of saved videos; Liked videos as liked, with dates |
+| Reddit | `saved_posts.csv`, `post_votes.csv` | Saved posts, and upvoted posts as liked, without dates |
+
+X doesn't include bookmarks in its archive, so connect your X Account to sync them. Reddit saved comments are skipped. Dates and folders apply only to Saves this import creates. Each Save captures through its Source like a pasted link, so Instagram and TikTok Saves finish capturing once you connect an Account for that Source.
+
 ## Eagle library migration
 
 Import an unpacked Eagle `.library` folder to migrate its items. Pond preserves:

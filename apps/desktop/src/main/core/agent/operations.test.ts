@@ -4,8 +4,13 @@ import { z } from "zod";
 import type { AgentOperationRequest } from "../../../shared/agent-operations";
 import {
   applyPondOperation,
+  fishOperationCatalog,
   type OperationCatalog,
+  type PondOperation,
+  pondOperationCatalog,
   pondOperationTools,
+  registerExternalOperations,
+  registerPondOperations,
 } from "./operations";
 
 function fixture() {
@@ -238,4 +243,55 @@ it("pages a large result without executing its operation twice", async () => {
     text: "reference ".repeat(3_000),
   });
   expect(execute).toHaveBeenCalledOnce();
+});
+
+const readOp = (name: string): PondOperation => ({
+  name,
+  description: name,
+  access: "read",
+  inputSchema: z.object({}),
+  execute: async () => ({ name }),
+});
+
+it("adds external operations to the Fish catalog only", () => {
+  registerPondOperations({
+    operations: [readOp("folders.list")],
+    libraryId: () => "lib",
+  });
+  registerExternalOperations(() => [
+    readOp("mcp.github.list_issues"),
+    readOp("folders.list"),
+  ]);
+  expect(pondOperationCatalog().operations.map((o) => o.name)).toEqual([
+    "folders.list",
+  ]);
+  expect(fishOperationCatalog().operations.map((o) => o.name)).toEqual([
+    "folders.list",
+    "mcp.github.list_issues",
+  ]);
+  registerExternalOperations(() => []);
+});
+
+it("reads the Fish catalog when a tool runs, so servers that connect later are reachable", async () => {
+  registerPondOperations({ operations: [], libraryId: () => "lib" });
+  const tools = pondOperationTools({
+    signal: new AbortController().signal,
+    propose: () => "unused",
+  });
+  registerExternalOperations(() => [readOp("mcp.github.list_issues")]);
+  const run = tools.find((entry) => entry.name === "runPondOperation");
+  expect(
+    await run?.execute({
+      operation: "mcp.github.list_issues",
+      reason: "List issues",
+    }),
+  ).toEqual({ status: "complete", result: { name: "mcp.github.list_issues" } });
+  expect(
+    await applyPondOperation({
+      operation: "mcp.github.list_issues",
+      arguments: {},
+      libraryId: "lib",
+    }),
+  ).toEqual({ name: "mcp.github.list_issues" });
+  registerExternalOperations(() => []);
 });

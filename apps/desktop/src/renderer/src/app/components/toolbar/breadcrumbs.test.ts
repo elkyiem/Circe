@@ -19,7 +19,7 @@ describe("library breadcrumb paths", () => {
   });
 
   it.each([
-    ["/assistant", "Assistant"],
+    ["/fish/default", "Fish"],
     ["/sources", "Sources"],
     ["/tags", "Tags"],
     ["/untagged", "Untagged"],
@@ -35,6 +35,18 @@ describe("library breadcrumb paths", () => {
         folders,
       }).map((crumb) => crumb.label),
     ).toEqual([label]);
+  });
+
+  it("names a fish page after its fish", () => {
+    expect(
+      buildBreadcrumbs({
+        pathname: "/fish/koi",
+        listPath: "/",
+        nav: { kind: "all" },
+        folders,
+        fishLabel: "Koi",
+      }),
+    ).toEqual([{ label: "Koi", path: "/fish/koi" }]);
   });
 
   it("orders folder parents before children and gives each a destination", () => {

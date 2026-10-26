@@ -60,9 +60,14 @@ function useMenuBodyHeight<LayoutKey>(
 
     const measure = () => {
       const cap = Number.parseFloat(getComputedStyle(popup).maxHeight);
+      const bodyStyle = getComputedStyle(body);
+      const natural =
+        content.offsetHeight +
+        Number.parseFloat(bodyStyle.paddingTop || "0") +
+        Number.parseFloat(bodyStyle.paddingBottom || "0");
       const next = Math.min(
-        content.offsetHeight,
-        Number.isFinite(cap) && cap > 0 ? cap : content.offsetHeight,
+        natural,
+        Number.isFinite(cap) && cap > 0 ? cap : natural,
       );
       if (next <= 0) return;
       setHeight((prev) => (prev === next ? prev : next));

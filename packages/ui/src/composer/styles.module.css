@@ -1,22 +1,65 @@
 .composer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  display: grid;
+  grid-template-areas:
+    "extra extra extra"
+    "field field field"
+    "leading . trailing";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 4px;
+  align-items: center;
+  padding: 10px;
   font-size: var(--ds-text-md);
   font-weight: var(--ds-weight-md);
   line-height: 24px;
   color: var(--ds-gray-12);
   background: light-dark(var(--ds-gray-1), var(--ds-gray-2));
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-sm);
+  border-radius: var(--ds-radius-md);
+  box-shadow:
+    0 0 0 0.5px var(--ds-gray-a5),
+    0 1px 2px var(--ds-gray-a2),
+    0 4px 16px -4px var(--ds-gray-a3);
+}
+
+.extra {
+  grid-area: extra;
+  min-width: 0;
+  padding: 4px 4px 0;
+  margin-bottom: 8px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.field {
+  grid-area: field;
+  min-width: 0;
+}
+
+.leading,
+.trailing {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.leading {
+  grid-area: leading;
+}
+
+.trailing {
+  grid-area: trailing;
+  justify-content: flex-end;
 }
 
 .input {
+  display: block;
   width: 100%;
   min-height: 24px;
   max-height: 200px;
-  padding: 2px 6px;
+  padding: 2px 6px 0;
   font: inherit;
   line-height: 24px;
   color: inherit;
@@ -36,19 +79,6 @@
   margin: 0;
   color: var(--ds-gray-11);
   border-left: 2px solid var(--ds-gray-6);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  min-width: 0;
-}
-
-.toolbar {
-  composes: actions;
-  justify-content: space-between;
 }
 
 .label {
@@ -76,17 +106,18 @@
   gap: 6px;
 }
 
-.send-slot {
+.send {
+  position: relative;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  overflow: hidden;
 }
 
-.send-button {
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
-  border-radius: var(--ds-radius-full);
+.glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stop-icon {
@@ -113,21 +144,20 @@
   -webkit-line-clamp: 2;
 }
 
-.toolbar .actions > button {
+.trailing > button:not(.send) {
   --button-icon-size: 14px;
-  height: 24px;
-  font-size: var(--ds-text-sm);
+  height: 32px;
+  font-size: var(--ds-text-md);
   font-weight: var(--ds-weight-md);
   color: var(--ds-gray-10);
-  border-radius: var(--ds-radius-full);
 }
 
-.toolbar .actions > button[data-icon] {
-  width: 24px;
-  min-width: 24px;
+.trailing > button[data-icon] {
+  width: 32px;
+  min-width: 32px;
 }
 
-.toolbar .actions > button[aria-expanded="true"] {
+.trailing > button[aria-expanded="true"] {
   color: var(--ds-gray-12);
   background: var(--ds-gray-3);
 }

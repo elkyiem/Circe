@@ -4,7 +4,9 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  margin: var(--window-inset, 8px);
   overflow: hidden;
+  border-radius: var(--ds-radius-xl);
 }
 
 .empty {

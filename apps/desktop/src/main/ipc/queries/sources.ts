@@ -10,6 +10,7 @@ import { getAccount, patchAccountSync } from "../../core/sync/accounts";
 import { getWatch, patchWatchSync } from "../../core/sync/watches";
 import { normalizeTagList } from "../../core/tags";
 import { getDb } from "../../db";
+import { lastNativeContactAt } from "../../native/rpc";
 import { type QueryHandlerMap, query, StringParam } from "./params";
 
 const RECENT_LIMIT = 12;
@@ -71,6 +72,10 @@ export const sourcesQueries = {
       });
     },
   ),
+
+  "sources.extensionLastSeen": query(z.object({}), () => ({
+    at: lastNativeContactAt(),
+  })),
 
   "sources.overview": query(z.object({ id: StringParam }), async (params) => {
     const db = await getDb();

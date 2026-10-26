@@ -21,8 +21,8 @@ import {
   listKindLabel,
   localDay,
   mediaKindLabel,
-  SINCE_PRESETS,
   saveImportScope,
+  sinceCopy,
 } from "@/features/sources/lib/import-scope";
 import { getSourceDef } from "@/features/sources/lib/registry";
 import {
@@ -35,6 +35,7 @@ import {
   useImportScopeFlowActions,
 } from "@/features/sources/state/import-scope-flow";
 import { formatNumber } from "@/shared/lib/format";
+import { BlueskySignIn, useBlueskySignedIn } from "./bluesky-sign-in";
 import styles from "./styles.module.css";
 
 /** Loads the Account's saved choices into the draft and saves each change, like Settings. */
@@ -81,11 +82,15 @@ export function ImportScopeLists({ accountId }: { accountId: string }) {
   if (options.listKinds.length > 0) {
     return (
       <Settings.List className={styles.choices}>
-        {options.listKinds.map((kind) => (
-          <ListKindRows key={kind} source={source} kind={kind}>
-            {kind === "saved" ? collections : null}
-          </ListKindRows>
-        ))}
+        {options.listKinds.map((kind) =>
+          source === "bluesky" && kind === "saved" ? (
+            <BlueskyBookmarkRows key={kind} accountId={accountId} />
+          ) : (
+            <ListKindRows key={kind} source={source} kind={kind}>
+              {kind === "saved" ? collections : null}
+            </ListKindRows>
+          ),
+        )}
       </Settings.List>
     );
   }
@@ -112,7 +117,7 @@ export function ImportScopeFilters({ accountId }: { accountId: string }) {
       {options.mediaKinds.length > 0 ? (
         <MediaKindsRow kinds={options.mediaKinds} />
       ) : null}
-      {options.since ? <SinceRows /> : null}
+      {options.since ? <SinceRows source={source} /> : null}
     </Settings.List>
   );
 }
@@ -186,13 +191,25 @@ async function confirmImportScope(
   flow.markSaved(scope, { started: start });
 }
 
+/** Bookmarks stay visible but locked until Pond's bsky.app window is signed in as this Account. */
+function BlueskyBookmarkRows({ accountId }: { accountId: string }) {
+  const signedIn = useBlueskySignedIn(accountId, true);
+  return (
+    <ListKindRows source="bluesky" kind="saved" locked={!signedIn}>
+      <BlueskySignIn accountId={accountId} />
+    </ListKindRows>
+  );
+}
+
 function ListKindRows({
   source,
   kind,
+  locked = false,
   children,
 }: {
   source: Source;
   kind: ListKind;
+  locked?: boolean;
   children: ReactNode;
 }) {
   const flow = useImportScopeFlowActions();
@@ -201,7 +218,7 @@ function ListKindRows({
   const description = listKindDescription(source, kind);
   return (
     <>
-      <Settings.Item>
+      <Settings.Item disabled={locked}>
         <Settings.ItemDetails>
           <Settings.ItemTitle>{title}</Settings.ItemTitle>
           {description ? (
@@ -211,7 +228,8 @@ function ListKindRows({
         <Settings.ItemControl>
           <Switch.Root
             aria-label={title}
-            checked={draft.listKinds.includes(kind)}
+            checked={!locked && draft.listKinds.includes(kind)}
+            disabled={locked}
             onCheckedChange={(next) => flow.setListKind(kind, next)}
           />
         </Settings.ItemControl>
@@ -372,36 +390,39 @@ function MediaKindsRow({ kinds }: { kinds: readonly ImportMediaKind[] }) {
   );
 }
 
-function SinceRows() {
+function SinceRows({ source }: { source: Source }) {
   const flow = useImportScopeFlowActions();
   const draft = useImportScopeFlow();
   const custom = draft.sincePreset === "custom";
+  const copy = sinceCopy(source);
   return (
     <>
       <Settings.Item>
         <Settings.ItemDetails>
           <Settings.ItemTitle className={styles.titled}>
-            Posted Since
-            <Tooltip.Info
-              label="Posts without a publish date are always imported."
-              aria-label="About Posted Since"
-            />
+            {copy.title}
+            {copy.info ? (
+              <Tooltip.Info
+                label={copy.info}
+                aria-label={`About ${copy.title}`}
+              />
+            ) : null}
           </Settings.ItemTitle>
           <Settings.ItemDescription>
-            Skips older posts by publish date.
+            {copy.description}
           </Settings.ItemDescription>
         </Settings.ItemDetails>
         <Settings.ItemControl>
           <Select.Root
             value={draft.sincePreset}
-            items={[...SINCE_PRESETS]}
+            items={[...copy.presets]}
             onValueChange={(next) => {
               if (next) flow.setSincePreset(next);
             }}
           >
             <Select.Trigger
               size="sm"
-              aria-label="Posted Since"
+              aria-label={copy.title}
               className={styles.control}
             >
               <Select.Value />
@@ -409,7 +430,7 @@ function SinceRows() {
             <Select.Portal>
               <Select.Positioner align="end">
                 <Select.Popup>
-                  <Select.Items items={[...SINCE_PRESETS]} />
+                  <Select.Items items={[...copy.presets]} />
                 </Select.Popup>
               </Select.Positioner>
             </Select.Portal>
@@ -420,7 +441,7 @@ function SinceRows() {
         <Settings.ItemDetails>
           <Settings.ItemTitle>Date</Settings.ItemTitle>
           <Settings.ItemDescription>
-            Used when Posted Since is Custom Date.
+            Used when {copy.title} is Custom Date.
           </Settings.ItemDescription>
         </Settings.ItemDetails>
         <Settings.ItemControl>

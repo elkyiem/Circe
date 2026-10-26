@@ -1,5 +1,6 @@
 import { seededOrderKey } from "@shared/order-key";
 import { pickCardFile } from "@shared/save-file-names";
+import { saveDuration } from "@/features/saves/media";
 import type { Save } from "@/features/saves/types";
 
 export type SortKey =
@@ -109,7 +110,7 @@ function cmp(a: Save, b: Save, key: SortKey): number {
     case "tagCount":
       return a.tags.length - b.tags.length;
     case "duration":
-      return nullableNumber(durationFor(a), durationFor(b));
+      return nullableNumber(saveDuration(a), saveDuration(b));
     case "fileSize":
       return nullableNumber(sizeFor(a), sizeFor(b));
     case "rating":
@@ -172,18 +173,6 @@ function tagNameFor(s: Save): string | null {
   return s.tags.map((tag) => tag.toLowerCase()).sort()[0] ?? null;
 }
 
-function durationFor(s: Save): number | null {
-  const raw = s.rawJson;
-  const captureDuration = raw?.capture?.duration;
-  if (captureDuration != null && captureDuration > 0) return captureDuration;
-  const mediaDuration = raw?.capture?.media.find(
-    (media) => media.durationSec != null && media.durationSec > 0,
-  )?.durationSec;
-  if (mediaDuration != null) return mediaDuration;
-  const ytdlpDuration = raw?.ytdlp?.duration;
-  return ytdlpDuration != null && ytdlpDuration > 0 ? ytdlpDuration : null;
-}
-
 function sizeFor(s: Save): number | null {
   const cover = pickCardFile(s.files ?? []);
   return cover?.size ?? s.fileSize ?? null;
@@ -218,7 +207,7 @@ function isMissingSortValue(s: Save, key: SortKey): boolean {
     case "tagName":
       return tagNameFor(s) == null;
     case "duration":
-      return durationFor(s) == null;
+      return saveDuration(s) == null;
     case "fileSize":
       return sizeFor(s) == null;
     case "rating":

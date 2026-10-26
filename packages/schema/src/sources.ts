@@ -12,6 +12,7 @@ export {
   descriptorFor,
   EXTERNAL_SOURCE_IDS,
   type ExternalSource,
+  GITHUB_REPO_PATTERN,
   SOURCE_DESCRIPTORS,
   syncConfigFor,
 } from "./sources/registry";
@@ -38,6 +39,11 @@ export function resolveSourceId(value: string): Source | null {
   const key = value.toLowerCase();
   const normalized = SOURCE_ALIASES.get(key) ?? key;
   return isSource(normalized) ? normalized : null;
+}
+
+export function connectsByHandle(source: Source): boolean {
+  if (source === "web" || source === "local") return false;
+  return descriptorFor(source).connect === "handle";
 }
 
 export function sourceIdFromUrl(source: Source, rawUrl: string): string | null {

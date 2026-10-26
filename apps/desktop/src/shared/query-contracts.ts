@@ -17,10 +17,6 @@ import type {
   AccountQueryResults,
 } from "./account-contracts";
 import type { assistantSend } from "./assistant";
-import type {
-  BrowserExtensionQueryInputs,
-  BrowserExtensionQueryResults,
-} from "./browser-extension-contracts";
 import type { BulkQueryInputs, BulkQueryResults } from "./bulk-contracts";
 import type { CanvasQueryInputs, CanvasQueryResults } from "./canvas-contracts";
 import type {
@@ -29,6 +25,11 @@ import type {
 } from "./conversion-contracts";
 import type { DownloadActivity } from "./download-activity";
 import type { FeedbackEvent } from "./feedback";
+import type { FishQueryInputs, FishQueryResults } from "./fish-contracts";
+import type {
+  FishMcpQueryInputs,
+  FishMcpQueryResults,
+} from "./fish-mcp-contracts";
 import type { FolderQueryInputs, FolderQueryResults } from "./folder-contracts";
 import type { GlobalShortcutStatus } from "./global-shortcuts";
 import type {
@@ -127,11 +128,12 @@ export type { OkResult } from "./query-contracts-shared";
 export interface QueryInputs
   extends AccountQueryInputs,
     TransferQueryInputs,
-    BrowserExtensionQueryInputs,
     BulkQueryInputs,
     FolderQueryInputs,
     InspectQueryInputs,
     CanvasQueryInputs,
+    FishQueryInputs,
+    FishMcpQueryInputs,
     ConversionQueryInputs,
     SavesReadQueryInputs,
     SavesMutationQueryInputs,
@@ -297,8 +299,8 @@ export interface QueryInputs
   "settings.globalShortcutStatus": EmptyInput;
   "agent.keys": EmptyInput;
   "agent.listAvailableModels": EmptyInput;
-  "agent.chats": EmptyInput;
-  "agent.newChat": EmptyInput;
+  "agent.chats": { fishId?: string };
+  "agent.newChat": { fishId?: string };
   "agent.mcpSnippet": EmptyInput;
   "agent.openMcpInstall": { id: "cursor" | "vscode" };
   "library.info": EmptyInput;
@@ -338,12 +340,13 @@ export interface QueryInputs
 export interface QueryResults
   extends AccountQueryResults,
     TransferQueryResults,
-    BrowserExtensionQueryResults,
     BulkQueryResults,
     SystemQueryResults,
     FolderQueryResults,
     InspectQueryResults,
     CanvasQueryResults,
+    FishQueryResults,
+    FishMcpQueryResults,
     ConversionQueryResults,
     SavesReadQueryResults,
     SavesMutationQueryResults,

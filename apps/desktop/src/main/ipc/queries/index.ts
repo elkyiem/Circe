@@ -2,7 +2,12 @@ import log from "electron-log/main.js";
 import { z } from "zod";
 import { COMBINE_IMAGES_QUERY_NAMES } from "../../../shared/combine-images-contracts";
 import { IPC } from "../../../shared/constants";
-import { registerPondOperations } from "../../core/agent/operations";
+import { fishMcp } from "../../core/agent/fish-mcp/live";
+import { mcpOperations } from "../../core/agent/fish-mcp/operations";
+import {
+  registerExternalOperations,
+  registerPondOperations,
+} from "../../core/agent/operations";
 import { combineImagesWindowOwnsSender } from "../../core/combine-images-window";
 import { currentLibraryId } from "../../core/prefs-scope";
 import { agentControlOperations } from "../agent-controls";
@@ -15,6 +20,8 @@ import { bulkQueries } from "./bulk";
 import { canvasesQueries } from "./canvases";
 import { conversionQueries } from "./conversion";
 import { downloadsQueries } from "./downloads";
+import { fishQueries } from "./fish";
+import { fishMcpQueries } from "./fish-mcp";
 import { foldersQueries } from "./folders";
 import { inspectQueries } from "./inspect";
 import { libraryQueries } from "./library";
@@ -43,6 +50,8 @@ const queryRegistry = {
   ...bulkQueries,
   ...openWithQueries,
   ...canvasesQueries,
+  ...fishQueries,
+  ...fishMcpQueries,
   ...conversionQueries,
   ...savesQueries,
   ...downloadsQueries,
@@ -84,6 +93,11 @@ export function registerQueryHandler(): void {
     operations: pondOperations(),
     libraryId: currentLibraryId,
   });
+  registerExternalOperations(() =>
+    mcpOperations(fishMcp.tools(), (serverId, tool, args) =>
+      fishMcp.call(serverId, tool, args),
+    ),
+  );
   safeHandle(IPC.query, async (event, name: string, raw?: QueryParams) => {
     const parsedName = QueryNameSchema.safeParse(name);
     if (!parsedName.success) throw new Error(`unknown query: ${name}`);

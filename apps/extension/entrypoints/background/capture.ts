@@ -27,6 +27,7 @@ export interface CaptureRequest {
   originUrl?: string;
   metadata?: Metadata;
   cookies?: ExtensionCookie[];
+  fishId?: string;
   /** The tab to confirm the save on; omit when nothing should be shown. */
   announceTab?: number;
 }
@@ -36,6 +37,7 @@ function toastFor(title: string, outcome: CaptureOutcome): OverlayToast {
   if (outcome.status === "failed") toast.message = outcome.message;
   if (outcome.status === "saved" || outcome.status === "duplicate") {
     toast.saveId = outcome.saveId;
+    if (outcome.warning) toast.message = outcome.warning;
   }
   return toast;
 }
@@ -73,6 +75,7 @@ export async function submitCapture(
       items: request.items,
     },
     cookies: request.cookies?.length ? request.cookies : undefined,
+    fishId: request.fishId,
   });
   const outcome = outcomeFromResponse(id, response);
   if (outcome.status !== "failed" && outcome.status !== "offline") {
@@ -172,6 +175,7 @@ export async function saveDraft(
   draft: DetailsDraft,
   tabId: number | undefined,
   metadata?: Metadata,
+  fishId?: string,
 ): Promise<CaptureOutcome> {
   return submitCapture({
     items: draft.items,
@@ -183,6 +187,7 @@ export async function saveDraft(
         ? { ...metadata, tags: ["screenshot"] }
         : metadata,
     cookies: await draftCookies(draft),
+    fishId,
     announceTab: tabId,
   });
 }
@@ -204,7 +209,7 @@ export async function offerDraft(
   await saveDraft(draft, tabId);
 }
 
-const SITE_ACTIONS = new Set(["like", "upvote", "bookmark"]);
+const SITE_ACTIONS = new Set(["like", "upvote", "bookmark", "star"]);
 
 function siteTitle(url: string, trigger: string | undefined): string {
   const source = hostToSource(url);

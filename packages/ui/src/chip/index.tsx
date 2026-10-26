@@ -10,7 +10,14 @@ import { cssVars } from "../css-vars";
 import { Menu } from "../menu";
 import styles from "./styles.module.css";
 
-export type ChipTone = "mention" | "tag" | "applied" | "suggested" | "file";
+export type ChipTone =
+  | "mention"
+  | "tag"
+  | "added"
+  | "removed"
+  | "applied"
+  | "suggested"
+  | "file";
 
 interface RootProps extends ComponentPropsWithoutRef<"div"> {}
 

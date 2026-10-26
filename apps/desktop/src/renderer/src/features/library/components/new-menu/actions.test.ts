@@ -41,6 +41,7 @@ const {
   findDuplicates,
   reviewOrganization,
   importClipboard,
+  importDataExport,
   importEagle,
   importEaglePackage,
   importLinks,
@@ -375,6 +376,53 @@ describe("new menu actions", () => {
         description: "1 skipped",
       }),
     );
+  });
+
+  it("does not notify when the data export picker is cancelled", async () => {
+    query.mockResolvedValue({ ok: false, reason: "cancelled" });
+    await importDataExport();
+    expect(query).toHaveBeenCalledExactlyOnceWith("saves.importDataExport", {});
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("names the platforms and asks you to connect missing Sources", async () => {
+    query.mockResolvedValue({
+      ok: true,
+      imported: 12,
+      skipped: 3,
+      platforms: ["X", "Instagram", "YouTube"],
+      connect: ["twitter", "instagram"],
+    });
+    await importDataExport();
+    expect(folders.refresh).toHaveBeenCalledOnce();
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Imported 12 Saves from X, Instagram, and YouTube",
+        description: "Connect Twitter and Instagram so Pond can capture them.",
+      }),
+    );
+  });
+
+  it("reports skipped Saves when every Source is connected", async () => {
+    query.mockResolvedValue({
+      ok: true,
+      imported: 0,
+      skipped: 4,
+      platforms: ["Reddit"],
+      connect: [],
+    });
+    await importDataExport();
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Nothing new to import",
+        description: "4 skipped",
+      }),
+    );
+  });
+
+  it("surfaces an unreadable data export", async () => {
+    query.mockResolvedValue({ ok: false, error: "Not an export." });
+    await expect(importDataExport()).rejects.toThrow("Not an export.");
   });
 
   it("reports a completed library rescan", async () => {

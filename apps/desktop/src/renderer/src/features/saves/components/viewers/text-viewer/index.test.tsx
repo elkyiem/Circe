@@ -206,7 +206,6 @@ describe("text viewer", () => {
         "Inline Code",
         "Code Block",
         "List",
-        "Assistant",
       ]),
     );
     const style = [...document.querySelectorAll("button")].find(

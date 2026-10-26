@@ -8,9 +8,9 @@
 }
 
 .editor {
-  min-height: 72px;
+  min-height: 24px;
   max-height: 288px;
-  padding: 2px 6px;
+  padding: 2px 6px 0;
   overflow-y: auto;
   font: inherit;
   line-height: 24px;

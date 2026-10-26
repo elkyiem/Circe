@@ -6,6 +6,7 @@ import log from "electron-log/main.js";
 import { DEFAULT_APP_ICON } from "../shared/app-icons";
 import { IPC, type RecentMenuEntry } from "../shared/constants";
 import type { ShortcutId } from "../shared/shortcuts";
+import { fishMcp } from "./core/agent/fish-mcp/live";
 import { startAutoImport, stopAutoImport } from "./core/auto-import";
 import { captures } from "./core/captures";
 import {
@@ -14,6 +15,7 @@ import {
 } from "./core/combine-images-window";
 import { ensureDefaultLibrary } from "./core/ensure-default-library";
 import { registerSyncActionListener } from "./core/executor";
+import { startFishRoutines } from "./core/fish";
 import {
   startGlobalShortcuts,
   summonShortcutTarget,
@@ -53,6 +55,7 @@ import {
   handleSecondInstance,
   shouldOpenInitialWindow,
 } from "./deep-link";
+import { markSaveLinksReady } from "./deep-link-save";
 import { registerIpc } from "./ipc";
 import { waitForLibraryLocationChanges } from "./ipc/queries/library-locations";
 import { ensureIngestToken } from "./keychain";
@@ -71,6 +74,7 @@ import {
 import { resolveLogFile } from "./logging";
 import { installAppMenu, setMenuRecents } from "./menu";
 import { writeNativeHostManifests } from "./native/manifests";
+import { safariSocketPath } from "./native/paths";
 import { startNativeServer, stopNativeServer } from "./native/server";
 import { flushOpenFiles, queueOpenFile } from "./open-files";
 import { libraryRoot, type PondPaths, resolvePaths } from "./paths";
@@ -154,6 +158,7 @@ const initialDeepLink = deepLinkArg(process.argv);
 let nativeServer: NetServer | null = null;
 let webServer: Awaited<ReturnType<typeof import("./web").startWebHost>> | null =
   null;
+let safariServer: NetServer | null = null;
 let stopMediaWarmer: (() => void) | null = null;
 
 let signalRendererReady: (() => void) | null = null;
@@ -315,6 +320,8 @@ app.whenReady().then(async () => {
   }
   if (dbResult.status === "rejected") {
     log.error("[pond] db init failed", dbResult.reason);
+  } else {
+    markSaveLinksReady();
   }
 
   app.on("activate", () => void handleActivate());
@@ -374,6 +381,18 @@ async function postLaunchInit(): Promise<void> {
   } catch (err) {
     log.error("[pond] native host failed to start", err);
   }
+  /** Only a signed build carries the App Group entitlement that opens the shared container. */
+  if (
+    process.platform === "darwin" &&
+    app.isPackaged &&
+    !process.env.POND_SANDBOX
+  ) {
+    try {
+      safariServer = await startNativeServer({ path: safariSocketPath() });
+    } catch (err) {
+      log.error("[pond] Safari native host failed to start", err);
+    }
+  }
   /** Manifests must keep pointing at the real app, and registration never depends on the socket binding. */
   if (!process.env.POND_SANDBOX) {
     try {
@@ -401,6 +420,7 @@ async function postLaunchInit(): Promise<void> {
 
   await initTray();
   registerSyncActionListener(() => queueTrayRefresh());
+  startFishRoutines({ onSyncAction: registerSyncActionListener });
 
   void runtimeControls
     .applyPrefsAtRuntime()
@@ -449,7 +469,11 @@ async function startDeferredMaintenance(): Promise<void> {
         await import("./core/refresh/source-icon-backfill")
       ).backfillSourceIcons(),
     )
-    .catch((err) => log.warn("[pond] source icon backfill failed", err));
+    .catch((err) => log.warn("[pond] source icon backfill failed", err))
+    .then(async () =>
+      (await import("./core/refresh/article-backfill")).startArticleBackfill(),
+    )
+    .catch((err) => log.warn("[pond] article backfill failed", err));
   void enrichmentModule
     .backfillEnrichmentSidecars()
     .catch((err) => log.warn("[pond] enrichment sidecar backfill failed", err));
@@ -595,8 +619,15 @@ app.on("before-quit", async (event) => {
   closePreviewWindows();
   closeCombineImagesWindow();
   try {
-    await withDeadline(stopNativeServer(nativeServer), SERVER_CLOSE_MS);
+    await withDeadline(
+      Promise.all([
+        stopNativeServer(nativeServer),
+        stopNativeServer(safariServer),
+      ]).then(() => undefined),
+      SERVER_CLOSE_MS,
+    );
     nativeServer = null;
+    safariServer = null;
   } catch (err) {
     log.warn("[pond] native host close failed", err);
   }
@@ -605,6 +636,11 @@ app.on("before-quit", async (event) => {
     await withDeadline(runtimeControls.closeHttpServer(), SERVER_CLOSE_MS);
   } catch (err) {
     log.warn("[pond] http server close failed", err);
+  }
+  try {
+    await withDeadline(fishMcp.closeAll(), SERVER_CLOSE_MS);
+  } catch (err) {
+    log.warn("[pond] fish MCP close failed", err);
   }
   log.info("[pond] quit prepared");
   quitPrepared = true;

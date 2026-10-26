@@ -7,7 +7,6 @@ import { ChatActions } from "./chat-actions";
 let host: HTMLDivElement;
 let root: Root;
 const query = vi.fn(async () => ({ ok: true }));
-const onRename = vi.fn();
 beforeEach(() => {
   vi.stubGlobal("pond", { query });
   query.mockClear();
@@ -28,7 +27,6 @@ async function render(disabled = false, chatId: string | null = "chat") {
           chatId={chatId}
           title="Notes"
           disabled={disabled}
-          onRename={onRename}
           messages={
             chatId
               ? [
@@ -49,17 +47,10 @@ async function render(disabled = false, chatId: string | null = "chat") {
   );
 }
 async function openMenu() {
-  const trigger = item("Chat Actions");
-  if (!trigger) throw new Error("Missing Chat Actions");
+  const trigger = item("Fish Actions");
+  if (!trigger) throw new Error("Missing Fish Actions");
   await act(async () => trigger.click());
 }
-it("starts inline renaming without opening a prompt", async () => {
-  await render();
-  await openMenu();
-  await act(async () => menuItem("Rename Chat")?.click());
-  expect(onRename).toHaveBeenCalledOnce();
-  expect(document.querySelector('[role="dialog"]')).toBeNull();
-});
 function item(label: string) {
   return [
     ...document.querySelectorAll<HTMLButtonElement>("button[aria-label]"),
@@ -78,12 +69,7 @@ it("places every chat action in one menu", async () => {
     [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
       (element) => element.textContent,
     ),
-  ).toEqual([
-    "Rename Chat",
-    "Copy Conversation",
-    "Export Markdown",
-    "Delete Chat",
-  ]);
+  ).toEqual(["Copy Conversation", "Export Markdown", "Clear Conversation"]);
 });
 it("copies Markdown through the desktop clipboard operation", async () => {
   await render();
@@ -94,16 +80,22 @@ it("copies Markdown through the desktop clipboard operation", async () => {
   });
 });
 it.each([true, false])(
-  "disables chat mutations while busy or without a saved chat (%s)",
+  "disables conversation actions while busy or before the first message (%s)",
   async (busy) => {
     await render(busy, busy ? "chat" : null);
-    expect(item("Chat Actions")?.disabled).toBe(true);
+    await openMenu();
+    for (const label of [
+      "Copy Conversation",
+      "Export Markdown",
+      "Clear Conversation",
+    ])
+      expect(menuItem(label)?.hasAttribute("data-disabled")).toBe(true);
   },
 );
 it("requires confirmation before deleting and supports cancellation", async () => {
   await render();
   await openMenu();
-  await act(async () => menuItem("Delete Chat")?.click());
+  await act(async () => menuItem("Clear Conversation")?.click());
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
     "permanently deletes",
   );

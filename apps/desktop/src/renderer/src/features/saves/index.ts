@@ -5,6 +5,7 @@ export {
 } from "./components/card/context";
 export { CardThumb } from "./components/card/media";
 export { Card } from "./components/card/parts";
+export { SaveTile } from "./components/card/tile";
 export type { LibraryCardView } from "./components/card/types";
 export {
   FolderMenu,
@@ -17,7 +18,6 @@ export { useMediaPickOptions } from "./hooks/use-media-pick-options";
 export { confirmEmptyTrash } from "./lib/empty-trash";
 export { notifyUndoableFolderChange } from "./lib/folder-actions";
 export { collectionOwnsKeyboard, saveOwnsKeyboard } from "./lib/keyboard-owner";
-export type { SaveInspectorTab } from "./lib/library-bridge";
 export { parseMode, type SaveListMode } from "./lib/list";
 export {
   getLastListPath,

@@ -31,13 +31,20 @@
   transform-origin: var(--transform-origin);
   transition:
     opacity var(--ds-duration-snap) var(--ds-easing-decelerate),
-    transform var(--ds-duration-snap) var(--ds-easing-decelerate);
+    transform var(--ds-duration-bounce) var(--ds-easing-bounce);
   -webkit-app-region: no-drag;
 
   &[data-starting-style],
   &[data-ending-style] {
     opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+
+  &[data-ending-style] {
     transform: scale(0.96) translateY(-2px);
+    transition:
+      opacity var(--ds-duration-snap) var(--ds-easing-decelerate),
+      transform var(--ds-duration-snap) var(--ds-easing-decelerate);
   }
 
   &[data-instant] {

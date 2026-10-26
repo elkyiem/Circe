@@ -24,6 +24,9 @@ const labels = new Map<string, string>(
     describePondOperation: "Read operation details",
     runPondOperation: "Use Pond",
     readPondOperationResult: "Read operation result",
+    createRoutine: "Set up routine",
+    updateRoutine: "Update routine",
+    deleteRoutine: "Delete routine",
   }),
 );
 

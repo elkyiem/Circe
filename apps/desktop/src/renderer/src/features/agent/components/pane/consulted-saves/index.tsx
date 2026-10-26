@@ -4,7 +4,10 @@ import type { AssistantSource } from "@shared/assistant";
 import { sourceExcerpt } from "@shared/assistant-text";
 import type { ReactNode, RefObject } from "react";
 import { useState } from "react";
+import { pickPrimaryFile } from "@/features/saves/media";
 import { openSave } from "@/features/saves/navigation";
+import { useSave } from "@/features/saves/pool";
+import { formatAbsolute } from "@/shared/lib/format";
 import { SourceThumbnail, useSourceCovers } from "../save-preview";
 import styles from "./styles.module.css";
 
@@ -29,6 +32,24 @@ function toReferenceItems(
       },
     ];
   });
+}
+
+function fileType(path: string | undefined) {
+  const dot = path?.lastIndexOf(".") ?? -1;
+  return path && dot >= 0 ? path.slice(dot + 1).toUpperCase() : null;
+}
+
+function RowMeta({ id }: { id: string }) {
+  const save = useSave(id);
+  if (!save) return null;
+  const type = fileType(pickPrimaryFile(save)?.path);
+  const date = formatAbsolute(save.savedAt);
+  return (
+    <span className={styles.meta}>
+      {type ? <span className={styles.type}>{type}</span> : null}
+      {date ? <span>{date}</span> : null}
+    </span>
+  );
 }
 
 export function ConsultedSaves({
@@ -65,6 +86,7 @@ export function ConsultedSaves({
           <span className={styles.title} title={item.title}>
             {item.title}
           </span>
+          <RowMeta id={item.id} />
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner side="top" align="start" sideOffset={8}>

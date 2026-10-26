@@ -5,7 +5,8 @@ export function isLocalProviderConnected(
   agent: Pick<Prefs["agent"], "enabledKeys" | "connectedLocalProviders">,
 ): boolean {
   return (
-    (provider === "ollama" ||
+    (provider === "apple" ||
+      provider === "ollama" ||
       provider === "lmstudio" ||
       provider === "codex" ||
       provider === "claude-code") &&

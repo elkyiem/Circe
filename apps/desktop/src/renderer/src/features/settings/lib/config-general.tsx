@@ -272,19 +272,6 @@ export const generalSection = defineCustomSection({
       title: "Updates",
       items: [
         {
-          control: "select",
-          key: "channel",
-          title: "Update Channel",
-          description:
-            "Nightly gets a new build from the latest code every day.",
-          keywords: ["nightly", "beta", "prerelease", "stable"],
-          options: [
-            { value: "stable", label: "Stable" },
-            { value: "nightly", label: "Nightly" },
-          ],
-          apply: () => runApply("updates.applyPrefs"),
-        },
-        {
           control: "switch",
           key: "autoInstall",
           title: "Automatic Updates",

@@ -21,6 +21,7 @@ import {
 import { rememberListPath } from "@/features/saves/lib/list-path";
 import { normalise } from "@/features/saves/lib/reconcile";
 import { pool } from "@/features/saves/state/pool";
+import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { libraryViewContext } from "@/features/saves/state/view-context";
 import { setAppRouter } from "@/shared/lib/app-router";
 import { Toolbar } from "./";
@@ -55,6 +56,7 @@ describe("breadcrumb toolbar", () => {
           }));
         return [];
       },
+      onAgentChunk: () => () => {},
     });
     resetFilters();
     await folders.refresh();
@@ -68,11 +70,8 @@ describe("breadcrumb toolbar", () => {
     if (!save) throw new Error("Invalid save fixture");
     pool.upsert(save);
     libraryViewContext.set([], "library");
-    navigationHistory.clear();
     libraryChrome.setNav({ kind: "all" });
-    libraryChrome.setInspectorSaveId(null);
-    libraryChrome.setAgentOpen(false);
-    libraryChrome.closeRightPane();
+    navigationHistory.clear();
     rememberListPath("/");
     host = document.createElement("div");
     document.body.append(host);
@@ -100,7 +99,7 @@ describe("breadcrumb toolbar", () => {
       "/",
       "/save/$saveId",
       "/sources",
-      "/assistant",
+      "/fish/$fishId",
       "/tags",
       "/untagged",
       "/recents",
@@ -126,8 +125,12 @@ describe("breadcrumb toolbar", () => {
     return router;
   }
 
+  it("leaves the fish page without a breadcrumb", async () => {
+    await mount("/fish/default");
+    expect(host.querySelector('nav[aria-label="Breadcrumb"]')).toBeNull();
+  });
+
   it.each([
-    ["/assistant", "Assistant"],
     ["/sources", "Sources"],
     ["/tags", "Tags"],
     ["/untagged", "Untagged"],
@@ -202,6 +205,21 @@ describe("breadcrumb toolbar", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
+  it("shows the save's position in the results after its title", async () => {
+    resultNavigation.setSource({
+      key: "test",
+      ids: ["other", "demo"],
+      total: 20,
+    });
+    try {
+      await mount("/save/demo");
+      const current = host.querySelector('[aria-current="page"]');
+      expect(current?.textContent).toBe("A saved design2 / 20");
+    } finally {
+      resultNavigation.setSource({ ids: [] });
+    }
+  });
+
   it("keeps hidden ancestors accessible through the overflow menu", async () => {
     libraryChrome.setNav({ kind: "folder", id: "deep" });
     await mount();
@@ -249,26 +267,6 @@ describe("breadcrumb toolbar", () => {
         ),
       ).toBe(true);
     }
-  });
-
-  it("opens pane controls from the sidebar toggle context menu", async () => {
-    await mount();
-    await act(async () => {
-      button("Toggle Sidebar").dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-          button: 2,
-          clientX: 24,
-          clientY: 24,
-        }),
-      );
-    });
-    expect(
-      [...document.querySelectorAll('[role="menuitemcheckbox"]')].map((item) =>
-        item.textContent?.trim(),
-      ),
-    ).toEqual(["Sidebar", "Assistant", "Details"]);
   });
 
   it("updates back and forward controls using the single router history", async () => {
@@ -338,39 +336,15 @@ describe("breadcrumb toolbar", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
-  it("opens Assistant from its own control", async () => {
-    await mount();
-    expect(button("Toggle Details").getAttribute("aria-pressed")).not.toBe(
-      "true",
-    );
-    await act(async () => button("Assistant").click());
-    expect(libraryChrome.getState().rightPane).toBe("agent");
-    expect(button("Assistant").getAttribute("aria-pressed")).toBe("true");
-    expect(button("Toggle Details").getAttribute("aria-pressed")).toBe("true");
-    await act(async () => button("Toggle Details").click());
-    expect(libraryChrome.getState().rightPane).toBeNull();
-  });
-
-  it("closes Details without opening Assistant", async () => {
-    libraryChrome.openSaveDetails("demo");
-    await mount("/save/demo");
-    expect(libraryChrome.getState().rightPane).toBe("inspector");
-    await act(async () => button("Toggle Details").click());
-    expect(libraryChrome.getState().rightPane).toBeNull();
-    expect(libraryChrome.getState().inspectorSaveId).toBe("demo");
-    expect(button("Assistant").getAttribute("aria-pressed")).not.toBe("true");
-  });
-
-  it("keeps the right sidebar toggle visible and reopens Details", async () => {
-    libraryChrome.inspectSave("demo");
-    libraryChrome.closeRightPane();
-    await mount("/save/demo");
-    expect(libraryChrome.getState().rightPane).toBeNull();
-    expect(button("Toggle Details").getAttribute("aria-pressed")).not.toBe(
-      "true",
-    );
-    await act(async () => button("Toggle Details").click());
-    expect(libraryChrome.getState().rightPane).toBe("inspector");
-    expect(button("Toggle Details").getAttribute("aria-pressed")).toBe("true");
+  it("offers the details toggle only while viewing a Save", async () => {
+    const labels = () =>
+      [...host.querySelectorAll("button")].map((node) =>
+        node.getAttribute("aria-label"),
+      );
+    const router = await mount("/");
+    expect(labels()).not.toContain("Toggle Details");
+    await act(async () => router.history.push("/save/demo"));
+    expect(labels()).toContain("Toggle Details");
+    expect(labels()).not.toContain("Fish");
   });
 });

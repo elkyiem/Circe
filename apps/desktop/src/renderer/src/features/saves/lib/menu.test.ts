@@ -310,11 +310,11 @@ describe("buildSaveMenu", () => {
       "Thumbnail",
       "Refresh from Source",
       "Search by Image",
-      "Assistant",
+      "Fish",
       "More",
       "Move to Trash",
     ]);
-    expect(visibleLabels(sectionItems(items, "Assistant") ?? [])).toEqual([
+    expect(visibleLabels(sectionItems(items, "Fish") ?? [])).toEqual([
       "Add to Chat",
       "Apply Suggested Tags",
       "Caption Images",
@@ -370,6 +370,7 @@ describe("buildSaveMenu", () => {
     expect(visibleLabels(sectionItems(items, "Thumbnail") ?? [])).toEqual([
       "Set Thumbnail from File",
       "Set Thumbnail from Clipboard",
+      "Reset Thumbnail",
       "Thumbnail Background",
       "None",
       "Black",
@@ -541,20 +542,11 @@ describe("buildSaveMenu", () => {
     ).toMatchObject({ variant: "destructive" });
   });
 
-  it("offers removal only when a custom thumbnail exists", () => {
+  it("offers Reset Thumbnail for any save with an original, thumbnail or not", () => {
     const save = fileSave({
       source: "local",
       url: "pond:local/file-save",
-      files: [
-        { kind: "file", path: "asset.zip", sha256: "a", size: 1 },
-        {
-          kind: "thumbnail",
-          path: "thumb.png",
-          mimeType: "image/png",
-          sha256: "b",
-          size: 1,
-        },
-      ],
+      files: [{ kind: "file", path: "asset.zip", sha256: "a", size: 1 }],
     });
     const items = buildSaveMenu(save, { clipboardEmpty: true });
     expect(visibleLabels(items)).toContain("Reset Thumbnail");
@@ -645,12 +637,12 @@ describe("buildSaveMenu", () => {
     expect(refs[2]).toMatchObject({ label: "Shots", checked: false });
   });
 
-  it("hides Assistant for trashed saves", () => {
+  it("hides Fish for trashed saves", () => {
     expect(
       topLevelLabels(
         buildSaveMenu(fileSave({ deletedAt: 1 }), { clipboardEmpty: true }),
       ),
-    ).not.toContain("Assistant");
+    ).not.toContain("Fish");
   });
 
   it("shows Rename only for a local save", () => {

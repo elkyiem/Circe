@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { app, dialog, session, shell } from "electron";
 import log from "electron-log/main.js";
 import { z } from "zod";
-import { BrowserExtensionInstallInputSchema } from "../../../shared/browser-extension-contracts";
 import { LibraryMarkSourceSchema } from "../../../shared/library-mark";
 import type { QueryResult } from "../../../shared/query-contracts";
 import {
@@ -153,16 +152,6 @@ export const libraryMaintenanceQueries = {
       };
     }
   },
-
-  "extension.install": query(
-    BrowserExtensionInstallInputSchema,
-    async (params): Promise<QueryResult<"extension.install">> => {
-      const { installBrowserExtension } = await import(
-        "../../core/browser-extension"
-      );
-      return await installBrowserExtension(params.browser ?? "chrome");
-    },
-  ),
 
   async "quickCapture.applyPrefs"(): Promise<
     QueryResult<"quickCapture.applyPrefs">

@@ -3,6 +3,8 @@ export const THUMBNAIL_DARK_KIND = "thumbnail_dark";
 export const IMAGE_KIND = "image";
 export const VIDEO_KIND = "video";
 export const POSTER_KIND = "poster";
+export const ARTICLE_KIND = "article";
+export const ARTICLE_FILE = "article.html";
 const AVATAR_KIND = "avatar";
 const SOURCE_ICON_KIND = "source_icon";
 
@@ -22,6 +24,7 @@ const AUXILIARY_KINDS: ReadonlySet<string> = new Set([
   AVATAR_KIND,
   SOURCE_ICON_KIND,
   POSTER_KIND,
+  ARTICLE_KIND,
 ]);
 
 export function isThumbnailKind(kind: string): boolean {

@@ -285,6 +285,7 @@ describe("app menu sections", () => {
         { type: "separator" },
         { label: "Import Bookmarks" },
         { label: "Import mymind" },
+        { label: "Import Data Export" },
         { label: "Import Page Assets" },
         { type: "separator" },
         { label: "Import Eagle Library" },

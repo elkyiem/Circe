@@ -11,6 +11,7 @@ export const WebFileQuerySchema = z
       "saves.importEaglePackage",
       "saves.importBookmarks",
       "saves.importMymind",
+      "saves.importDataExport",
       "saves.exportPackage",
       "saves.exportEaglePackage",
       "saves.exportFiles",

@@ -412,7 +412,10 @@ export function createWebFiles(root: string) {
           const file = staged[0];
           if (!file || staged.length !== 1)
             throw new WebRequestError("Choose one export package.", 422);
-          if (name === "saves.importEaglePackage")
+          if (name === "saves.importDataExport") {
+            const { importDataExport } = await import("../core/data-export");
+            result = await importDataExport(file.path);
+          } else if (name === "saves.importEaglePackage")
             result = {
               ok: true,
               ...(await runTransferJob(

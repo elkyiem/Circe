@@ -1,0 +1,23 @@
+.tile {
+  --card-preview-height: auto;
+
+  min-width: 0;
+  list-style: none;
+}
+
+.placeholder {
+  aspect-ratio: 1 / 1;
+  color: var(--ds-gray-9);
+  background: var(--ds-gray-a2);
+}
+
+.controls {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
+
+  .tile:not(:hover, :focus-within, [data-selected]) & {
+    opacity: 0;
+  }
+}

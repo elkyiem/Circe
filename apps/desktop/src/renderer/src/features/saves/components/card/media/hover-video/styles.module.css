@@ -3,7 +3,8 @@
   display: block;
   margin: auto;
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
+  -webkit-user-drag: none;
 }
 
 .poster {
@@ -41,4 +42,9 @@
 .media[data-active][data-ready],
 .media[data-resting] {
   opacity: 1;
+}
+
+/* A card drag would otherwise scrub and play the video under the pointer. */
+:global(body[data-save-dragging]) .media {
+  pointer-events: none;
 }

@@ -103,6 +103,24 @@ describe("buildViewerItems", () => {
     expect(items.map(({ key }) => key)).toEqual(["2:tweet-dark.png"]);
   });
 
+  it("opens a save with an article on the reader, then its media", () => {
+    const items = buildViewerItems(
+      save([
+        file("cover.jpg", "image", "image/jpeg"),
+        file("article.html", "article", "text/html"),
+      ]),
+    );
+
+    expect(items.map(({ key }) => key)).toEqual([
+      "1:article.html",
+      "0:cover.jpg",
+    ]);
+    expect(items[0]?.capability).toMatchObject({
+      kind: "article",
+      surface: "specialist",
+    });
+  });
+
   it("uses one presentable derivative only when there are no originals", () => {
     const items = buildViewerItems(
       save([

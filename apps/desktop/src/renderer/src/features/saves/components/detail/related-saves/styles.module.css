@@ -1,7 +1,7 @@
 .list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 10px;
+  gap: 24px 16px;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -13,8 +13,26 @@
 }
 
 .media {
-  height: 92px;
   aspect-ratio: 1 / 1;
+}
+
+/* Same sizing as the library grid card: the frame takes the save's shape inside a square cell. */
+.frame {
+  width: var(--frame-width, 100%);
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: var(--frame-aspect, 1 / 1);
+}
+
+.frame :is(img, video) {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  object-fit: contain;
+  box-shadow: none;
 }
 
 .message {

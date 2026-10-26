@@ -1,6 +1,7 @@
 import { resolveFileIndex } from "@/features/saves/lib/actions";
 import { pool } from "@/features/saves/state/pool";
 import { selection } from "@/features/saves/state/selection";
+import { notify } from "@/shared/lib/toast";
 
 export const SAVE_DRAG_TYPE = "application/x-pond-save";
 
@@ -120,22 +121,45 @@ function installSessionListeners(): void {
   };
 }
 
-/** A native drag fires no dragend here, so any drop, click, released-button move or refocus ends it. */
+const NATIVE_DRAG_IDLE_MS = 60_000;
+
+/**
+ * A native drag fires no dragend here, so a drop, click, Escape or idle timeout ends it.
+ * @remarks Pointer releases only count before the OS drag starts or after it visibly left, since Chromium can report one as the drag takes over.
+ */
 function installNativeSessionListeners(): void {
   removeSessionListeners?.();
+  let live = false;
+  let idle: ReturnType<typeof setTimeout> | undefined;
   const finish = () => endSaveDrag();
-  const released = (event: PointerEvent) => {
-    if (event.buttons === 0) endSaveDrag();
+  const touch = () => {
+    live = true;
+    clearTimeout(idle);
+    idle = setTimeout(finish, NATIVE_DRAG_IDLE_MS);
   };
+  const released = (event: PointerEvent) => {
+    if (live && event.buttons === 0) endSaveDrag();
+  };
+  const keydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") endSaveDrag();
+  };
+  idle = setTimeout(finish, NATIVE_DRAG_IDLE_MS);
   window.addEventListener("drop", finish);
+  window.addEventListener("dragend", finish);
+  window.addEventListener("dragenter", touch, true);
+  window.addEventListener("dragover", touch, true);
   window.addEventListener("pointerdown", finish, true);
   window.addEventListener("pointermove", released, true);
-  window.addEventListener("focus", finish);
+  window.addEventListener("keydown", keydown, true);
   removeSessionListeners = () => {
+    clearTimeout(idle);
     window.removeEventListener("drop", finish);
+    window.removeEventListener("dragend", finish);
+    window.removeEventListener("dragenter", touch, true);
+    window.removeEventListener("dragover", touch, true);
     window.removeEventListener("pointerdown", finish, true);
     window.removeEventListener("pointermove", released, true);
-    window.removeEventListener("focus", finish);
+    window.removeEventListener("keydown", keydown, true);
     removeSessionListeners = null;
   };
 }
@@ -164,9 +188,28 @@ export function beginSaveDrag(id: string, event?: SaveDragStartEvent): void {
     /** `startDrag` only adds files to Chromium's drag; running both strands this window in a drag that never ends. */
     event?.preventDefault();
     installNativeSessionListeners();
-    const save = pool.get(ids[0] ?? id);
-    const fileIndex = save ? resolveFileIndex(save) : 0;
-    void window.pond.query("saves.startDrag", { ids, fileIndex });
+    const fileIndexes: Record<string, number> = {};
+    for (const saveId of ids) {
+      const save = pool.get(saveId);
+      const index = save ? resolveFileIndex(save) : null;
+      if (index != null) fileIndexes[saveId] = index;
+    }
+    const session = draggingIds;
+    void window.pond
+      .query("saves.startDrag", { ids, fileIndex: 0, fileIndexes })
+      .catch((error) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : String(error),
+      }))
+      .then((result) => {
+        if (result.ok || draggingIds !== session) return;
+        endSaveDrag();
+        notify({
+          id: "save-drag",
+          title: "Couldn't start the drag",
+          description: result.error,
+        });
+      });
     return;
   }
   const dataTransfer = event?.dataTransfer;

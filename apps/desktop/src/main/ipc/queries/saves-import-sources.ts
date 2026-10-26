@@ -227,6 +227,28 @@ export const savesImportSourceQueries = {
     return importMymindExport(path);
   },
 
+  async "saves.importDataExport"(): Promise<
+    QueryResult<"saves.importDataExport">
+  > {
+    const win = BrowserWindow.getFocusedWindow();
+    const darwin = process.platform === "darwin";
+    const options: Electron.OpenDialogOptions = {
+      /** Only macOS lets one dialog pick either a file or a folder. */
+      properties: darwin ? ["openFile", "openDirectory"] : ["openFile"],
+      message: darwin
+        ? "Choose the .zip or folder you downloaded from X, Instagram, TikTok, Google Takeout, or Reddit"
+        : "Choose the .zip you downloaded from X, Instagram, TikTok, Google Takeout, or Reddit",
+      filters: [{ name: "Data Export", extensions: ["zip"] }],
+    };
+    const picked = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    const path = picked.filePaths[0];
+    if (picked.canceled || !path) return { ok: false, reason: "cancelled" };
+    const { importDataExport } = await import("../../core/data-export");
+    return importDataExport(path);
+  },
+
   "saves.extractPageAssets": query(
     z.object({ url: StringParam }),
     async (params): Promise<QueryResult<"saves.extractPageAssets">> => {

@@ -10,7 +10,12 @@ export type CaptureStatus =
 
 export type CaptureOutcome =
   | { status: "sending"; id: string }
-  | { status: "saved" | "duplicate"; id: string; saveId?: string }
+  | {
+      status: "saved" | "duplicate";
+      id: string;
+      saveId?: string;
+      warning?: string;
+    }
   | { status: "failed"; id: string; message: string }
   | { status: "offline"; id: string };
 
@@ -41,6 +46,19 @@ const NATIVE_ERRORS = new Map([
     "This version of Pond can't take saves from the browser. Update Pond.",
   ],
   ["invalid", "Pond couldn't read this save. Update Pond and try again."],
+  [
+    "host_missing",
+    "Pond isn't set up for this browser. Open Pond, then try again.",
+  ],
+  [
+    "host_forbidden",
+    "Pond doesn't recognize this copy of the extension. Install it from Pond.",
+  ],
+  [
+    "host_failed",
+    "Pond's browser connection stopped. Update or reinstall Pond.",
+  ],
+  ["incompatible", "This extension needs a newer Pond. Update Pond."],
 ]);
 
 const GENERIC_ERROR = "Pond couldn't save this. Try again.";
@@ -60,7 +78,7 @@ export function outcomeFromResponse(
   }
   const receipt = CaptureReceiptSchema.safeParse(response.data);
   if (!receipt.success) return { status: "sending", id };
-  const { state, saveIds, duplicateCount, error } = receipt.data;
+  const { state, saveIds, duplicateCount, error, warning } = receipt.data;
   if (state === "failed" || state === "cancelled") {
     return { status: "failed", id, message: error ?? GENERIC_ERROR };
   }
@@ -70,7 +88,10 @@ export function outcomeFromResponse(
     duplicateCount > 0 && duplicateCount === saveIds.length
       ? "duplicate"
       : "saved";
-  return saveId ? { status, id, saveId } : { status, id };
+  const outcome: CaptureOutcome = { status, id };
+  if (saveId) outcome.saveId = saveId;
+  if (warning) outcome.warning = warning;
+  return outcome;
 }
 
 export function isSettled(outcome: CaptureOutcome): boolean {

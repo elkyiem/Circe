@@ -65,6 +65,34 @@ filtered afterward.
   `listSourceCollections` and `harvestSourceCollections`
   (`harvest-window/harvest-list.ts`) load and walk them.
 - Cosmos, Are.na, and Threads import every list.
+- GitHub walks your Stars tab in the signed-in window, 30 repos a page
+  (`harvest/github/list.ts`). Stars show no date, but each page's Next cursor
+  holds its last star's time, so the `since` limit (`sinceDate: "saved"`) ends
+  on the first page that reaches past it and may bring in up to a page of older
+  stars. A walk that reads every star from the top (`complete`) takes the Saved
+  label off repos you unstarred; the saves stay.
+- Substack reads saved and liked posts in one walk of the signed-in reader API.
+  Subscriptions are a third list kind (`subscription`): at most every six hours
+  the run reads each subscribed publication's RSS feed and imports posts
+  published since `lastSubscriptionCheckAt`, or the last week on the first
+  pass, capped at 50 a run. Posts key by `<subdomain>.substack.com/p/<slug>`;
+  a reader link that only carries an id keys by `p-<id>`, and sync keeps that
+  id once it's known.
+- Tumblr, Savee, Behance, Dribbble, and Unsplash each import one list, read
+  from the site's own web API with your session: Tumblr likes (`www/api/v2`),
+  Savee saves and Behance appreciations (GraphQL), Dribbble likes (the
+  profile's XHR pages), and Unsplash bookmarks (`/napi`). Likes and
+  appreciations are stamped `liked`; saves and bookmarks stay `saved`. An
+  Unsplash walk that reads every bookmark from page 1 is `complete`, so a
+  removed bookmark loses its Saved label.
+- Vimeo reads Likes and Watch Later on separate walks of the legacy list pages,
+  then fills each page from the viewer-token API. Its resume cursor names the
+  list and page (`liked:101`), so a backfill continues the walk it stopped in.
+- Bluesky connects by handle, not session (`connect: "handle"` on the
+  descriptor). The Account keys by your DID, and the run reads your like
+  records from your own PDS, then hydrates the posts through the public
+  AppView. Nothing is signed in, so `auth_required` means the Account has no
+  DID yet.
 
 A save harvested from chosen collections is filed into Folders named
 `<Source>/<collection>` (`collection-folders.ts`). Harvesters tag each entry

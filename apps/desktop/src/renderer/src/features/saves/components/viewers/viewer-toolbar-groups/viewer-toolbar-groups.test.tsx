@@ -33,18 +33,18 @@ it("renders no separator for a single-item viewer", async () => {
   expect(host.textContent).toBe("ActionFit");
 });
 
-it("renders exactly one separator before multi-slide navigation", async () => {
+it("separates the viewer controls from the file actions", async () => {
   await act(async () => {
     root.render(
       <ViewerToolbarGroups
+        controls={<button type="button">Zoom</button>}
         actions={<button type="button">Action</button>}
         edits={<button type="button">Edit</button>}
         view={<button type="button">Fit</button>}
-        navigation={<button type="button">Next Slide</button>}
       />,
     );
   });
 
   expect(host.querySelectorAll('[role="separator"]')).toHaveLength(1);
-  expect(host.textContent).toBe("ActionEditFitNext Slide");
+  expect(host.textContent).toBe("ZoomActionEditFit");
 });

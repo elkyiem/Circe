@@ -23,18 +23,14 @@ it("uses the integrated top toolbar for the image controls", () => {
   expect(controls).toContain("<ViewerHud.Bar");
   expect(controls).toContain("<ViewerToolbarGroups");
   expect(controls).not.toContain("<Tray.Separator");
-  expect(controls).toContain("collapseCenter");
+  expect(controls).toContain('ChromePortal slot="bottom"');
   expect(controls).not.toContain("<ViewerHud.Root");
   expect(controls).not.toContain("<ViewerHud.Cluster");
   expect(hudCss).toContain("position: absolute");
   expect(hudCss).toContain("pointer-events: none");
-  expect(hudCss).toContain("border-radius: var(--ds-radius-lg)");
-  expect(hudCss).toContain("box-shadow: var(--ds-shadow-tooltip)");
+  expect(hudCss).toContain("border-radius: var(--ds-radius-full)");
+  expect(hudCss).toContain("box-shadow: var(--ds-shadow-float)");
   expect(chromeCss).toContain("container-type: inline-size");
-  expect(hudCss).toContain("@container (max-width: 620px)");
-  expect(hudCss).toMatch(
-    /\.bar\[data-collapse-center\] \.center\s*{\s*display: none;/,
-  );
   expect(hudCss).toContain(
     "grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)",
   );

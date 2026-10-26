@@ -30,7 +30,6 @@ Leave **Local API URL** at `http://127.0.0.1:41610/api/v2` unless you changed th
 | **Save Clipboard URL** | Save the URL on your clipboard.                                                                    |
 | **Switch Library**     | Switch Pond to one of your recent libraries.                                                       |
 | **Open Library**       | Bring Pond to the front.                                                                           |
-| **Menu Bar**           | Recent saves, capture progress, and quick actions. It hides itself while Pond is closed.          |
 
 ### Search Saves
 

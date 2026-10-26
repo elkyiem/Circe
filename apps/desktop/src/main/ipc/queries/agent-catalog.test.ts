@@ -40,6 +40,11 @@ it("describes the production catalog without loading credentials or executing op
     "agent.deleteChat",
     "library.switchTo",
     "reset.factory",
+    "fishMcp.list",
+    "fishMcp.save",
+    "fishMcp.remove",
+    "fishMcp.test",
+    "fishMcp.setToolAccess",
   ]) {
     expect(
       operations.some((entry) => entry.name === name),

@@ -1,7 +1,8 @@
 .root {
+  position: relative;
   display: grid;
-  grid-template-areas: "chrome-top" "stage" "chrome-bottom";
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "stage";
+  grid-template-rows: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   height: 100%;
@@ -12,45 +13,29 @@
   }
 }
 
-.root:not([data-chrome]) {
-  grid-template-areas: "stage";
-  grid-template-rows: minmax(0, 1fr);
-}
-
 .top,
 .bottom {
+  position: absolute;
+  inset-inline: 12px;
+  z-index: 4;
   display: flex;
   align-items: center;
   min-width: 0;
-  height: var(--ds-title-bar-height);
-  min-height: var(--ds-title-bar-height);
-  padding-inline: 8px;
-  overflow-x: hidden;
-  overflow-y: hidden;
-  background: color-mix(in srgb, var(--ds-gray-1) 94%, transparent);
-  backdrop-filter: blur(16px);
+  pointer-events: none;
 }
 
 .top {
-  grid-area: chrome-top;
-  border-bottom: 1px solid var(--ds-gray-a3);
-}
-
-.top:has(.tools:empty) {
-  display: none;
+  top: 0;
+  height: var(--window-header-height, 56px);
 }
 
 .bottom {
-  grid-area: chrome-bottom;
-  border-top: 1px solid var(--ds-gray-a3);
+  bottom: 12px;
 }
 
+.top:has(.tools:empty),
 .bottom:has(.tools:empty) {
   display: none;
-}
-
-.bottom:has([aria-label="Playback"]) {
-  overflow: visible;
 }
 
 .stage {

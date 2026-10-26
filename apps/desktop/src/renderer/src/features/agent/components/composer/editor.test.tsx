@@ -10,10 +10,10 @@ import {
   getNearestEditorFromDOMNode,
   UNDO_COMMAND,
 } from "lexical";
-import { act, useRef, useState } from "react";
+import { act, createRef, type Ref, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ComposerEditor } from "./";
+import { ComposerEditor, type ComposerEditorHandle } from "./";
 
 const send = vi.fn();
 const search = vi.fn();
@@ -28,9 +28,11 @@ let root: Root;
 function Harness({
   initial = "",
   running = false,
+  handle,
 }: {
   initial?: string;
   running?: boolean;
+  handle?: Ref<ComposerEditorHandle>;
 }) {
   const [value, setValue] = useState(initial);
   const [attachments, setAttachments] = useState<AssistantSource[]>([]);
@@ -42,6 +44,7 @@ function Harness({
           onSend={() => send(value)}
           editor={
             <ComposerEditor
+              ref={handle}
               value={value}
               onChange={setValue}
               disabled={false}
@@ -217,6 +220,21 @@ it("inserts a Save mention chip from @ and keeps it in the draft", async () => {
   expect(editable().textContent).toContain("Suspiria");
   expect(markdown()).toContain("[Suspiria](pond-save:film)");
   expect(send).not.toHaveBeenCalled();
+});
+
+it("opens the Save search when Add Saves types @ after a word", async () => {
+  const handle = createRef<ComposerEditorHandle>();
+  await act(async () => root.render(<Harness handle={handle} />));
+  await type("Compare");
+  await act(async () => handle.current?.mention());
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  });
+  expect(editable().textContent).toBe("Compare @");
+  expect(search).toHaveBeenCalledWith("agent.searchSaves", {
+    query: "",
+    limit: 12,
+  });
 });
 
 it("restores a Save mention from draft Markdown", async () => {

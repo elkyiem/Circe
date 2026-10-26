@@ -1,5 +1,3 @@
-import { ApprovalCard } from "@pond/ui/approval-card";
-import { QuestionCard } from "@pond/ui/question-card";
 import type {
   AssistantMessage,
   AssistantProvider,
@@ -9,9 +7,9 @@ import { assistant } from "@/features/agent/state/assistant";
 import { openSave } from "@/features/saves/navigation";
 import { AssistantResponse } from "./assistant-response";
 import { ConsultedSaves } from "./consulted-saves";
+import { KoiQuestion } from "./question";
 import { ResponseError } from "./response-error";
 import { ChangeReview } from "./review";
-import { WorkSummary } from "./work-summary";
 
 export function inferredLookupResult(
   content: string,
@@ -68,27 +66,27 @@ export function ResponseExtras({
     : inferredResult
       ? [inferredResult]
       : [];
+  const changed = new Set(
+    (message.metadata?.changes ?? []).map((change) => change.saveId),
+  );
+  const unchanged = (ids: string[]) => ids.filter((id) => !changed.has(id));
   return (
     <>
       {results.map((result) => (
         <ConsultedSaves
           key={result.title}
           sources={sources}
-          saveIds={result.saveIds}
+          saveIds={unchanged(result.saveIds)}
           attachedIds={attachedIds}
           onOpenSave={openSave}
           onAttach={attach}
         />
       ))}
       {message.metadata?.question ? (
-        <QuestionCard
-          title={message.metadata.question.question}
-          options={message.metadata.question.options.map((option) => ({
-            id: option,
-            label: option,
-          }))}
+        <KoiQuestion
+          question={message.metadata.question.question}
+          options={message.metadata.question.options}
           answered={questionAnswer}
-          allowFreeform={!questionDisabled}
           disabled={questionDisabled}
           onAnswer={async (answer) => {
             if (onAnswer) {
@@ -100,28 +98,11 @@ export function ResponseExtras({
         />
       ) : null}
       {message.metadata?.changes?.length ? (
-        <ApprovalCard
-          title="Review before applying"
-          eyebrow="Library changes"
-          description={
-            message.metadata.changes.some(
-              (change) =>
-                change.field === "action" && change.action === "purgeTrash",
-            )
-              ? "Empty trash removes Saves forever. Only selected changes will be applied."
-              : "Only selected changes will be applied. You can undo them here."
-          }
-          decision="pending"
-          showActions={false}
-          onApprove={async () => undefined}
-          onReject={async () => undefined}
-        >
-          <ChangeReview
-            messageId={message.id}
-            disabled={busy}
-            changes={message.metadata.changes}
-          />
-        </ApprovalCard>
+        <ChangeReview
+          messageId={message.id}
+          disabled={busy}
+          changes={message.metadata.changes}
+        />
       ) : null}
       {message.metadata?.error ? (
         <ResponseError error={message.metadata.error} />
@@ -129,6 +110,7 @@ export function ResponseExtras({
       {sources.length && !results.length ? (
         <ConsultedSaves
           sources={sources}
+          saveIds={unchanged(sources.map((source) => source.id))}
           attachedIds={attachedIds}
           onOpenSave={openSave}
           onAttach={attach}
@@ -147,7 +129,6 @@ export function ResponseContent({
   const lookup = inferredLookupResult(message.content, sources);
   return (
     <>
-      <WorkSummary metadata={message.metadata} />
       {!lookup ? (
         <AssistantResponse
           content={message.content}

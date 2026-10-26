@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
+import { splitMessages } from "../../../shared/assistant-text";
 import { checkCliConnection } from "./cli-runtime";
 import { completeWithTools } from "./complete";
 
@@ -219,7 +220,9 @@ process.stdin.on('end', () => {
   const request = JSON.parse(stdin);
   const hasResult = request.prompt.some(message => message.role === 'tool');
   const reply = hasResult
-    ? {text: 'Found a saved article.', toolCalls: []}
+    ? stdin.includes('separate-fixture')
+      ? {text: '', messages: ['Hey!', 'Here is the second.', 'And the third.'], toolCalls: []}
+      : {text: 'Found a saved article.', toolCalls: []}
     : {text: '', toolCalls: [{name: 'searchLibrary', arguments: '{"query":"design"}'}]};
   if (codex) {
     console.log(JSON.stringify({type: 'item.completed', item: {type: 'agent_message', text: JSON.stringify(reply)}}));
@@ -473,6 +476,22 @@ describe("subscription assistant through real CLI processes", () => {
         })
         .toBe(true);
       expect(reply.text()).toBe("");
+    },
+  );
+
+  it.each(["codex", "claude-code"] as const)(
+    "sends 'send me 3 separate messages' from %s as three ordered messages after its tool calls",
+    async (provider) => {
+      const reply = run(
+        provider,
+        "separate-fixture: send me 3 separate messages",
+      );
+      expect(splitMessages(await reply.result)).toEqual([
+        "Hey!",
+        "Here is the second.",
+        "And the third.",
+      ]);
+      expect(reply.calls).toEqual(["design"]);
     },
   );
 });

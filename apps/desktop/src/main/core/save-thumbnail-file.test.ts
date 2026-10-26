@@ -1,6 +1,28 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { renderThumbnail } from "./save-thumbnail-file";
+import { renderThumbnail, thumbnailToRender } from "./save-thumbnail-file";
+
+const poster = { kind: "poster", path: "clip.mp4_poster.jpg" };
+const generated = { kind: "thumbnail", path: "clip.mp4_thumbnail.webp" };
+
+describe("thumbnailToRender", () => {
+  it("keeps an existing thumbnail unless forced", () => {
+    expect(thumbnailToRender([poster, generated], false)).toBeUndefined();
+    expect(thumbnailToRender([poster, generated], true)).toEqual(poster);
+  });
+
+  it("never replaces a thumbnail you picked", () => {
+    expect(
+      thumbnailToRender([poster, { ...generated, custom: true }], true),
+    ).toBeUndefined();
+    expect(
+      thumbnailToRender(
+        [poster, { kind: "thumbnail_dark", path: "d.webp", custom: true }],
+        true,
+      ),
+    ).toBeUndefined();
+  });
+});
 
 describe("renderThumbnail", () => {
   it("encodes a resized thumbnail as WebP", async () => {

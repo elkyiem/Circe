@@ -14,6 +14,9 @@ import { useWindow, WindowContext, type WindowEdge } from "./context";
 import styles from "./styles.module.css";
 import { nextTrackWidth } from "./track";
 
+/** A still press held longer than this is an aborted drag, not a click to collapse. */
+const CLICK_MAX_MS = 300;
+
 interface RootProps extends ComponentPropsWithoutRef<"div"> {
   leftOpen?: boolean;
   rightOpen?: boolean;
@@ -302,6 +305,7 @@ function Handle({
     }
 
     const startX = event.clientX;
+    const startTime = event.timeStamp;
     const startWidth = pane.getBoundingClientRect().width;
     const previousTrack = root.style.getPropertyValue(varName);
     let nextWidth = startWidth;
@@ -372,7 +376,8 @@ function Handle({
 
     const up = (ev: PointerEvent) => {
       if (!dragged) {
-        collapse(ev);
+        if (ev.timeStamp - startTime < CLICK_MAX_MS) collapse(ev);
+        else cancel(ev);
         return;
       }
       finish(ev);
@@ -398,8 +403,7 @@ function Handle({
         data-edge={edge}
         aria-orientation="vertical"
         aria-label={
-          resizeLabel ??
-          (edge === "left" ? "Resize sidebar" : "Resize Assistant")
+          resizeLabel ?? (edge === "left" ? "Resize sidebar" : "Resize panel")
         }
         aria-valuemin={minWidth}
         aria-valuemax={maxWidth}

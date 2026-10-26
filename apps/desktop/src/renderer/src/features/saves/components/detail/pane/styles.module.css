@@ -1,31 +1,118 @@
+@property --pane-fade-top {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --pane-fade-bottom {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 .root {
+  --pane-inset: var(--window-inset, 8px);
   display: flex;
   flex: 1;
   flex-direction: column;
-  width: 100%;
+
+  width: calc(100% - 2 * var(--pane-inset));
   min-width: 0;
-  height: 100%;
+  height: calc(100% - 2 * var(--pane-inset));
   min-height: 0;
+  margin: var(--pane-inset);
   container-type: inline-size;
+  overflow: hidden;
+  background: var(--ds-gray-1);
+  border-radius: var(--ds-radius-xl);
+  box-shadow: var(--ds-shadow-float);
+}
+
+.header {
+  height: calc(var(--window-header-height, 56px) - 2 * var(--pane-inset));
+  min-height: 0;
+  padding: 4px;
+  padding-inline: 6px;
+  border-bottom: none;
+
+  & [data-slot="pane-header-title"]:has([role="tablist"]) {
+    padding-left: 0;
+  }
 }
 .scroll {
+  --fade-size: 32px;
+
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 14px;
   min-height: 0;
-  padding-block: 20px;
+  padding-block: 4px 20px;
   overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--pane-fade-top),
+    #000 calc(100% - var(--pane-fade-bottom)),
+    transparent
+  );
+  /* Without overflow the scroll timeline is inactive, so both fades stay at 0. */
+  animation:
+    pane-fade-top linear both,
+    pane-fade-bottom linear both;
+  animation-timeline: scroll(self), scroll(self);
+  animation-range:
+    0 var(--fade-size),
+    calc(100% - var(--fade-size)) 100%;
 }
+
+/* Base UI waits for the panel's own animations before unmounting, and the scroll fade never finishes. */
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+@keyframes pane-fade-top {
+  from {
+    --pane-fade-top: 0px;
+  }
+
+  to {
+    --pane-fade-top: var(--fade-size);
+  }
+}
+
+@keyframes pane-fade-bottom {
+  from {
+    --pane-fade-bottom: var(--fade-size);
+  }
+
+  to {
+    --pane-fade-bottom: 0px;
+  }
+}
+
 .rating {
   display: flex;
   flex-direction: row;
   gap: 8px;
   align-items: center;
-  justify-content: flex-end;
   min-width: 0;
-  min-height: 28px;
-  text-align: right;
+  /* Match one line of a tile value so the label below lines up with its neighbors. */
+  min-height: 1lh;
+  font-size: var(--ds-text-sm);
+}
+
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
 }
 .count {
-  margin: 0 0 20px;
+  margin: 0;
   color: var(--ds-gray-11);
   text-align: center;
 }
@@ -47,26 +134,32 @@
   font-size: var(--ds-text-xs);
   color: var(--ds-red-11);
 }
-
-.tabs {
-  margin-left: -8px;
+.prose {
+  margin-inline: -8px;
+}
+.prose :global(textarea) {
+  min-height: 0;
+  padding: 4px 8px;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-md);
+  line-height: 1.55;
+  color: var(--ds-gray-11);
+  border-radius: var(--ds-radius-md);
+  transition: background var(--ds-duration-fast) var(--ds-easing-standard);
+}
+.prose :global(textarea):is(:hover, :focus) {
+  background: var(--ds-gray-a2);
 }
 
-.icon {
-  display: none;
-}
+.flag {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-orange-11);
 
-@container (max-width: 360px) {
-  .tab {
-    width: var(--ds-size-sm);
-    padding-inline: 0;
-  }
-
-  .icon {
-    display: block;
-  }
-
-  .label {
-    display: none;
+  &[data-band="possible-sensitive"] {
+    color: var(--ds-gray-10);
   }
 }

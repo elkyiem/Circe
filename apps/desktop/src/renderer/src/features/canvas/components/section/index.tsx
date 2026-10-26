@@ -1,7 +1,11 @@
 import { IconPlus } from "@pond/icons";
 import { Button, Sidebar } from "@pond/ui";
 import { useState } from "react";
-import { SpecContextMenu } from "@/shared/components/spec-context-menu";
+import {
+  SidebarSectionMenu,
+  useRevealSidebarSection,
+} from "@/features/settings";
+import { usePrefs } from "@/shared/state/prefs";
 import { createCanvas, sectionItems } from "../../lib/menu";
 import {
   useCanvasEditingId,
@@ -15,10 +19,15 @@ export function CanvasesSection({ activeId }: { activeId: string | null }) {
   const list = useCanvases();
   const editingId = useCanvasEditingId();
   const [open, setOpen] = useState(true);
+  const [sidebar] = usePrefs("sidebar");
+  useRevealSidebarSection("canvases", editingId !== null);
+
+  if (!sidebar.sections.canvases) return null;
 
   return (
     <Sidebar.CollapsibleGroup open={open} onOpenChange={setOpen}>
-      <SpecContextMenu
+      <SidebarSectionMenu
+        section="canvases"
         search
         searchLabel="Search Canvas operations"
         buildItems={sectionItems}
@@ -40,7 +49,7 @@ export function CanvasesSection({ activeId }: { activeId: string | null }) {
             <IconPlus />
           </Button>
         </Sidebar.GroupHeader>
-      </SpecContextMenu>
+      </SidebarSectionMenu>
       <Sidebar.CollapsibleGroupContent
         aria-label="Canvases"
         inert={!open}

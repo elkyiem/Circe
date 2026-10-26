@@ -195,14 +195,6 @@
       "subtitle": "Pond",
       "description": "Bring Pond to the front with your active library.",
       "mode": "no-view"
-    },
-    {
-      "name": "menu-bar",
-      "title": "Menu Bar",
-      "subtitle": "Pond",
-      "description": "Show recent saves and capture progress in the menu bar.",
-      "mode": "menu-bar",
-      "interval": "10m"
     }
   ],
   "tools": [

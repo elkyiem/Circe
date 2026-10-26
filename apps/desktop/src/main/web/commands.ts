@@ -45,6 +45,11 @@ export const WebCommandSchema = z.discriminatedUnion("name", [
   }),
   z.object({ name: z.literal("pipelineCancelAll") }),
   z.object({ name: z.literal("connectSource"), source: Source }),
+  z.object({
+    name: z.literal("connectSourceHandle"),
+    source: Source,
+    handle: z.string().trim().min(1).max(253),
+  }),
   z.object({ name: z.literal("sourceStatus"), source: Source }),
   z.object({
     name: z.literal("clearPendingSession"),
@@ -91,6 +96,13 @@ export async function runWebCommand(
       return { ok: true, cancelled: await cancelAllIngest() };
     case "connectSource":
       return connectSource(input.source);
+    case "connectSourceHandle": {
+      if (input.source !== "bluesky") return { ok: false, reason: "invalid" };
+      const { connectByHandle, liveConnectDeps } = await import(
+        "../core/refresh/harvest/bluesky/connect"
+      );
+      return connectByHandle(input.handle, liveConnectDeps());
+    }
     case "sourceStatus":
       return { ok: true, connected: await isSourceConnected(input.source) };
     case "clearPendingSession":

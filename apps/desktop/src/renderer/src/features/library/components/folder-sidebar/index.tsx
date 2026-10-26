@@ -1,7 +1,7 @@
 import { Sidebar } from "@pond/ui";
 import { useRouterState } from "@tanstack/react-router";
 import { CanvasesSection, canvasIdFromPath } from "@/features/canvas";
-import { HarvesterButton } from "@/features/library/components/harvester-button";
+import { FishSection, fishIdFromPath } from "@/features/fish";
 import { NewMenu } from "@/features/library/components/new-menu";
 import { SmartFoldersSection } from "@/features/library/components/smart-folders";
 import { WorkspaceMenu } from "@/features/library/components/workspace-menu";
@@ -19,7 +19,6 @@ function WorkspaceHeader() {
     <Sidebar.Header className={styles.workspace}>
       <WorkspaceMenu />
       <div className={styles["workspace-actions"]}>
-        <HarvesterButton />
         <NewMenu />
       </div>
     </Sidebar.Header>
@@ -34,11 +33,11 @@ export function FolderSidebar() {
   });
   const folderRows = useFolders();
   const activeCanvasId = canvasIdFromPath(pathname);
+  const activeFishId = fishIdFromPath(pathname);
   const libraryPage =
     activeCanvasId === null &&
-    !["/assistant", "/downloads", "/sources", "/tags", "/untagged"].includes(
-      pathname,
-    );
+    activeFishId === null &&
+    !["/downloads", "/sources", "/tags", "/untagged"].includes(pathname);
   useHydrateSavedViews();
 
   return (
@@ -59,6 +58,7 @@ export function FolderSidebar() {
           active={pathname === "/" && nav.kind === "all"}
           onSelect={() => selectLibraryNav({ kind: "all" })}
         />
+        <FishSection activeId={activeFishId} />
         <CanvasesSection activeId={activeCanvasId} />
         <FolderTree
           folderRows={folderRows}

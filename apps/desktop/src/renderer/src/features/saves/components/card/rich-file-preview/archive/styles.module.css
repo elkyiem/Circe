@@ -9,7 +9,7 @@
   color: var(--ds-gray-9);
   background: var(--ds-gray-2);
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
 }
 
 .icon {

@@ -1,9 +1,10 @@
+import { contextMenus } from "@/utils/menus-api";
 import type { CaptureTool } from "@/utils/messaging";
 import { linkDraft, mediaDraft, offerDraft } from "./capture";
 import { runTool } from "./tools";
 
 type MenuContexts = NonNullable<
-  Parameters<typeof browser.contextMenus.create>[0]["contexts"]
+  Parameters<typeof contextMenus.create>[0]["contexts"]
 >;
 
 const PAGE_CONTEXTS: MenuContexts = [
@@ -31,34 +32,34 @@ const COMMAND_TOOLS = new Map<string, CaptureTool>([
 ]);
 
 export function createMenus(): void {
-  void browser.contextMenus.removeAll().then(() => {
-    browser.contextMenus.create({
+  void contextMenus.removeAll().then(() => {
+    contextMenus.create({
       id: "pond-save",
       title: "Save Page",
       contexts: ["page", "selection"],
     });
-    browser.contextMenus.create({
+    contextMenus.create({
       id: "pond-save-link",
       title: "Save Link",
       contexts: ["link"],
     });
-    browser.contextMenus.create({
+    contextMenus.create({
       id: "pond-save-media",
       title: "Save Image",
       contexts: ["image"],
     });
-    browser.contextMenus.create({
+    contextMenus.create({
       id: "pond-save-video",
       title: "Save Video",
       contexts: ["video", "audio"],
     });
-    browser.contextMenus.create({
+    contextMenus.create({
       id: "pond-separator",
       type: "separator",
       contexts: PAGE_CONTEXTS,
     });
     for (const [id, { title }] of TOOL_MENUS) {
-      browser.contextMenus.create({ id, title, contexts: PAGE_CONTEXTS });
+      contextMenus.create({ id, title, contexts: PAGE_CONTEXTS });
     }
   });
 }

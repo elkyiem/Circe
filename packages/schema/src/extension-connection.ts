@@ -13,6 +13,8 @@ export const EXTENSION_REQUEST_ACCESS = {
   "session.pending": true,
   "session.import": true,
   enqueue: false,
+  "files.import": false,
+  "fish.list": true,
 } satisfies Record<NativeRequest["type"], boolean>;
 
 /** A separate unpacked build leaves an installed Pond extension and native host untouched. */

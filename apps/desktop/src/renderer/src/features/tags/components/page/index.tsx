@@ -1,9 +1,11 @@
 import {
   IconBookmark,
-  IconBookmarkFill,
   IconFolder,
+  IconFolderFill,
   IconPlus,
   IconStar,
+  IconStarFill,
+  IconTagFill,
 } from "@pond/icons";
 import { Button, DataTable, Empty, Input, Sidebar, Tooltip } from "@pond/ui";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
@@ -600,7 +602,7 @@ export function TagsPage() {
               ) : total === 0 && !q ? (
                 <Empty.Root className={styles.empty}>
                   <Empty.Media>
-                    <IconBookmarkFill />
+                    <IconTagFill size={32} />
                   </Empty.Media>
                   <Empty.Title>No tags yet</Empty.Title>
                   <Empty.Description>
@@ -632,11 +634,11 @@ export function TagsPage() {
                 >
                   <Empty.Media>
                     {scope === "starred" ? (
-                      <IconStar />
+                      <IconStarFill size={32} />
                     ) : scope === "ungrouped" ? (
-                      <IconBookmarkFill />
+                      <IconTagFill size={32} />
                     ) : (
-                      <IconFolder />
+                      <IconFolderFill size={32} />
                     )}
                   </Empty.Media>
                   <Empty.Title>No tags in {scopeLabel}</Empty.Title>

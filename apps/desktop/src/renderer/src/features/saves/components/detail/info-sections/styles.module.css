@@ -6,14 +6,6 @@
   min-width: 0;
 }
 
-.row-author {
-  justify-self: end;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .row-avatar {
   display: inline-flex;
   flex-shrink: 0;
@@ -93,4 +85,12 @@
   white-space: nowrap;
   border: 0;
   clip: rect(0, 0, 0, 0);
+}
+
+:is([data-layout="tiles"], [data-layout="grid"]) :is(.row-inline, .colors) {
+  justify-content: flex-start;
+}
+:is([data-layout="tiles"], [data-layout="grid"]) .skeleton-value {
+  justify-self: start;
+  width: 48px;
 }

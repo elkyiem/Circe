@@ -10,6 +10,8 @@ import { bulkQueries } from "../ipc/queries/bulk";
 import { canvasesQueries } from "../ipc/queries/canvases";
 import { conversionQueries } from "../ipc/queries/conversion";
 import { downloadsQueries } from "../ipc/queries/downloads";
+import { fishQueries } from "../ipc/queries/fish";
+import { fishMcpQueries } from "../ipc/queries/fish-mcp";
 import { foldersQueries } from "../ipc/queries/folders";
 import { inspectQueries } from "../ipc/queries/inspect";
 import { libraryQueries } from "../ipc/queries/library";
@@ -29,6 +31,8 @@ import { updateWebCanvas } from "./canvases";
 import { WebRequestError } from "./errors";
 
 const handlers = {
+  ...fishQueries,
+  ...fishMcpQueries,
   ...inspectQueries,
   ...transferJobsQueries,
   ...syncHistoryQueries,

@@ -75,9 +75,3 @@ it("keeps the card's original under the viewer image until it fades in", async (
 
   expect(placeholder()).not.toBeNull();
 });
-
-it("marks the fitted image as the transition hero", async () => {
-  await inspector.render(undefined, ORIGINAL);
-
-  expect(original()?.closest("[data-save-hero]")).not.toBeNull();
-});

@@ -14,6 +14,7 @@ import { webAgentStream } from "./agent";
 import { createWebApp, type WebHost } from "./app";
 import { webAccessKey } from "./auth";
 import { runWebCommand, WebCommandSchema } from "./commands";
+import { webHostConfig } from "./config";
 import { openExtensionAuth } from "./extension-auth";
 import { createExtensionBridge } from "./extension-bridge";
 import { createWebFiles } from "./files";
@@ -26,25 +27,7 @@ import { createWebVideo } from "./video";
 export async function startWebHost() {
   const sandbox = process.env.POND_SANDBOX;
   if (!sandbox) throw new Error("The Iris web host requires POND_SANDBOX.");
-  const port = Number(process.env.IRIS_WEB_PORT ?? 4789);
-  const origin = process.env.IRIS_WEB_ORIGIN ?? `http://127.0.0.1:${port}`;
-  const origins = (process.env.IRIS_WEB_ORIGINS ?? "")
-    .split(",")
-    .filter(Boolean);
-  for (const value of [origin, ...origins]) {
-    const parsed = new URL(value);
-    if (
-      parsed.origin !== value ||
-      (parsed.protocol !== "https:" &&
-        !(
-          parsed.protocol === "http:" &&
-          ["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname)
-        ))
-    )
-      throw new Error(
-        "Iris origins must be exact HTTPS origins or loopback HTTP origins.",
-      );
-  }
+  const { port, origin, origins } = webHostConfig(process.env);
   const fixtures = process.env.IRIS_WEB_FIXTURES === "1";
   const files = createWebFiles(
     join(electronApp.getPath("userData"), "web-files"),
@@ -109,6 +92,8 @@ export async function startWebHost() {
       subscribeBroadcast((channel, payload) => {
         const names = new Map<string, string>([
           [IPC.prefsChanged, "prefs"],
+          [IPC.fish, "fish"],
+          [IPC.fishOpen, "fish-open"],
           [IPC.sessionImported, "session-imported"],
           [IPC.sessionImportFailed, "session-failed"],
           [IPC.syncStatus, "source-sync"],
@@ -133,5 +118,7 @@ export async function startWebHost() {
     config.fixtureAsset = fixtureAsset;
   }
   const app = createWebApp(config);
-  return serve({ fetch: app.fetch, hostname: "127.0.0.1", port });
+  const server = serve({ fetch: app.fetch, hostname: "127.0.0.1", port });
+  server.once("close", extension.close);
+  return server;
 }

@@ -2,7 +2,7 @@ import {
   IconArrowsExpandY,
   IconCheckboxChecked,
   IconContrast,
-  IconImages,
+  IconImageFill,
   IconMinus,
   IconPlus,
 } from "@pond/icons";
@@ -375,7 +375,7 @@ export function ImagePicker({
             ) : (
               <Empty.Root className={styles.empty}>
                 <Empty.Media>
-                  <IconImages />
+                  <IconImageFill size={32} />
                 </Empty.Media>
                 <Empty.Title>
                   {images.length === 0

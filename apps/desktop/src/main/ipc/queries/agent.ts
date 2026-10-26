@@ -3,6 +3,7 @@ import { app, dialog, shell } from "electron";
 import { z } from "zod";
 import { assistantProvider, assistantSend } from "../../../shared/assistant";
 import { conversationMarkdown } from "../../../shared/conversation-markdown";
+import { FishIdSchema } from "../../../shared/fish-contracts";
 import type { QueryResult } from "../../../shared/query-contracts";
 import { type QueryHandlerMap, query } from "./params";
 
@@ -70,10 +71,13 @@ export const agentQueries = {
     return await listAvailableModels();
   }),
 
-  "agent.chats": query(Params, async () => {
-    const { listChats } = await import("../../core/agent/persist");
-    return await listChats();
-  }),
+  "agent.chats": query(
+    z.object({ fishId: FishIdSchema.optional() }),
+    async ({ fishId }) => {
+      const { listChats } = await import("../../core/agent/persist");
+      return await listChats(fishId);
+    },
+  ),
 
   "agent.messages": query(
     z.object({ chatId: z.string().min(1) }),
@@ -83,10 +87,14 @@ export const agentQueries = {
     },
   ),
 
-  "agent.newChat": query(Params, async () => {
-    const { createChat } = await import("../../core/agent/persist");
-    return await createChat();
-  }),
+  "agent.newChat": query(
+    z.object({ fishId: FishIdSchema.optional() }),
+    async ({ fishId }) => {
+      const { fishThread } = await import("../../core/agent/persist");
+      const { created: _created, ...chat } = await fishThread(fishId);
+      return chat;
+    },
+  ),
 
   "agent.renameChat": query(
     z.object({

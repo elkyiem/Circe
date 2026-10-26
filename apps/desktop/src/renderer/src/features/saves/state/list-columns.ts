@@ -1,72 +1,46 @@
 import { useSelector } from "@tanstack/react-store";
 import { Store } from "@tanstack/store";
 
-export type ListColumnKey =
-  | "name"
-  | "dateAdded"
-  | "datePublished"
-  | "tags"
-  | "dimensions"
-  | "rating"
-  | "extension"
-  | "fileSize"
-  | "annotation";
-
-export interface ListColumns {
-  name: boolean;
-  dateAdded: boolean;
-  datePublished: boolean;
-  tags: boolean;
-  dimensions: boolean;
-  rating: boolean;
-  extension: boolean;
-  fileSize: boolean;
-  annotation: boolean;
-}
-
-export const LIST_COLUMN_OPTIONS: ReadonlyArray<{
-  key: ListColumnKey;
-  label: string;
-}> = [
+export const LIST_COLUMN_OPTIONS = [
   { key: "name", label: "Name" },
+  { key: "type", label: "Type" },
+  { key: "source", label: "Source" },
+  { key: "creator", label: "Creator" },
   { key: "tags", label: "Tags" },
   { key: "dimensions", label: "Dimensions" },
+  { key: "duration", label: "Duration" },
   { key: "rating", label: "Rating" },
   { key: "extension", label: "Extension" },
   { key: "fileSize", label: "File Size" },
   { key: "dateAdded", label: "Date Added" },
   { key: "datePublished", label: "Date Published" },
   { key: "annotation", label: "Annotation" },
-];
+] as const;
+
+export type ListColumnKey = (typeof LIST_COLUMN_OPTIONS)[number]["key"];
+
+export type ListColumns = { [Key in ListColumnKey]: boolean };
 
 export const LIST_COLUMN_DEFAULTS: ListColumns = {
   name: true,
-  dateAdded: true,
-  datePublished: false,
+  type: true,
+  source: true,
+  creator: false,
   tags: false,
   dimensions: false,
+  duration: false,
   rating: false,
   extension: false,
-  fileSize: false,
+  fileSize: true,
+  dateAdded: true,
+  datePublished: false,
   annotation: false,
 };
-
-const STORAGE_KEYS = {
-  name: "pond.list.name",
-  dateAdded: "pond.list.dateAdded",
-  datePublished: "pond.list.datePublished",
-  tags: "pond.list.tags",
-  dimensions: "pond.list.dimensions",
-  rating: "pond.list.rating",
-  extension: "pond.list.extension",
-  fileSize: "pond.list.fileSize",
-  annotation: "pond.list.annotation",
-} satisfies Record<ListColumnKey, string>;
 
 function readKey(key: ListColumnKey): boolean {
   if (!globalThis.window) return LIST_COLUMN_DEFAULTS[key];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEYS[key]);
+    const raw = window.localStorage.getItem(`pond.list.${key}`);
     if (raw == null) return LIST_COLUMN_DEFAULTS[key];
     return raw === "1";
   } catch {
@@ -75,17 +49,9 @@ function readKey(key: ListColumnKey): boolean {
 }
 
 function readAll(): ListColumns {
-  return {
-    name: readKey("name"),
-    dateAdded: readKey("dateAdded"),
-    datePublished: readKey("datePublished"),
-    tags: readKey("tags"),
-    dimensions: readKey("dimensions"),
-    rating: readKey("rating"),
-    extension: readKey("extension"),
-    fileSize: readKey("fileSize"),
-    annotation: readKey("annotation"),
-  };
+  const columns = { ...LIST_COLUMN_DEFAULTS };
+  for (const { key } of LIST_COLUMN_OPTIONS) columns[key] = readKey(key);
+  return columns;
 }
 
 const store = new Store<ListColumns>(readAll());
@@ -93,7 +59,7 @@ const store = new Store<ListColumns>(readAll());
 export function setListColumn(key: ListColumnKey, value: boolean): void {
   if (globalThis.window) {
     try {
-      window.localStorage.setItem(STORAGE_KEYS[key], value ? "1" : "0");
+      window.localStorage.setItem(`pond.list.${key}`, value ? "1" : "0");
     } catch {}
   }
   store.setState((s) => (s[key] === value ? s : { ...s, [key]: value }));

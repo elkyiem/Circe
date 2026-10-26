@@ -39,7 +39,7 @@
   -webkit-app-region: no-drag;
   transition:
     opacity 150ms ease-out,
-    transform 150ms ease-out;
+    transform var(--ds-duration-bounce) var(--ds-easing-bounce);
 }
 
 .portal[data-contained] .popup {
@@ -52,13 +52,17 @@
     width 200ms var(--page-ease),
     height 200ms var(--page-ease),
     opacity 150ms ease-out,
-    transform 150ms ease-out;
+    transform var(--ds-duration-bounce) var(--ds-easing-bounce);
 }
 
-.popup[data-starting-style],
+.popup[data-starting-style] {
+  opacity: 0;
+  transform: translate(-50%, var(--dialog-offset-y, -50%)) scale(0.94);
+}
+
 .popup[data-ending-style] {
   opacity: 0;
-  transform: translate(-50%, var(--dialog-offset-y, -50%)) scale(1.05);
+  transform: translate(-50%, var(--dialog-offset-y, -50%)) scale(0.97);
   transition:
     opacity 150ms ease-out,
     transform 150ms ease-out;

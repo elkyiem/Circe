@@ -1,29 +1,31 @@
 import { Button, Tooltip } from "@pond/ui";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import {
-  libraryChrome,
-  useInspectorSaveId,
-  useRightPane,
-  useSidebarOpen,
-} from "@/features/library/state/library-chrome";
+import { libraryChrome } from "@/features/library/state/library-chrome";
 import { ShortcutKeys } from "@/shared/components/shortcut-keys";
-import { SpecContextMenu } from "@/shared/components/spec-context-menu";
 import styles from "./styles.module.css";
 
 const EASE = [0.25, 0.1, 0.25, 1] as const;
 
-function Glyph({ open, side }: { open: boolean; side: "left" | "right" }) {
-  const x = side === "left" ? 4.75 : 13.25;
+type Side = "left" | "right";
+
+const SIDES = {
+  left: {
+    x: 4.75,
+    label: "Toggle Sidebar",
+    shortcut: "view.sidebar",
+    toggle: libraryChrome.toggleSidebar,
+  },
+  right: {
+    x: 13.25,
+    label: "Toggle Details",
+    shortcut: "view.inspector",
+    toggle: libraryChrome.toggleDetails,
+  },
+} as const;
+
+function Glyph({ open, side }: { open: boolean; side: Side }) {
   const inset = open ? 5.75 : 7.5;
-  const label =
-    side === "left"
-      ? open
-        ? "Close sidebar"
-        : "Open sidebar"
-      : open
-        ? "Close details"
-        : "Open details";
 
   return (
     <svg
@@ -35,7 +37,7 @@ function Glyph({ open, side }: { open: boolean; side: "left" | "right" }) {
       className={styles.glyph}
       aria-hidden
     >
-      <title>{label}</title>
+      <title>{SIDES[side].label}</title>
       <rect
         x="1.75"
         y="2.75"
@@ -49,8 +51,8 @@ function Glyph({ open, side }: { open: boolean; side: "left" | "right" }) {
         strokeLinejoin="round"
       />
       <motion.line
-        x1={x}
-        x2={x}
+        x1={SIDES[side].x}
+        x2={SIDES[side].x}
         stroke="currentColor"
         strokeWidth={1.5}
         strokeLinecap="round"
@@ -66,88 +68,30 @@ function Glyph({ open, side }: { open: boolean; side: "left" | "right" }) {
 export function SidebarToggle({
   open,
   side = "left",
-  onToggle,
 }: {
   open: boolean;
-  side?: "left" | "right";
-  onToggle?: () => void;
+  side?: Side;
 }) {
+  const { label, shortcut, toggle } = SIDES[side];
   const [visual, setVisual] = useState(false);
-  const label = side === "left" ? "Toggle Sidebar" : "Toggle Details";
-  const sidebarOpen = useSidebarOpen();
-  const rightPane = useRightPane();
-  const canInspect = useInspectorSaveId() !== null;
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisual(open));
     return () => cancelAnimationFrame(frame);
   }, [open]);
 
-  const button = (
-    <Button
-      icon
-      size="sm"
-      variant="ghost"
-      aria-label={label}
-      aria-pressed={open}
-      onClick={() => {
-        if (onToggle) {
-          onToggle();
-          return;
-        }
-        if (side === "left") libraryChrome.toggleSidebar();
-        else libraryChrome.toggleRightPane();
-      }}
-    >
-      <Glyph open={visual} side={side} />
-    </Button>
-  );
-
   return (
-    <Tooltip
-      label={label}
-      shortcut={
-        side === "left" && !onToggle ? (
-          <ShortcutKeys id="view.sidebar" />
-        ) : undefined
-      }
-    >
-      {onToggle ? (
-        button
-      ) : (
-        <SpecContextMenu
-          buildItems={() => [
-            {
-              type: "checkbox",
-              label: "Sidebar",
-              checked: sidebarOpen,
-              onCheckedChange: (checked) => {
-                if (checked !== sidebarOpen) libraryChrome.toggleSidebar();
-              },
-            },
-            {
-              type: "checkbox",
-              label: "Assistant",
-              checked: rightPane === "agent",
-              onCheckedChange: (checked) => libraryChrome.setAgentOpen(checked),
-            },
-            {
-              type: "checkbox",
-              label: "Details",
-              checked: rightPane === "inspector",
-              disabled: !canInspect,
-              onCheckedChange: (checked) => {
-                if (checked && rightPane !== "inspector")
-                  libraryChrome.toggleInspector();
-                else if (!checked && rightPane === "inspector")
-                  libraryChrome.closeRightPane();
-              },
-            },
-          ]}
-        >
-          {button}
-        </SpecContextMenu>
-      )}
+    <Tooltip label={label} shortcut={<ShortcutKeys id={shortcut} />}>
+      <Button
+        icon
+        size="sm"
+        variant="ghost"
+        aria-label={label}
+        aria-pressed={open}
+        onClick={toggle}
+      >
+        <Glyph open={visual} side={side} />
+      </Button>
     </Tooltip>
   );
 }

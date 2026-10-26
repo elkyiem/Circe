@@ -168,120 +168,122 @@ export function AudioViewer(props: ViewerProps & { url: string }) {
       </div>
       <FileBar {...props} />
       <ChromePortal slot="bottom">
-        <ViewerHud.Tools
-          tooltipSide="top"
-          className={styles.transport}
-          role="toolbar"
-          aria-label="Audio playback"
-        >
-          <ViewerHud.Tool
-            label={playing ? "Pause" : "Play"}
-            onClick={() => {
-              const audio = audioRef.current;
-              if (!audio) return;
-              if (audio.paused) void audio.play();
-              else audio.pause();
-            }}
+        <ViewerHud.Pill className={styles.dock}>
+          <ViewerHud.Tools
+            tooltipSide="top"
+            className={styles.transport}
+            role="toolbar"
+            aria-label="Audio playback"
           >
-            {playing ? <IconMediaPause /> : <IconMediaPlay />}
-          </ViewerHud.Tool>
-          <ViewerHud.Tool
-            label={muted || volume === 0 ? "Unmute" : "Mute"}
-            onClick={() => setMuted((value) => !value)}
-          >
-            {muted || volume === 0 ? <IconVolumeOff /> : <IconVolume />}
-          </ViewerHud.Tool>
-          <ViewerHud.Scale>
-            {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
-          </ViewerHud.Scale>
-          <Slider.Root
-            className={styles.progress}
-            aria-label="Audio Position"
-            min={0}
-            max={Math.max(duration, 0.01)}
-            step={0.01}
-            value={currentTime}
-            onValueChange={(value) => {
-              const next = Array.isArray(value) ? (value[0] ?? 0) : value;
-              setCurrentTime(next);
-              if (audioRef.current) audioRef.current.currentTime = next;
-            }}
-          >
-            <Slider.Control>
-              <Slider.Track>
-                <Slider.Indicator />
-                <Slider.Thumb />
-              </Slider.Track>
-            </Slider.Control>
-          </Slider.Root>
-          <Select.Root
-            value={speed}
-            onValueChange={(value) => {
-              if (value === null) return;
-              setSpeed(value);
-              if (audioRef.current)
-                audioRef.current.playbackRate = Number(value);
-            }}
-          >
-            <Select.Trigger
-              size="xs"
-              variant="ghost"
-              aria-label="Playback Speed"
+            <ViewerHud.Tool
+              label={playing ? "Pause" : "Play"}
+              onClick={() => {
+                const audio = audioRef.current;
+                if (!audio) return;
+                if (audio.paused) void audio.play();
+                else audio.pause();
+              }}
             >
-              <Select.Value>{(value: string) => `${value}×`}</Select.Value>
-            </Select.Trigger>
-            <Select.Portal>
-              <Select.Positioner sideOffset={6}>
-                <Select.Popup>
-                  <Select.Items
-                    items={["0.5", "0.75", "1", "1.25", "1.5", "2"].map(
-                      (value) => ({ value, label: `${value}×` }),
-                    )}
-                  />
-                </Select.Popup>
-              </Select.Positioner>
-            </Select.Portal>
-          </Select.Root>
-          <Slider.Root
-            className={styles.volume}
-            aria-label="Audio Volume"
-            min={0}
-            max={1}
-            step={0.05}
-            value={volume}
-            onValueChange={(value) => {
-              const next = Array.isArray(value) ? (value[0] ?? 1) : value;
-              setVolume(next);
-              setMuted(false);
-              if (audioRef.current) audioRef.current.volume = next;
-            }}
-          >
-            <Slider.Control>
-              <Slider.Track>
-                <Slider.Indicator />
-                <Slider.Thumb />
-              </Slider.Track>
-            </Slider.Control>
-          </Slider.Root>
-          <ViewerHud.Tool
-            label="Loop"
-            pressed={loop}
-            onClick={() => setLoop((value) => !value)}
-          >
-            <IconAnimationRepeat />
-          </ViewerHud.Tool>
-          <ViewerHud.Tool
-            label="Full Screen"
-            onClick={() => {
-              const root = rootRef.current;
-              if (!root) return;
-              if (document.fullscreenElement) void document.exitFullscreen();
-              else void root.requestFullscreen();
-            }}
-          >
-            <IconFullScreen />
-          </ViewerHud.Tool>
-        </ViewerHud.Tools>
+              {playing ? <IconMediaPause /> : <IconMediaPlay />}
+            </ViewerHud.Tool>
+            <ViewerHud.Tool
+              label={muted || volume === 0 ? "Unmute" : "Mute"}
+              onClick={() => setMuted((value) => !value)}
+            >
+              {muted || volume === 0 ? <IconVolumeOff /> : <IconVolume />}
+            </ViewerHud.Tool>
+            <ViewerHud.Scale>
+              {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
+            </ViewerHud.Scale>
+            <Slider.Root
+              className={styles.progress}
+              aria-label="Audio Position"
+              min={0}
+              max={Math.max(duration, 0.01)}
+              step={0.01}
+              value={currentTime}
+              onValueChange={(value) => {
+                const next = Array.isArray(value) ? (value[0] ?? 0) : value;
+                setCurrentTime(next);
+                if (audioRef.current) audioRef.current.currentTime = next;
+              }}
+            >
+              <Slider.Control>
+                <Slider.Track>
+                  <Slider.Indicator />
+                  <Slider.Thumb />
+                </Slider.Track>
+              </Slider.Control>
+            </Slider.Root>
+            <Select.Root
+              value={speed}
+              onValueChange={(value) => {
+                if (value === null) return;
+                setSpeed(value);
+                if (audioRef.current)
+                  audioRef.current.playbackRate = Number(value);
+              }}
+            >
+              <Select.Trigger
+                size="xs"
+                variant="ghost"
+                aria-label="Playback Speed"
+              >
+                <Select.Value>{(value: string) => `${value}×`}</Select.Value>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner sideOffset={6}>
+                  <Select.Popup>
+                    <Select.Items
+                      items={["0.5", "0.75", "1", "1.25", "1.5", "2"].map(
+                        (value) => ({ value, label: `${value}×` }),
+                      )}
+                    />
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
+            <Slider.Root
+              className={styles.volume}
+              aria-label="Audio Volume"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              onValueChange={(value) => {
+                const next = Array.isArray(value) ? (value[0] ?? 1) : value;
+                setVolume(next);
+                setMuted(false);
+                if (audioRef.current) audioRef.current.volume = next;
+              }}
+            >
+              <Slider.Control>
+                <Slider.Track>
+                  <Slider.Indicator />
+                  <Slider.Thumb />
+                </Slider.Track>
+              </Slider.Control>
+            </Slider.Root>
+            <ViewerHud.Tool
+              label="Loop"
+              pressed={loop}
+              onClick={() => setLoop((value) => !value)}
+            >
+              <IconAnimationRepeat />
+            </ViewerHud.Tool>
+            <ViewerHud.Tool
+              label="Full Screen"
+              onClick={() => {
+                const root = rootRef.current;
+                if (!root) return;
+                if (document.fullscreenElement) void document.exitFullscreen();
+                else void root.requestFullscreen();
+              }}
+            >
+              <IconFullScreen />
+            </ViewerHud.Tool>
+          </ViewerHud.Tools>
+        </ViewerHud.Pill>
       </ChromePortal>
     </div>
   );

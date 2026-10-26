@@ -44,7 +44,7 @@ export function ModelsSection() {
         <Settings.HeaderText>
           <Settings.Title>Models</Settings.Title>
           <Settings.Description>
-            Choose which models appear in Assistant.
+            Choose which models your fish can use.
           </Settings.Description>
         </Settings.HeaderText>
       </Settings.Header>

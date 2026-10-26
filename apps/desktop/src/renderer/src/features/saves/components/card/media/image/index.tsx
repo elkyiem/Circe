@@ -103,6 +103,7 @@ export function CardImage({
         width={w ?? undefined}
         height={h ?? undefined}
         className={styles.media}
+        draggable={false}
         data-fit={viewer.galleryFit}
         data-loaded={!save.blurhash || ready.loaded ? "true" : "false"}
         onLoad={ready.onLoad}

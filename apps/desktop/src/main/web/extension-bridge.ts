@@ -1,8 +1,11 @@
 import { CaptureReceiptSchema } from "@pond/schema/capture";
 import type { Source } from "@pond/schema/db";
 import type { NativeRequest, NativeResponse } from "@pond/schema/native";
+import { IPC } from "../../shared/constants";
+import { onCaptureComplete } from "../core/captures";
 import { withMutationScope } from "../core/executor";
 import { readLibraryIdentity } from "../core/library-identity";
+import { broadcast } from "../lib/broadcast";
 import { liveNativePorts } from "../native/ports";
 import { dispatchNative } from "../native/rpc";
 import { libraryId, libraryRoot } from "../paths";
@@ -12,9 +15,20 @@ import {
 } from "../pending-session";
 import type { ExtensionHost } from "./extension-api";
 import type { ExtensionAuth } from "./extension-auth";
+import { createWebFishHandoff } from "./fish-handoff";
 
 export function createExtensionBridge(auth: ExtensionAuth) {
   let pendingLibrary: string | null = null;
+  const handoff = createWebFishHandoff({
+    libraryId,
+    fishExists: async (id) => {
+      const { readFish } = await import("../core/fish/store");
+      return readFish(id) !== null;
+    },
+    open: (payload) => broadcast(IPC.fishOpen, payload),
+    now: Date.now,
+  });
+  const stopHandoff = onCaptureComplete(handoff.complete);
   const host: ExtensionHost = {
     auth,
     libraryId,
@@ -45,13 +59,19 @@ export function createExtensionBridge(auth: ExtensionAuth) {
           const { path: _path, ...info } = await ports.libraryInfo();
           return { ok: true, data: info };
         }
-        const response = await dispatchNative(request, ports);
+        let response: NativeResponse;
+        if (request.type === "capture.accept") {
+          const { fishId, ...capture } = request;
+          if (fishId) handoff.remember(request.draft.id, fishId);
+          response = await dispatchNative(capture, ports);
+        } else response = await dispatchNative(request, ports);
         if (
           response.ok &&
           (request.type === "capture.accept" ||
             request.type === "capture.status")
         ) {
           const receipt = CaptureReceiptSchema.parse(response.data);
+          if (receipt.state === "complete") await handoff.complete(receipt);
           return {
             ok: true,
             data: {
@@ -68,6 +88,10 @@ export function createExtensionBridge(auth: ExtensionAuth) {
   };
   return {
     host,
+    close() {
+      stopHandoff();
+      handoff.clear();
+    },
     async connectSource(source: Source) {
       if (!auth.hasPair(libraryId()))
         return { ok: false, mode: "extension" as const };

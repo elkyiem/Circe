@@ -118,8 +118,10 @@ export async function streamAgentTurn(
           type: "message-metadata",
           messageMetadata: {
             elapsedMs: saved.data.elapsedMs,
+            messages: saved.data.messages,
             stopped: saved.data.stopped,
             error: saved.data.error,
+            routineEvents: saved.data.routineEvents,
           },
         });
         if (saved.data.steps?.length)

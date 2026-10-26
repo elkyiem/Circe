@@ -70,7 +70,6 @@ function selectIds(ids: readonly string[]): void {
   const first = ids[0] ?? null;
   primarySelection.set(first);
   if (first) selection.setAnchor(first);
-  libraryChrome.setInspectorSaveId(first);
 }
 
 function selectAllSaves(): void {

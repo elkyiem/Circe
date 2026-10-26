@@ -1,12 +1,13 @@
 import { Button } from "@pond/ui";
 import type { QueryResult } from "@shared/query-contracts";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { CardThumb } from "@/features/saves/components/card/media";
 import { Card } from "@/features/saves/components/card/parts";
 import { useSaves } from "@/features/saves/hooks/use-saves";
 import { ensureSaves } from "@/features/saves/lib/ensure-saves";
 import { openSave } from "@/features/saves/lib/save-nav";
 import { displayTitleForSave } from "@/features/saves/lib/text";
+import { aspectFor } from "@/features/saves/state/aspect";
 import type { Save } from "@/features/saves/types";
 import styles from "./styles.module.css";
 
@@ -16,8 +17,18 @@ function reasonLabel(reason: RelatedItem["reason"]): string {
   return reason === "already-organized" ? "Same folder" : "Related content";
 }
 
+interface FrameStyle extends CSSProperties {
+  "--frame-aspect": string;
+  "--frame-width": string;
+}
+
 function RelatedCard({ item, save }: { item: RelatedItem; save: Save }) {
   const title = displayTitleForSave(save);
+  const aspect = aspectFor(save);
+  const frameStyle: FrameStyle = {
+    "--frame-aspect": String(aspect),
+    "--frame-width": `${Math.min(1, aspect) * 100}%`,
+  };
   return (
     <Card.Root className={styles.item}>
       <Card.Select
@@ -25,7 +36,7 @@ function RelatedCard({ item, save }: { item: RelatedItem; save: Save }) {
         onClick={() => openSave(save.id)}
       >
         <Card.Media className={styles.media}>
-          <Card.Frame>
+          <Card.Frame className={styles.frame} style={frameStyle}>
             <CardThumb save={save} view="grid" width={112} />
           </Card.Frame>
         </Card.Media>

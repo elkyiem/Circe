@@ -5,6 +5,7 @@ import { ThemeOptions, ThemePreview } from "./appearance";
 import { AssistantOptions, AssistantPreview } from "./assistant";
 import { Customize } from "./customize";
 import { Features } from "./features";
+import { Imports } from "./import";
 import { Library, Links } from "./library";
 import { Mark, Owner } from "./welcome";
 
@@ -74,9 +75,9 @@ const STEPS = {
   },
   assistant: {
     layout: "split",
-    title: same("Assistant"),
+    title: same("Fish"),
     description: same(
-      "Ask about your Library in plain words. Pond doesn't bundle a chat model, so connect one you already use.",
+      "Fish answer questions about your Library and tidy it on request. Pond doesn't bundle a chat model, so connect one you already use.",
     ),
     primary: same("Continue"),
     Aside: AssistantOptions,
@@ -92,6 +93,15 @@ const STEPS = {
     },
     primary: { new: "Create Library", existing: "Open Library" },
     Body: Library,
+  },
+  import: {
+    layout: "hero",
+    title: same("Bring Your Saves"),
+    description: same(
+      `Import from Eagle, mymind, your browser, or files on ${THIS_DEVICE}. Imports keep running after you finish, and you can import more from the New menu.`,
+    ),
+    primary: { new: "Start Using Pond", existing: "Done" },
+    Body: Imports,
     Extras: Links,
   },
 } satisfies Record<StepId, StepSpec>;

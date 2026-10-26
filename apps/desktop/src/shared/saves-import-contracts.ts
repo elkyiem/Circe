@@ -35,6 +35,12 @@ export interface DuplicateImportCandidate {
 
 export type DuplicateImportChoice = "use-existing" | "keep-both";
 
+export interface DataExportImportCounts extends SavesImportCounts {
+  platforms: string[];
+  /** Sources in the export with no connected Account; their Saves capture once you connect one. */
+  connect: Source[];
+}
+
 export interface EagleImportProgress {
   id: string;
   processed: number;
@@ -88,6 +94,7 @@ export interface SavesImportQueryInputs {
   "saves.importClipboard": EmptyInput;
   "saves.importBookmarks": EmptyInput;
   "saves.importMymind": EmptyInput;
+  "saves.importDataExport": EmptyInput;
   "saves.extractPageAssets": { url: string };
   "saves.quickAdd": { url?: string; note?: string | null; tags?: string[] };
   "saves.startDrag": {
@@ -95,6 +102,8 @@ export interface SavesImportQueryInputs {
     path?: string;
     ids?: string[];
     fileIndex?: number | null;
+    /** Per-save file index; a save missing here uses `fileIndex`. */
+    fileIndexes?: Record<string, number>;
   };
   "saves.copyToLibrary": SavesIdsInput;
 }
@@ -150,6 +159,7 @@ export interface SavesImportQueryResults {
   "saves.importClipboard": SavesImportFilesResult;
   "saves.importBookmarks": CancellableResult<SavesImportCounts>;
   "saves.importMymind": CancellableResult<SavesImportCounts>;
+  "saves.importDataExport": CancellableResult<DataExportImportCounts>;
   "saves.extractPageAssets": SavesImportResult;
   "saves.quickAdd": OkResult<{ id: string; created?: boolean }>;
   "saves.startDrag": OkResult;

@@ -23,24 +23,39 @@
 }
 
 .row {
-  gap: 2px;
+  gap: 8px;
   width: 100%;
 }
 
-.current-time {
-  margin-inline: 4px 6px;
+/* Matches a pill holding one button: the button plus the pill's 2px padding on each side. */
+.scrub {
+  flex: 1;
+  min-width: 0;
+  height: calc(var(--ds-size-sm) + 4px);
+  padding-inline: 12px;
+}
+
+/* Speed is a Select trigger, not a Button, so the pill's rounding override misses it. */
+.speed > * {
+  border-radius: var(--ds-radius-full);
 }
 
 .controls[data-chrome] .current-time,
 .controls[data-chrome] .duration {
+  min-width: 32px;
   font-size: var(--ds-text-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--ds-gray-9);
 }
 
-.controls[data-chrome] .duration {
-  min-width: 32px;
-  margin-inline: 6px 4px;
+.controls[data-chrome] .current-time {
+  margin-inline: 0 8px;
   text-align: left;
+}
+
+.controls[data-chrome] .duration {
+  margin-inline: 8px 0;
+  text-align: right;
 }
 
 .timeline {

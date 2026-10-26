@@ -1,4 +1,5 @@
 import type { ImportScope, Source } from "@pond/schema/db";
+import { connectsByHandle } from "@pond/schema/sources";
 import type { SessionImportFailureReason } from "@shared/wire";
 import { useSelector } from "@tanstack/react-store";
 import { Store } from "@tanstack/store";
@@ -14,7 +15,7 @@ export interface ConnectedAccount {
 }
 
 /** `signed_out` keeps waiting: another browser profile with the extension may still send a signed-in session. */
-export type ConnectProblem = "signed_out" | "unavailable";
+export type ConnectProblem = "signed_out" | "unavailable" | "not_found";
 
 interface ConnectFlowState {
   source: Source | null;
@@ -62,6 +63,23 @@ export const connectFlow = {
     );
     if (!already) playUiSuccess();
   },
+  /** Success arrives through the `sessionImported` broadcast the arrival hook already listens for. */
+  async submitHandle(handle: string): Promise<void> {
+    const source = store.state.source;
+    if (!source) return;
+    store.setState((s) => ({ ...s, problem: null }));
+    try {
+      const result = await window.pond.connectSourceHandle(source, handle);
+      if (!result.ok) {
+        markProblem(
+          source,
+          result.reason === "unavailable" ? "unavailable" : "not_found",
+        );
+      }
+    } catch {
+      markProblem(source, "unavailable");
+    }
+  },
   rejectSession(source: Source, reason: SessionImportFailureReason): void {
     markProblem(source, problemForReason(reason));
   },
@@ -105,6 +123,7 @@ export function useConnectMode() {
 }
 
 async function requestConnection(source: Source): Promise<void> {
+  if (connectsByHandle(source)) return;
   try {
     const result = await window.pond.connectSource(source);
     if (store.state.waiting === source)

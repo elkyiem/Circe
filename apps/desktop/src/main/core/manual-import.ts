@@ -369,6 +369,7 @@ async function importManualSave(
         mimeType: customThumbnail.format.mimeType,
         width: customThumbnail.width,
         height: customThumbnail.height,
+        custom: true,
       };
       newFiles.push(
         "path" in customThumbnail.source

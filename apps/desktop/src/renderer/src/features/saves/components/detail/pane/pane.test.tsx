@@ -4,10 +4,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { libraryChrome } from "@/features/library";
 import { normalise, SavePatchSchema } from "@/features/saves/lib/reconcile";
 import { pool } from "@/features/saves/state/pool";
 import { setSaveViewerFileIndex } from "@/features/saves/state/save-viewer";
+import { primarySelection } from "@/features/saves/state/selection";
 import { SaveInspector } from ".";
 
 let host: HTMLDivElement;
@@ -24,12 +24,20 @@ beforeEach(() => {
   setSaveViewerFileIndex(null);
   requests.length = 0;
   vi.stubGlobal("pond", {
+    onSyncAction: () => () => {},
     query: async (
       name: string,
       input: Record<string, string | string[] | number>,
     ) => {
       requests.push({ name, input });
-      if (name === "folders.list" || name === "folders.memberships") return [];
+      if (
+        name === "folders.list" ||
+        name === "folders.memberships" ||
+        name === "tags.list" ||
+        name === "tagGroups.list"
+      )
+        return [];
+      if (name === "folders.create") return { id: "created" };
       if (name === "saves.rawJson")
         return {
           rawJson:
@@ -76,15 +84,6 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function selectInspectorTab(label: "Organize" | "Properties") {
-  const tab = [
-    ...host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-  ].find((candidate) => candidate.textContent === label);
-  if (!tab) throw new Error(`Missing ${label} tab`);
-  await act(async () => tab.click());
-  return tab;
-}
-
 function setInput(input: HTMLInputElement, value: string) {
   Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
@@ -107,8 +106,8 @@ it("loads the complete selection before displaying mixed notes, tags and total s
     name: "saves.getMany",
     input: { ids: ["cold"] },
   });
-  expect(host.textContent).toContain("One (1/2)");
-  expect(host.textContent).toContain("Inspiration (1/2)");
+  expect(host.textContent).toContain("One1/2");
+  expect(host.textContent).toContain("Inspiration1/2");
   expect(
     host.querySelector<HTMLTextAreaElement>('[aria-label="Notes"]')
       ?.placeholder,
@@ -122,7 +121,6 @@ it("loads the complete selection before displaying mixed notes, tags and total s
   expect(description?.disabled).toBe(true);
   expect(description?.placeholder).toBe("Multiple descriptions");
 
-  await selectInspectorTab("Properties");
   expect(host.textContent).toContain("2 items selected");
   expect(host.textContent).toContain("3 KiB");
   expect(host.textContent).not.toContain("Dimensions");
@@ -170,18 +168,18 @@ it("uses available thumbnails for the multi-selection stack before title fallbac
     root.render(<SaveInspector saveId={ids[0] ?? ""} saveIds={ids} />),
   );
 
-  await selectInspectorTab("Properties");
   expect(host.querySelectorAll("figure img")).toHaveLength(4);
   expect(host.textContent).not.toContain("Missing preview");
 });
 
-it("shows editable identity fields and places the URL in Source", async () => {
+it("shows the name, URL, source card, and note on one card", async () => {
   const current = pool.get("a");
   if (!current) throw new Error("Missing Save fixture");
   pool.upsert({
     ...current,
     source: "twitter",
     author: "Example Author",
+    notes: null,
     rawJson: {
       extractorId: "test",
       extractedAt: "2026-01-01T00:00:00.000Z",
@@ -195,113 +193,61 @@ it("shows editable identity fields and places the URL in Source", async () => {
     },
   });
   await act(async () => root.render(<SaveInspector saveId="a" />));
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Title"]')?.value,
-  ).toBe("Screenshot");
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Title"]')?.readOnly,
-  ).toBe(false);
-  expect(
-    host
-      .querySelector<HTMLTextAreaElement>('[aria-label="Title"]')
-      ?.closest('[data-slot="root"]'),
-  ).toMatchObject({ dataset: { size: "sm", variant: "primary" } });
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Title"]')
-      ?.placeholder,
-  ).toBe("Add a title");
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Description"]')
-      ?.value,
-  ).toBe("Captured page description");
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Description"]')
-      ?.readOnly,
-  ).toBe(false);
-  expect(
-    host
-      .querySelector<HTMLTextAreaElement>('[aria-label="Description"]')
-      ?.closest('[data-slot="root"]'),
-  ).toMatchObject({ dataset: { size: "sm", variant: "primary" } });
-  expect(
-    host.querySelector<HTMLInputElement>('[aria-label="Source URL"]'),
-  ).toBeNull();
+  const title = host.querySelector<HTMLTextAreaElement>('[aria-label="Title"]');
+  expect(title?.value).toBe("Screenshot");
+  expect(title?.readOnly).toBe(false);
+  expect(title?.placeholder).toBe("Untitled");
+  expect(title?.closest('[data-slot="root"]')).toMatchObject({
+    dataset: { size: "sm", variant: "secondary" },
+  });
+  expect(host.textContent).toContain("Name");
+  const url = host.querySelector<HTMLInputElement>('[aria-label="Source URL"]');
+  expect(url?.readOnly).toBe(false);
+  expect(url?.value).toBe("https://example.test");
+  expect(host.querySelector('[aria-label="Open Source URL"]')).not.toBeNull();
+
+  const card = host.querySelector('[aria-label="Source"]');
+  expect(card?.textContent).toContain("Example Author");
+  expect(card?.textContent).toContain("Open");
+  expect(card?.textContent).toContain("Captured page description");
+  expect(card?.querySelector('[aria-label="Description"]')).toBeNull();
+
   expect(
     host.querySelector<HTMLTextAreaElement>('[aria-label="Notes"]')
       ?.placeholder,
-  ).toBe("Add notes");
-  const tabs = [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  expect(tabs.map((tab) => tab.textContent)).toEqual([
-    "Organize",
-    "Properties",
-  ]);
-  expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual([
-    "Organize",
-    "Properties",
-  ]);
-  expect(tabs.every((tab) => tab.querySelector("svg"))).toBe(true);
-  expect(tabs[0]?.getAttribute("aria-selected")).toBe("true");
-  await act(async () =>
-    tabs[0]?.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
-    ),
-  );
-  expect(tabs[1]?.getAttribute("aria-selected")).toBe("true");
-  await selectInspectorTab("Organize");
-  const organizeSectionButtons = [...host.querySelectorAll("button")].filter(
+  ).toBe("Add a note");
+
+  expect(
+    [...host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent),
+  ).toEqual(["Details", "Related"]);
+  expect(host.querySelector('[aria-label="Save Info"]')).toBeNull();
+  const sectionButtons = [...host.querySelectorAll("button")].filter(
     (button) => button.getAttribute("aria-expanded") !== null,
   );
-  expect(organizeSectionButtons.map((button) => button.textContent)).toEqual(
-    expect.arrayContaining(["Title", "Tags", "Description", "Notes"]),
+  expect(sectionButtons.map((button) => button.textContent)).toEqual(
+    expect.arrayContaining(["Tags", "Properties", "Activity"]),
   );
-  const titleTrigger = organizeSectionButtons.find(
-    (button) => button.textContent === "Title",
+  expect(sectionButtons.map((button) => button.textContent)).not.toContain(
+    "Source",
   );
-  expect(titleTrigger?.closest('[data-divider="none"]')).not.toBeNull();
-  expect(host.textContent).not.toContain("Rating");
-  expect(
-    organizeSectionButtons.map((button) => button.textContent),
-  ).not.toEqual(expect.arrayContaining(["Properties", "Source", "Activity"]));
   expect(host.textContent).toContain("Folders");
   expect(host.querySelector('[aria-label="Add Tag"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Add Folder"]')).not.toBeNull();
 
-  const tagsTrigger = organizeSectionButtons.find(
+  const tagsTrigger = sectionButtons.find(
     (button) => button.textContent === "Tags",
   );
   if (!tagsTrigger) throw new Error("Missing Tags section trigger");
   await act(async () => tagsTrigger.click());
   expect(tagsTrigger.getAttribute("aria-expanded")).toBe("false");
 
-  await selectInspectorTab("Properties");
-  expect(host.querySelector('[aria-label="Title"]')).toBeNull();
-  expect(host.textContent).toContain("640 × 480");
   expect(host.textContent).toContain("Likes42");
   expect(host.textContent).toContain("Views120");
-  const infoSectionButtons = [...host.querySelectorAll("button")].filter(
-    (button) => button.getAttribute("aria-expanded") !== null,
-  );
-  expect(infoSectionButtons.map((button) => button.textContent)).toEqual(
-    expect.arrayContaining(["Properties", "Source", "Activity"]),
-  );
   expect(host.textContent).toContain("Rating");
-  const sourceTrigger = infoSectionButtons.find(
-    (button) => button.textContent === "Source",
-  );
-  if (!sourceTrigger) throw new Error("Missing Source section trigger");
-  expect(sourceTrigger.getAttribute("aria-expanded")).toBe("false");
-  await act(async () => sourceTrigger.click());
-  expect(sourceTrigger.getAttribute("aria-expanded")).toBe("true");
-  expect(
-    host.querySelector<HTMLInputElement>('[aria-label="Source URL"]')?.readOnly,
-  ).toBe(false);
-  expect(
-    host.querySelector<HTMLInputElement>('[aria-label="Source URL"]')?.value,
-  ).toBe("https://example.test");
-  expect(host.querySelector('[aria-label="Open Source URL"]')).toBeNull();
-  expect(host.textContent).toContain("Example Author");
-  expect(host.textContent).toContain("Imported");
+  expect(host.textContent).toContain("Saved");
   expect(host.textContent).toContain("Modified");
+  expect(host.textContent).toContain("Dimensions640 × 480");
+  expect(host.textContent).toContain("IDa");
   expect(host.textContent).not.toContain("Additional Details");
   expect(host.querySelector("details:not([open])")).toBeNull();
   expect(
@@ -311,32 +257,27 @@ it("shows editable identity fields and places the URL in Source", async () => {
   ).toBe(false);
 });
 
-it("keeps Description visible when it is empty or matches the title", async () => {
+it("shows Description as read-only text and hides an empty source card", async () => {
   const current = pool.get("a");
   if (!current) throw new Error("Missing Save fixture");
   pool.upsert({ ...current, description: current.title });
 
   await act(async () => root.render(<SaveInspector saveId="a" />));
 
-  const description = host.querySelector<HTMLTextAreaElement>(
-    '[aria-label="Description"]',
-  );
-  expect(description?.value).toBe("Screenshot");
+  const card = () => host.querySelector('[aria-label="Source"]');
+  expect(card()?.textContent).toContain("Screenshot");
+  expect(card()?.querySelector("textarea")).toBeNull();
 
   await act(async () => {
     pool.upsert({ ...current, description: null });
   });
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Description"]'),
-  ).not.toBeNull();
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Description"]')
-      ?.value,
-  ).toBe("");
-  expect(
-    host.querySelector<HTMLTextAreaElement>('[aria-label="Description"]')
-      ?.placeholder,
-  ).toBe("Add a description");
+  expect(card()).toBeNull();
+
+  await act(async () => {
+    pool.upsert({ ...current, author: "Example Author", description: null });
+  });
+  expect(card()?.textContent).toContain("Example Author");
+  expect(card()?.querySelector("p")).toBeNull();
 
   await act(async () => {
     pool.upsert({ ...current, title: null, description: null });
@@ -344,7 +285,7 @@ it("keeps Description visible when it is empty or matches the title", async () =
   expect(
     host.querySelector<HTMLTextAreaElement>('[aria-label="Title"]')
       ?.placeholder,
-  ).toBe("Add a title");
+  ).toBe("Untitled");
 });
 
 it("hides empty read-only sections and keeps empty addable sections static", async () => {
@@ -400,14 +341,6 @@ it("does not expose a local Save's internal identity as a source link", async ()
   if (!current) throw new Error("Missing Save fixture");
   pool.upsert({ ...current, url: "pond:local/a" });
   await act(async () => root.render(<SaveInspector saveId="a" />));
-  await selectInspectorTab("Properties");
-  const sourceTrigger = [...host.querySelectorAll("button")].find(
-    (button) =>
-      button.getAttribute("aria-expanded") !== null &&
-      button.textContent === "Source",
-  );
-  if (!sourceTrigger) throw new Error("Missing Source section trigger");
-  await act(async () => sourceTrigger.click());
   expect(
     host.querySelector<HTMLInputElement>('[aria-label="Source URL"]')?.value,
   ).toBe("");
@@ -417,15 +350,41 @@ it("does not expose a local Save's internal identity as a source link", async ()
   ).toBe("No source URL");
 });
 
-it("assigns a mixed folder immediately from the inspector menu", async () => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
+it("shows enrichment output and applies suggested tags", async () => {
+  const current = pool.get("a");
+  if (!current) throw new Error("Missing Save fixture");
+  pool.upsert({
+    ...current,
+    caption: "A dashboard with charts",
+    captionModel: "florence",
+    ocrText: "Revenue 42%",
+    ocrModel: "florence",
+    aesthetic: ["Minimal"],
+    suggestedTags: ["Dashboard", "One"],
+    sensitiveScore: 0.99,
+  });
+  await act(async () => root.render(<SaveInspector saveId="a" />));
+
+  expect(host.textContent).toContain("Likely sensitive content");
+  expect(host.textContent).toContain("A dashboard with charts");
+  expect(host.textContent).toContain("Revenue 42%");
+  expect(host.textContent).toContain("Minimal");
+  expect(host.querySelector('[aria-label="Copy Caption"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Add tag Dashboard"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Add tag One"]')).toBeNull();
+
+  const applyAll = [...host.querySelectorAll("button")].find(
+    (button) => button.textContent === "Apply All",
   );
+  if (!applyAll) throw new Error("Missing Apply All");
+  await act(async () => applyAll.click());
+  expect(requests).toContainEqual({
+    name: "saves.bulkEdit",
+    input: { ids: ["a"], operation: { kind: "suggested-tags" } },
+  });
+});
+
+it("assigns a mixed folder immediately from the inspector menu", async () => {
   await act(async () =>
     root.render(
       <SaveInspector
@@ -440,10 +399,12 @@ it("assigns a mixed folder immediately from the inspector menu", async () => {
   );
   if (!trigger) throw new Error("Missing Add Folder");
   await act(async () => trigger.click());
-  const checkbox = document.querySelector<HTMLElement>('[role="treeitem"]');
+  const checkbox = document.querySelector<HTMLElement>(
+    '[role="menuitemcheckbox"]',
+  );
   if (!checkbox) throw new Error("Missing folder checkbox");
   expect(checkbox.dataset.selection).toBe("mixed");
-  expect(checkbox.getAttribute("aria-label")).toContain("some selected");
+  expect(checkbox.getAttribute("aria-description")).toBe("Some selected");
   await act(async () => checkbox.click());
   expect(requests).toContainEqual({
     name: "folders.assign",
@@ -451,15 +412,7 @@ it("assigns a mixed folder immediately from the inspector menu", async () => {
   });
 });
 
-it("shows child folders as inset tree rows and keeps search results contextual", async () => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+it("lists folders with their parent as a breadcrumb and filters by search", async () => {
   await act(async () =>
     root.render(
       <SaveInspector
@@ -482,45 +435,68 @@ it("shows child folders as inset tree rows and keeps search results contextual",
   );
   if (!trigger) throw new Error("Missing Add Folder");
   await act(async () => trigger.click());
-
-  const expand = document.querySelector<HTMLElement>(
-    '[role="treeitem"][aria-label="Reference"]',
-  );
-  expect(expand?.getAttribute("aria-expanded")).toBe("true");
-  expect(document.body.textContent).toContain(
-    "A very long collection name that needs truncation",
-  );
-  expect(document.querySelector('[aria-label="All Folders"]')).toBeNull();
-  expect(document.querySelector('[aria-label="Recent Folders"]')).toBeNull();
-  expect(document.querySelector('[aria-label="Selected Folders"]')).toBeNull();
-  const nested = document.querySelector<HTMLElement>(
-    '[role="treeitem"][data-depth="1"]',
-  );
-  expect(nested?.getAttribute("style")).toContain("--folder-depth: 1");
+  const rows = () => [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]'),
+  ];
+  expect(rows()).toHaveLength(3);
 
   const search = document.querySelector<HTMLInputElement>(
     '[aria-label="Search Folders"]',
   );
   if (!search) throw new Error("Missing folder search");
-  const initialActive = search.getAttribute("aria-activedescendant");
-  await act(async () =>
-    search.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
-    ),
-  );
-  expect(search.getAttribute("aria-activedescendant")).not.toBe(initialActive);
-  expect(document.activeElement).toBe(search);
   await act(async () => setInput(search, "collection"));
-  const result = [
-    ...document.querySelectorAll<HTMLElement>('[role="option"]'),
-  ].find((item) => item.textContent?.includes("collection name"));
-  expect(result?.textContent).toContain("Reference");
-  expect(result?.querySelector("[title]")?.getAttribute("title")).toBe(
-    "Reference / A very long collection name that needs truncation",
+  expect(rows()).toHaveLength(1);
+  expect(rows()[0]?.querySelector("[title]")?.getAttribute("title")).toBe(
+    "Reference › A very long collection name that needs truncation",
   );
 });
 
-it("loads Related Saves only when the section opens and opens a selected Save", async () => {
+it("creates a folder from the search text", async () => {
+  await act(async () =>
+    root.render(
+      <SaveInspector
+        saveId="a"
+        folders={[{ id: "folder", name: "Inspiration", count: 0 }]}
+      />,
+    ),
+  );
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Add Folder"]',
+  );
+  if (!trigger) throw new Error("Missing Add Folder");
+  await act(async () => trigger.click());
+  const search = document.querySelector<HTMLInputElement>(
+    '[aria-label="Search Folders"]',
+  );
+  if (!search) throw new Error("Missing folder search");
+  await act(async () => setInput(search, "Moodboard"));
+  const create = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Create “Moodboard”");
+  if (!create) throw new Error("Missing create row");
+  await act(async () => create.click());
+  expect(requests).toContainEqual({
+    name: "folders.create",
+    input: { name: "Moodboard" },
+  });
+});
+
+it("explains why Related is empty before the save is indexed", async () => {
+  await act(async () => root.render(<SaveInspector saveId="a" />));
+  const tab = [
+    ...host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+  ].find((entry) => entry.textContent === "Related");
+  if (!tab) throw new Error("Missing Related tab");
+  await act(async () => tab.click());
+  expect(host.querySelector('[role="status"]')?.textContent).toContain(
+    "Not indexed yet",
+  );
+  expect(requests.some((request) => request.name === "saves.related")).toBe(
+    false,
+  );
+});
+
+it("loads Related Saves only when its tab opens and opens a selected Save", async () => {
   const current = pool.get("a");
   if (!current) throw new Error("Missing Save fixture");
   pool.upsert({ ...current, clipModel: mediaEmbeddingVersion() });
@@ -564,16 +540,17 @@ it("loads Related Saves only when the section opens and opens a selected Save", 
   );
   vi.stubGlobal("pond", { query });
 
-  await act(async () => root.render(<SaveInspector saveId="a" tab="info" />));
+  await act(async () => root.render(<SaveInspector saveId="a" />));
   expect(query).not.toHaveBeenCalledWith("saves.related", expect.anything());
 
-  const trigger = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-    (button) =>
-      button.textContent === "Related" &&
-      button.getAttribute("aria-expanded") === "false",
-  );
-  if (!trigger) throw new Error("Missing Related section");
+  const trigger = [
+    ...host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+  ].find((tab) => tab.textContent === "Related");
+  if (!trigger) throw new Error("Missing Related tab");
+  expect(trigger.getAttribute("aria-selected")).toBe("false");
   await act(async () => trigger.click());
+  expect(trigger.getAttribute("aria-selected")).toBe("true");
+  expect(host.textContent).not.toContain("Properties");
 
   expect(query).toHaveBeenCalledWith("saves.related", { id: "a", limit: 12 });
   expect(
@@ -586,5 +563,28 @@ it("loads Related Saves only when the section opens and opens a selected Save", 
   );
   expect(related).not.toBeNull();
   await act(async () => related?.click());
-  expect(libraryChrome.getState().inspectorSaveId).toBe("related");
+  expect(primarySelection.get()).toBe("related");
+});
+
+it("clamps a long source description behind Read More and sizes the source icon", async () => {
+  const scroll = vi
+    .spyOn(HTMLParagraphElement.prototype, "scrollHeight", "get")
+    .mockReturnValue(400);
+  await act(async () => root.render(<SaveInspector saveId="a" />));
+
+  const card = host.querySelector('[aria-label="Source"]');
+  const body = [...(card?.querySelectorAll("p") ?? [])].find(
+    (paragraph) => paragraph.textContent === "Captured page description",
+  );
+  const more = [...(card?.querySelectorAll("button") ?? [])].find(
+    (button) => button.textContent === "Read More",
+  );
+  expect(body?.hasAttribute("data-clamped")).toBe(true);
+  expect(card?.querySelector("footer svg")?.getAttribute("width")).toBe("14");
+
+  await act(async () => more?.click());
+
+  expect(body?.hasAttribute("data-clamped")).toBe(false);
+  expect(card?.textContent).not.toContain("Read More");
+  scroll.mockRestore();
 });

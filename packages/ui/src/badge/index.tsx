@@ -19,7 +19,7 @@ function Root({ className, tone = "neutral", ...props }: RootProps) {
 }
 
 interface DotProps extends ComponentPropsWithoutRef<"span"> {
-  tone?: Extract<BadgeTone, "neutral" | "positive" | "negative">;
+  tone?: BadgeTone;
 }
 
 function Dot({ className, tone = "neutral", ...props }: DotProps) {

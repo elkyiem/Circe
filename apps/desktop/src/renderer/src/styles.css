@@ -159,57 +159,6 @@ html[data-reduce-motion="true"] *::after {
   animation-iteration-count: 1;
 }
 
-/* Opening and closing a save share one view transition; the live page stays clickable underneath. */
-::view-transition {
-  pointer-events: none;
-}
-
-::view-transition-group(root) {
-  animation-duration: var(--ds-duration-slow);
-  animation-timing-function: linear;
-}
-
-/* The morph scales this box from the top-left corner; overshoot past the box is clipped so the edges never gap. */
-::view-transition-group(save-media) {
-  overflow: clip;
-  transform-origin: 0 0;
-  animation-duration: var(--ds-duration-spring);
-  animation-timing-function: var(--ds-easing-spring);
-}
-
-::view-transition-old(save-media),
-::view-transition-new(save-media) {
-  height: 100%;
-}
-
-/* Only the source morphs; the destination appears when the transition hands off to the live page. */
-::view-transition-old(save-media) {
-  animation-name: none;
-}
-
-::view-transition-new(save-media) {
-  opacity: 0;
-  animation: none;
-}
-
-::view-transition-old(save-media):only-child {
-  animation-name: save-media-leave;
-  animation-duration: var(--ds-duration-slow);
-  animation-timing-function: linear;
-}
-
-@keyframes save-media-leave {
-  to {
-    opacity: 0;
-  }
-}
-
-html[data-reduce-motion="true"]::view-transition-group(*),
-html[data-reduce-motion="true"]::view-transition-old(*),
-html[data-reduce-motion="true"]::view-transition-new(*) {
-  animation: none;
-}
-
 #root {
   display: flex;
   flex-direction: column;

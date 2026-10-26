@@ -40,6 +40,7 @@ export const savesImportQueries = {
   "saves.quickAdd": savesImportSourceQueries["saves.quickAdd"],
   "saves.importBookmarks": savesImportSourceQueries["saves.importBookmarks"],
   "saves.importMymind": savesImportSourceQueries["saves.importMymind"],
+  "saves.importDataExport": savesImportSourceQueries["saves.importDataExport"],
   "saves.extractPageAssets":
     savesImportSourceQueries["saves.extractPageAssets"],
 } satisfies QueryHandlerMap;

@@ -14,7 +14,7 @@ import {
   ChromePortal,
   ViewerChrome,
 } from "@/features/saves/components/viewers/media-viewer/chrome";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import { copyUrl } from "@/features/saves/lib/actions";
 import {
   type ArchiveManifest,
@@ -137,7 +137,7 @@ function ArchiveFrame({
           label="Web archive"
           start={
             <>
-              <ViewerResultCount saveId={save.id} />
+              <ViewerSaveNav saveId={save.id} />
               <ViewerHud.Tool
                 label="Back"
                 disabled={!canGoBack}

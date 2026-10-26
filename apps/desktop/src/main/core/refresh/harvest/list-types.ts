@@ -7,6 +7,8 @@ export interface ListHarvestArgs {
   resumeCursor?: string;
   /** Lists a walk that covers saved and liked items reads; omitted reads both. */
   listKinds?: ListKind[];
+  /** A newest-first walk stops at the first item saved before this instant. */
+  savedSince?: string;
 }
 
 export interface ListEntry {
@@ -31,6 +33,8 @@ export type ListHarvestResult =
       reachedEnd: boolean;
       seen?: number;
       resumeCursor?: string;
+      /** The walk read every item, so a known item missing from it has left the list. */
+      complete?: boolean;
     }
   | {
       ok: false;

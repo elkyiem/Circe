@@ -10,6 +10,9 @@ export const supportDialog = {
   close(): void {
     store.setState((s) => (s.open ? { open: false } : s));
   },
+  isOpen(): boolean {
+    return store.state.open;
+  },
 };
 
 export function useSupportDialogOpen(): boolean {

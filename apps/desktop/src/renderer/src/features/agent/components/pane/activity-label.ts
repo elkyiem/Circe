@@ -1,30 +1,78 @@
-import type { AssistantActivity, AssistantToolStep } from "@shared/assistant";
+import {
+  type AssistantActivity,
+  type AssistantToolStep,
+  ASSISTANT_ACTIVITY_LABELS as activities,
+} from "@shared/assistant";
 
-const activities = {
-  thinking: "Thinking",
-  searching: "Searching your library",
-  reading: "Reading Saves",
-  writing: "Writing a response",
-  preparing: "Preparing changes",
-} satisfies Record<AssistantActivity, string>;
+interface StepCopy {
+  /** While the tool runs. */
+  live: string;
+  /** Once it returns and the fish works with the result. */
+  after: string;
+}
 
-const runningLabels = new Map([
-  ["Search library", "Searching your library"],
-  ["Read Save", "Reading a Save"],
-  ["Grep library", "Searching saved text"],
-  ["Library overview", "Reading your library overview"],
-  ["Read folders", "Reading folders"],
-  ["Apply filter", "Applying filters"],
-  ["Set overlay", "Updating the view"],
-  ["Cite Saves", "Collecting references"],
-  ["Open Save", "Opening a Save"],
-  ["Find duplicates", "Finding duplicates"],
-  ["Describe images", "Examining images"],
-  ["Prepare changes for review", "Preparing changes for review"],
-  ["Find Pond capabilities", "Finding Pond capabilities"],
-  ["Read operation details", "Checking operation details"],
-  ["Use Pond", "Using Pond"],
-  ["Read operation result", "Reading operation results"],
+const copy = new Map<string, StepCopy>([
+  [
+    "Search library",
+    { live: "Searching your library", after: "Looking through the results" },
+  ],
+  [
+    "Read Save",
+    { live: "Reading a Save", after: "Thinking about what it read" },
+  ],
+  [
+    "Grep library",
+    { live: "Searching saved text", after: "Looking through the matches" },
+  ],
+  [
+    "Library overview",
+    {
+      live: "Reading your library overview",
+      after: "Getting a feel for your library",
+    },
+  ],
+  [
+    "Read folders",
+    { live: "Reading folders", after: "Thinking about your folders" },
+  ],
+  [
+    "Apply filter",
+    { live: "Applying filters", after: "Checking the filtered view" },
+  ],
+  ["Set overlay", { live: "Updating the view", after: "Checking the view" }],
+  [
+    "Cite Saves",
+    { live: "Collecting references", after: "Putting the reply together" },
+  ],
+  ["Open Save", { live: "Opening a Save", after: "Looking at the Save" }],
+  [
+    "Find duplicates",
+    { live: "Finding duplicates", after: "Comparing the duplicates" },
+  ],
+  [
+    "Describe images",
+    { live: "Examining images", after: "Thinking about the images" },
+  ],
+  [
+    "Prepare changes for review",
+    {
+      live: "Preparing changes for review",
+      after: "Double-checking the changes",
+    },
+  ],
+  [
+    "Find Pond capabilities",
+    { live: "Checking what Pond can do", after: "Picking the right tool" },
+  ],
+  [
+    "Read operation details",
+    { live: "Checking operation details", after: "Planning the next step" },
+  ],
+  ["Use Pond", { live: "Using Pond", after: "Checking how it went" }],
+  [
+    "Read operation result",
+    { live: "Reading operation results", after: "Checking how it went" },
+  ],
 ]);
 
 export function currentActivityLabel(
@@ -32,8 +80,11 @@ export function currentActivityLabel(
   steps: readonly AssistantToolStep[],
 ) {
   const running = steps.findLast((step) => step.status === "running");
-  if (!running)
-    return steps.length ? activities.thinking : activities[activity];
-  const label = runningLabels.get(running.label) ?? running.label;
-  return running.detail ? `${label}: ${running.detail}` : label;
+  if (running) {
+    const label = copy.get(running.label)?.live ?? running.label;
+    return running.detail ? `${label}: ${running.detail}` : label;
+  }
+  if (activity === "writing") return activities.writing;
+  const last = steps.findLast((step) => step.status === "complete");
+  return (last && copy.get(last.label)?.after) ?? activities[activity];
 }

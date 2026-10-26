@@ -1,6 +1,7 @@
 import { PrefsSchema } from "@pond/schema";
 import type { Folder, SavedView } from "@pond/schema/db";
 import { Dialog } from "@pond/ui";
+import type { FishSummary } from "@shared/fish-contracts";
 import type { QueueSummary } from "@shared/queue-contracts";
 import type { LibrarySidebarCounts } from "@shared/sidebar-counts";
 import type { WirePrefsPatch } from "@shared/wire";
@@ -31,6 +32,10 @@ interface SavedViewFixtures {
 
 interface FolderFixtures {
   current: Folder[];
+}
+
+interface FishFixtures {
+  current: FishSummary[];
 }
 
 interface QueueSummaryFixtures {
@@ -64,6 +69,7 @@ function emptySidebarCounts(): LibrarySidebarCounts {
 
 export const savedViewList: SavedViewFixtures = { current: [] };
 export const folderList: FolderFixtures = { current: [] };
+export const fishList: FishFixtures = { current: [] };
 export const sidebarCounts = {
   current: emptySidebarCounts(),
 };
@@ -80,6 +86,7 @@ export const pondQuery = vi.fn(async (name: string, patch?: WirePrefsPatch) => {
   if (name === "watches.list") return { watches: [] };
   if (name === "tags.list") return [];
   if (name === "canvases.list") return [];
+  if (name === "fish.list") return fishList.current;
   if (name === "folders.list") return folderList.current;
   if (name === "folders.memberships") return [];
   if (name === "folders.metadata.get")
@@ -193,6 +200,7 @@ export function createFolderSidebarHarness() {
       resetFilters();
       savedViewList.current = [];
       folderList.current = [];
+      fishList.current = [];
       sidebarCounts.current = emptySidebarCounts();
       queueSummary.current = emptyQueueSummary();
       localStorage.removeItem("pond:collapsed-folders");
@@ -209,6 +217,7 @@ export function createFolderSidebarHarness() {
       vi.stubGlobal("pond", {
         query: pondQuery,
         onSyncAction: () => () => {},
+        onFish: () => () => {},
         onSaveUpdated: () => () => {},
         onSyncStatus: () => () => {},
       });
@@ -232,6 +241,7 @@ export function createFolderSidebarHarness() {
     button(label: string): HTMLButtonElement {
       const match = [...getHost().querySelectorAll("button")].find(
         (node) =>
+          node.getAttribute("aria-label") === label ||
           (node.textContent?.replace(/[\d,]+$/, "").trim() ?? "") === label,
       );
       if (!match) throw new Error(`Missing sidebar button: ${label}`);
@@ -261,7 +271,7 @@ export function createFolderSidebarHarness() {
         "/",
         "/sources",
         "/tags",
-        "/assistant",
+        "/fish/$fishId",
         "/untagged",
         "/recents",
         "/downloads",

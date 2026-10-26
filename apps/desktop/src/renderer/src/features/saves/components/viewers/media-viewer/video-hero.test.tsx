@@ -80,8 +80,7 @@ it("fits a video without recorded dimensions to its poster", async () => {
 
   await act(async () => root.render(<MediaViewer save={save} />));
 
-  const hero = host.querySelector<HTMLElement>("[data-save-hero]");
-  expect(hero?.querySelector("video")).not.toBeNull();
-  expect(hero?.style.width).toBe("450px");
-  expect(hero?.style.height).toBe("800px");
+  const frame = host.querySelector("video")?.parentElement;
+  expect(frame?.style.width).toBe("450px");
+  expect(frame?.style.height).toBe("800px");
 });

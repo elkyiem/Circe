@@ -23,11 +23,9 @@ Linux is on the [roadmap](ROADMAP.md).
 
 ### Browser extension
 
-Saving from the web and connecting accounts in Sources both need the Pond extension. It works in Chrome, Brave, and Edge on macOS and Windows, and in Arc on macOS.
+Saving from the web and connecting accounts in Sources both need the Pond extension. Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/ghigndnldiagchoaifgndleogpkendbc) for Chrome, Arc, Brave, and Edge, or from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/desktop%40pond.so/) for Firefox and Zen. In Pond, **Browser Extension** in the library menu links to both.
 
-1. In Pond, open the library menu at the top of the sidebar, choose **Browser Extension**, then click **Download**. A Pond Extension folder lands in Downloads. You can also download `pond-extension-X.Y.Z.zip` from the release, or build it from source with [`apps/extension/README.md`](apps/extension/README.md).
-2. Open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and choose the folder.
-3. Click the Pond icon or right-click a page to save. Pond must have opened once so the extension can reach it.
+Click the Pond icon or right-click a page to save. Pond must have opened once so the extension can reach it. To build the extension from source, see [`apps/extension/README.md`](apps/extension/README.md).
 
 ### Raycast extension
 

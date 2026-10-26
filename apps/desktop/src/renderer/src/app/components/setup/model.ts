@@ -11,6 +11,7 @@ export const STEP_IDS = [
   "appearance",
   "assistant",
   "library",
+  "import",
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];

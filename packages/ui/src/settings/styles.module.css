@@ -182,6 +182,10 @@
   font-weight: var(--ds-weight-md);
   color: var(--ds-gray-11);
   white-space: nowrap;
+
+  &[data-error] {
+    color: var(--ds-red-11);
+  }
 }
 
 .control {

@@ -1,4 +1,6 @@
 /** Media derivation without Save UI, for enrichers and the Agent pane. */
+
+export { saveDuration } from "./lib/duration";
 export {
   buildMediaUnits,
   deriveTypeKind,

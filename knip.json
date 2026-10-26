@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreBinaries": ["iconutil", "cl"],
+  "ignoreBinaries": ["iconutil", "cl", "lipo"],
   "workspaces": {
     "apps/desktop": {
       "entry": [
@@ -17,7 +17,11 @@
         "vite.browser.config.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,cjs,ts}"],
-      "ignoreDependencies": ["@types/better-sqlite3", "drizzle-kit"]
+      "ignoreDependencies": [
+        "@types/better-sqlite3",
+        "app-builder-lib",
+        "drizzle-kit"
+      ]
     },
     "apps/website": {
       "project": ["**/*.{ts,tsx}"],

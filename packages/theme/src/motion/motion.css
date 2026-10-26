@@ -44,6 +44,47 @@
     1.0003,
     1
   );
+  /* Damped spring with a 300ms response and 0.45 bounce: overshoots 12.6%, wobbles once, and settles in this time. */
+  --ds-duration-bounce: 544ms;
+  --ds-easing-bounce: linear(
+    0,
+    0.0444,
+    0.1559,
+    0.3054,
+    0.4692,
+    0.6294,
+    0.7736,
+    0.8944,
+    0.9885,
+    1.0559,
+    1.0988,
+    1.1208,
+    1.1262,
+    1.1195,
+    1.1047,
+    1.0854,
+    1.0647,
+    1.0446,
+    1.0267,
+    1.0118,
+    1.0003,
+    0.9922,
+    0.9871,
+    0.9846,
+    0.9841,
+    0.9851,
+    0.987,
+    0.9895,
+    0.9921,
+    0.9946,
+    0.9969,
+    0.9987,
+    1.0001,
+    1.0011,
+    1.0017,
+    1.002,
+    1
+  );
 }
 
 @property --window-left-width {
@@ -53,12 +94,6 @@
 }
 
 @property --window-right-width {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
-
-@property --window-right-inset {
   syntax: "<length>";
   inherits: true;
   initial-value: 0px;

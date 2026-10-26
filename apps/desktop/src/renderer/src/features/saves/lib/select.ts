@@ -1,4 +1,3 @@
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { primarySelection, selection } from "@/features/saves/state/selection";
 
 export function selectOnlySave(id: string): void {
@@ -6,13 +5,11 @@ export function selectOnlySave(id: string): void {
   selection.set([id]);
   selection.setAnchor(id);
   primarySelection.set(id);
-  saveLibraryBridge.inspectSave(id);
 }
 
 function rememberSave(id: string): void {
   selection.setAnchor(id);
   primarySelection.set(id);
-  saveLibraryBridge.inspectSave(id);
 }
 
 export function clearSaveSelection(): void {
@@ -39,7 +36,6 @@ export function clickSave(
       selection.snapshot()[0] ??
       null;
     primarySelection.set(fallback);
-    if (fallback) saveLibraryBridge.inspectSave(fallback);
     return;
   }
 
@@ -48,7 +44,6 @@ export function clickSave(
     selection.setRange(filteredIds, anchor, id);
     selection.setAnchor(anchor);
     primarySelection.set(id);
-    saveLibraryBridge.inspectSave(id);
     return;
   }
 

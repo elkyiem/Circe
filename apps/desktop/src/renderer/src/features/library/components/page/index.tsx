@@ -2,6 +2,7 @@ import { Shell } from "@pond/ui";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useLayoutEffect } from "react";
 import { canvasIdFromPath } from "@/features/canvas";
+import { fishIdFromPath } from "@/features/fish";
 import { LibraryChrome } from "@/features/library/components/chrome";
 import { LibraryView } from "@/features/library/components/view";
 import { AppShell } from "@/features/library/components/workspace-shell";
@@ -23,17 +24,19 @@ export function Library() {
   const isSave = saveIdFromPath(pathname) !== null;
   const isSources = pathname.startsWith("/sources");
   const isDownloads = pathname.startsWith("/downloads");
-  const isAssistant = pathname === "/assistant";
+  const isFish = fishIdFromPath(pathname) !== null;
   const isTags = pathname === "/tags";
   const isSettings = pathname.startsWith("/settings");
+  const isGallery = pathname === "/gallery";
   const isCanvas =
     canvasIdFromPath(isSave ? getLastListPath() : pathname) !== null;
   const showLibraryGrid =
     !isSources &&
     !isDownloads &&
-    !isAssistant &&
+    !isFish &&
     !isTags &&
     !isSettings &&
+    !isGallery &&
     !isCanvas;
 
   useLayoutEffect(() => {
@@ -55,7 +58,7 @@ export function Library() {
         >
           <AppShell.Content>
             <Shell.Body className={styles.body}>
-              {isSave ? null : <LibraryChrome />}
+              {isSave ? null : <LibraryChrome className={styles.chrome} />}
               <ScrollRestorationContext.Provider value={restoration}>
                 <Shell.Main
                   ref={restoration.ref}

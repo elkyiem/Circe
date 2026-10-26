@@ -1,11 +1,10 @@
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { OriginalFileActions } from "@/features/saves/components/viewers/original-file-actions";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import {
   type ViewerNavigation,
   ViewerNavigationControls,
-  ViewerToolbarGroups,
 } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import type { Save, SaveFile } from "@/features/saves/types";
 import styles from "./styles.module.css";
@@ -45,19 +44,9 @@ export function ViewerFallback({
         <ChromePortal slot="top">
           <ViewerHud.Bar
             label="File fallback"
-            start={<ViewerResultCount saveId={save.id} />}
-            end={
-              <ViewerToolbarGroups
-                actions={
-                  <OriginalFileActions save={save} fileIndex={fileIndex} />
-                }
-                navigation={
-                  slideNavigation && slideNavigation.count > 1 ? (
-                    <ViewerNavigationControls navigation={slideNavigation} />
-                  ) : null
-                }
-              />
-            }
+            start={<ViewerSaveNav saveId={save.id} />}
+            center={<OriginalFileActions save={save} fileIndex={fileIndex} />}
+            end={<ViewerNavigationControls navigation={slideNavigation} />}
           />
         </ChromePortal>
       ) : null}

@@ -1,0 +1,123 @@
+.popup {
+  --ds-popup-min-width: min(248px, calc(100vw - 32px));
+  --ds-popup-width: min(280px, calc(100vw - 32px));
+  --ds-popup-max-width: 320px;
+}
+
+.trigger {
+  min-width: 0;
+  max-width: 260px;
+
+  &[data-layout="field"] {
+    justify-content: space-between;
+    max-width: none;
+  }
+}
+
+.name {
+  margin-left: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  width: 8px;
+  margin-left: 2px;
+  color: var(--ds-gray-9);
+}
+
+.option-submenu > svg:last-child {
+  margin-inline-start: 8px;
+}
+
+.fast[data-disabled] .switch {
+  opacity: 0.5;
+}
+
+.submenu {
+  --ds-popup-min-width: min(180px, calc(100vw - 32px));
+  --ds-popup-width: min(208px, calc(100vw - 32px));
+  --ds-popup-max-width: 240px;
+}
+
+.models {
+  --ds-popup-min-width: min(300px, calc(100vw - 32px));
+  --ds-popup-width: min(340px, calc(100vw - 32px));
+  --ds-popup-max-width: 380px;
+
+  position: relative;
+  max-height: var(--available-height);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.list {
+  min-height: 0;
+  max-height: min(360px, calc(var(--available-height) - 88px));
+}
+
+.check {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  color: var(--ds-gray-12);
+}
+
+.details {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: calc(100% + 6px);
+  width: min(260px, calc(100vw - 32px));
+  padding: 12px;
+  color: var(--ds-gray-12);
+  pointer-events: none;
+  background: var(--ds-gray-1);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-menu);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-xl);
+}
+
+.description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  margin: 6px 0 0;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  font-size: var(--ds-text-sm);
+  line-height: 1.4;
+  color: var(--ds-gray-11);
+}
+
+.specs {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.specs > div {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.specs dt,
+.specs dd {
+  margin: 0;
+  font-size: var(--ds-text-xs);
+}
+
+.specs dt {
+  color: var(--ds-gray-10);
+}

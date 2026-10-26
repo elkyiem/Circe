@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS refuses to load an app extension that is not sandboxed. -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <!-- Pond's socket and the Share Inbox live in this group's container. Keep in
+       lockstep with SAFARI_APP_GROUP in packages/schema/src/native.ts. -->
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>7VFLYD5292.so.pond</string>
+  </array>
+</dict>
+</plist>

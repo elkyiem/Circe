@@ -1,17 +1,13 @@
 .root {
   --window-inset: 16px;
-  --window-radius: var(--ds-radius-xl);
-  --window-ring: 1px;
   --window-chrome-start: 12px;
   /* Traffic-light padding plus the four 28px titlebar controls. */
   --window-left-min: calc(var(--window-chrome-start) + 28px * 4 + 2px * 3);
   --window-right-width: 0px;
-  --window-right-inset: 0px;
   --window-left-width: var(--window-left-min);
   --window-right-track: 352px;
   --window-left-track: 352px;
-  --window-background-primary: var(--ds-gray-2);
-  --window-background-secondary: var(--ds-gray-1);
+  --window-background: var(--ds-gray-1);
   --window-edge-duration: var(--ds-duration-medium);
   --window-edge-easing: var(--ds-easing-decelerate);
 
@@ -27,17 +23,15 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--window-background-primary);
+  background: var(--window-background);
   interpolate-size: allow-keywords;
   transition:
     --window-left-width var(--window-edge-duration) var(--window-edge-easing),
-    --window-right-width var(--window-edge-duration) var(--window-edge-easing),
-    --window-right-inset var(--window-edge-duration) var(--window-edge-easing);
+    --window-right-width var(--window-edge-duration) var(--window-edge-easing);
 }
 
 .root[data-right-open] {
   --window-right-width: var(--window-right-track);
-  --window-right-inset: var(--window-inset);
 }
 
 .root[data-left-open] {
@@ -81,14 +75,11 @@
   grid-area: left;
   width: var(--window-left-width);
   min-width: var(--window-left-min);
-  margin-bottom: var(--window-inset);
 }
 
 .right {
   grid-area: right;
   width: var(--window-right-width);
-  margin-right: var(--window-right-inset);
-  margin-bottom: var(--window-inset);
 }
 
 .left[data-open],
@@ -116,13 +107,11 @@
 }
 
 .right > .edge-content {
-  inset: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: var(--window-background-secondary);
-  border-radius: var(--window-radius);
-  box-shadow: var(--ds-shadow-xs);
+  width: var(--window-right-track);
+  min-width: var(--window-right-track);
   transform: translateX(6px);
 }
 
@@ -134,73 +123,24 @@
 }
 
 .center {
-  --ring-x: 0%;
-
   position: relative;
   display: flex;
   flex-direction: column;
   grid-area: center;
   min-width: 0;
   min-height: 0;
-  margin-right: var(--window-gap-right, var(--window-inset));
-  margin-bottom: var(--window-inset);
-  margin-left: var(--window-gap-left, var(--window-inset));
   overflow: hidden;
-  background: var(--window-background-secondary);
-  border-radius: var(--window-radius);
-  box-shadow: var(--ds-shadow-xs);
 }
 
-.center::after {
-  --ring: radial-gradient(
-    64px 140px at var(--ring-x) var(--window-handle-y, 50%),
-    var(--ds-accent-9),
-    transparent
-  );
-
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  content: "";
-  background: var(--ring) border-area;
-  border: var(--window-ring) solid transparent;
-  border-radius: inherit;
-  opacity: 0;
-  transition: opacity var(--ds-duration-fast, 0.12s) ease;
-}
-
-.root[data-resizing] .center::after,
-.root:has(.handle:is(:hover, :focus-visible)) .center::after {
-  opacity: 1;
-}
-
-.root[data-resizing="right"] .center,
-.root:has(.handle[data-edge="right"]:is(:hover, :focus-visible)) .center {
-  --ring-x: 100%;
-}
-
-@supports not (background-clip: border-area) {
-  .center::after {
-    padding: var(--window-ring);
-    background: var(--ring);
-    border: 0;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
-}
-
-/* Fills the gap beside Center so the whole gutter grabs. */
+/* Straddles the column edge so the grab area is wider than the pill. */
 .handle {
+  --handle-hit: 8px;
+  --pill-height: 28px;
+
   position: absolute;
   top: 0;
   z-index: 3;
+  width: var(--handle-hit);
   height: 100%;
   margin: 0;
   background: transparent;
@@ -209,14 +149,52 @@
   cursor: col-resize;
   -webkit-app-region: no-drag;
 
+  /* Follows the pointer, clamped so the whole pill stays inside the column. */
+  &::after {
+    position: absolute;
+    top: clamp(
+      calc(var(--pill-height) / 2 + 8px),
+      var(--window-handle-y, 50%),
+      calc(100% - var(--pill-height) / 2 - 8px)
+    );
+    left: 50%;
+    width: 4px;
+    height: var(--pill-height);
+    pointer-events: none;
+    content: "";
+    background: var(--ds-gray-a8);
+    border-radius: var(--ds-radius-full);
+    opacity: 0;
+    scale: 1 0.6;
+    translate: -50% -50%;
+    transition:
+      opacity var(--ds-duration-fast) var(--ds-easing-standard),
+      scale var(--ds-duration-fast) var(--ds-easing-standard),
+      height var(--ds-duration-fast) var(--ds-easing-standard),
+      background var(--ds-duration-fast) var(--ds-easing-standard);
+  }
+
   &[data-edge="left"] {
-    right: calc(-1 * var(--window-gap-left, var(--window-inset)));
-    width: var(--window-gap-left, var(--window-inset));
+    right: calc(var(--handle-hit) / -2);
   }
 
   &[data-edge="right"] {
-    left: calc(-1 * var(--window-gap-right, var(--window-inset)));
-    width: var(--window-gap-right, var(--window-inset));
+    left: calc(var(--handle-hit) / -2);
+  }
+
+  &:is(:hover, :focus-visible)::after,
+  [data-resizing] > &::after {
+    opacity: 1;
+    scale: 1;
+  }
+
+  [data-resizing] > &::after {
+    --pill-height: 40px;
+    background: var(--ds-gray-a11);
+  }
+
+  &:focus-visible::after {
+    background: var(--ds-accent-9);
   }
 
   &:focus-visible {
@@ -227,7 +205,9 @@
 .right[data-resizing],
 .root[data-resizing],
 .root[data-resizing] .left,
-.root[data-resizing] .right {
+.root[data-resizing] .right,
+.root[data-instant],
+.root[data-instant] .edge-content {
   transition: none;
 }
 
@@ -255,7 +235,7 @@
   .right,
   .edge-content,
   .bottom,
-  .center::after {
+  .handle::after {
     transition: none;
   }
 }

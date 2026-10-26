@@ -31,7 +31,7 @@ it("presents source identities as recognizable services without changing values"
 });
 
 it("keeps unknown domains unchanged", () => {
-  const [option] = sourceOptions(["vimeo.com"]);
+  const [option] = sourceOptions(["kottke.org"]);
 
-  expect(option?.label).toBe("vimeo.com");
+  expect(option?.label).toBe("kottke.org");
 });

@@ -20,17 +20,15 @@ import { savesRoutes } from "./saves";
 import { sessionImportHandler } from "./session-import";
 import { sessionPendingHandler } from "./session-pending";
 
-function isAllowedOrigin(
+/** The CLI, Raycast and MCP send no `Origin`; browsers get extensions plus pages named in `prefs.api.allowedOrigins`. */
+export function isAllowedOrigin(
   origin: string | undefined,
   extraAllowed: readonly string[],
 ): boolean {
   if (!origin || origin === "null") return false;
   if (origin.startsWith("chrome-extension://")) return true;
   if (origin.startsWith("moz-extension://")) return true;
-  try {
-    const u = new URL(origin);
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
-  } catch {}
+  if (origin.startsWith("safari-web-extension://")) return true;
   for (const allowed of extraAllowed) {
     if (!allowed) continue;
     if (origin === allowed) return true;

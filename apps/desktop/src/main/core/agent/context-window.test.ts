@@ -52,6 +52,51 @@ it("removes oldest whole turns and always keeps the current turn", () => {
   expect(kept).toEqual([{ role: "user", content: "Current question" }]);
 });
 
+it("keeps every tool round of the current turn and prunes tools from earlier turns", () => {
+  const round = (id: string): ModelMessage[] => [
+    {
+      role: "assistant",
+      content: [
+        {
+          type: "tool-call",
+          toolCallId: id,
+          toolName: "searchLibrary",
+          input: {},
+        },
+      ],
+    },
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: id,
+          toolName: "searchLibrary",
+          output: { type: "json", value: { id } },
+        },
+      ],
+    },
+  ];
+  const kept = budgetMessages(
+    [
+      { role: "user", content: "Old question" },
+      ...round("old"),
+      { role: "assistant", content: "Old answer" },
+      { role: "user", content: "Current question" },
+      ...round("first"),
+      ...round("second"),
+    ],
+    10_000,
+    10,
+    (value) => Array.from(value, (character) => character.codePointAt(0) ?? 0),
+  );
+  const text = JSON.stringify(kept);
+  expect(text).not.toContain('"old"');
+  expect(text).toContain("Old answer");
+  expect(text).toContain('"first"');
+  expect(text).toContain('"second"');
+});
+
 it("rejects a request when instructions and the current turn exceed Context", async () => {
   const model = textModel("Unused");
   await expect(

@@ -20,12 +20,11 @@ import {
 } from "@/features/saves";
 import {
   closeSave,
-  openSave,
   primarySelection,
-  resultNavigation,
   selection,
+  stepSave,
 } from "@/features/saves/navigation";
-import { ensureSaves, useSave } from "@/features/saves/pool";
+import { useSave } from "@/features/saves/pool";
 import type { Save } from "@/features/saves/types";
 import {
   buildViewerMenu,
@@ -53,26 +52,16 @@ export function SaveDetailPage() {
     selection.setCursor(id);
   }, [id]);
 
-  const stepSave = useCallback(
-    (delta: number) => {
-      void resultNavigation.next(id, delta).then(async (next) => {
-        if (!next || selection.getCursor() !== id) return;
-        await ensureSaves([next]);
-        if (selection.getCursor() !== id) return;
-        openSave(next);
-      });
-    },
-    [id],
-  );
+  const step = useCallback((delta: number) => stepSave(id, delta), [id]);
 
   const viewerNav = useRef<ViewerNav | null>(null);
 
   const stepImageOrSave = useCallback(
     (delta: number) => {
       if (viewerNav.current?.step(delta)) return;
-      stepSave(delta);
+      step(delta);
     },
-    [stepSave],
+    [step],
   );
 
   useHotkeys(
@@ -89,12 +78,12 @@ export function SaveDetailPage() {
       },
       {
         hotkey: bindingKeys(shortcuts, "viewer.prev-save"),
-        callback: () => stepSave(-1),
+        callback: () => step(-1),
         options: { ignoreInputs: true },
       },
       {
         hotkey: bindingKeys(shortcuts, "viewer.next-save"),
-        callback: () => stepSave(1),
+        callback: () => step(1),
         options: { ignoreInputs: true },
       },
       {

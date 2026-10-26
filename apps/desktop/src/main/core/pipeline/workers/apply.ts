@@ -29,6 +29,7 @@ interface WriteFileMetadata {
   width?: number;
   height?: number;
   sourceUrl?: string;
+  custom?: boolean;
 }
 
 export type WriteFileArgs = WriteFileMetadata &
@@ -108,6 +109,7 @@ export async function applySavePatch(
         if (file.width) entry.width = file.width;
         if (file.height) entry.height = file.height;
         if (file.sourceUrl) entry.sourceUrl = file.sourceUrl;
+        if (file.custom) entry.custom = true;
         written.push(entry);
       }
     }

@@ -10,6 +10,16 @@ export const DEFAULT_RATE_PROFILE: RateProfile = {
   maxPerDay: 1500,
 };
 
+/** First-level paths GitHub keeps for itself, so `github.com/settings/profile` never reads as a repo. */
+const GITHUB_RESERVED =
+  "about|apps|codespaces|collections|contact|customer-stories|dashboard|enterprise|events|explore|features|issues|login|logout|marketplace|new|notifications|orgs|organizations|pricing|pulls|readme|search|security|settings|signup|site|sponsors|stars|team|topics|trending|watching";
+
+/** Matches a repo root only; deeper links like issues or files stay plain web saves. */
+export const GITHUB_REPO_PATTERN = new RegExp(
+  `^https?://(?:www\\.)?github\\.com/(?!(?:${GITHUB_RESERVED})/)([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]+?)(?:\\.git)?/?(?:[?#].*)?$`,
+  "i",
+);
+
 const NO_SYNC: SourceSyncConfig = {
   strategy: "none",
   rate: DEFAULT_RATE_PROFILE,
@@ -119,6 +129,98 @@ export const SOURCE_DESCRIPTORS = [
       /^https?:\/\/(?:www\.)?threads\.(?:net|com)\/t\/([A-Za-z0-9_-]+)/i,
     ],
     sync: { strategy: "scroll" },
+  },
+  {
+    id: "github",
+    label: "GitHub",
+    hosts: ["github.com"],
+    urlPatterns: [GITHUB_REPO_PATTERN],
+    /** Unauthenticated API calls share 60 an hour per IP, so stars sync slower than the default. */
+    sync: {
+      strategy: "cursor",
+      rate: { minDelayMs: 2000, maxPerWindow: 30, maxPerHour: 120 },
+    },
+  },
+  {
+    id: "substack",
+    label: "Substack",
+    hosts: ["substack.com"],
+    /** A post on its publication's subdomain keys by that address; reader links only carry the numeric id. */
+    urlPatterns: [
+      /^https?:\/\/((?!www\.|open\.)[a-z0-9-]+\.substack\.com\/p\/[A-Za-z0-9_-]+)/i,
+      /^https?:\/\/(?:www\.)?substack\.com\/(?:@[^/]+|home\/post)\/(p-\d+)/i,
+    ],
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "tumblr",
+    label: "Tumblr",
+    hosts: ["tumblr.com"],
+    /** Post ids are global, so the blog in the path only matters when fetching the post. */
+    urlPatterns: [
+      /^https?:\/\/(?:www\.)?tumblr\.com\/(?:blog\/view\/)?[a-z0-9-]+\/(\d{6,20})(?:[/?#]|$)/i,
+      /^https?:\/\/(?!www\.)[a-z0-9-]+\.tumblr\.com\/(?:post|image)\/(\d{6,20})(?:[/?#]|$)/i,
+    ],
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "savee",
+    label: "Savee",
+    hosts: ["savee.com", "savee.it"],
+    urlPatterns: [
+      /^https?:\/\/(?:www\.)?savee\.(?:com|it)\/i\/([A-Za-z0-9_-]+)\/?(?:[?#]|$)/i,
+    ],
+    /** GraphQL allows 600 calls a minute and HTML pages only 200, so sync stays on GraphQL. */
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "behance",
+    label: "Behance",
+    hosts: ["behance.net", "be.net"],
+    urlPatterns: [/^https?:\/\/(?:www\.)?(?:behance|be)\.net\/gallery\/(\d+)/i],
+    /** gallery-dl paces Behance at two to four seconds a request; match its caution. */
+    sync: { strategy: "cursor", rate: { minDelayMs: 2500, maxPerWindow: 24 } },
+  },
+  {
+    id: "vimeo",
+    label: "Vimeo",
+    hosts: ["vimeo.com"],
+    /** A vanity URL like `vimeo.com/staff/player` carries no id and stays a web save. */
+    urlPatterns: [
+      /^https?:\/\/(?:(?:www|player)\.)?vimeo\.com\/(?:video\/|videos\/|channels\/[^/?#]+\/|groups\/[^/?#]+\/videos\/|(?:album|showcase)\/\d+\/video\/|[^/?#]+\/review\/)?(\d{5,12})(?:\/[0-9a-f]{10})?(?:[/?#]|$)/i,
+    ],
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "dribbble",
+    label: "Dribbble",
+    hosts: ["dribbble.com", "drbl.in"],
+    /** `drbl.in` short links carry no shot id until they redirect, so they match the host but not a pattern. */
+    urlPatterns: [
+      /^https?:\/\/(?:www\.)?dribbble\.com\/shots\/(\d+)(?=[-/?#]|$)/i,
+    ],
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "unsplash",
+    label: "Unsplash",
+    hosts: ["unsplash.com"],
+    /** The id is the last 11 characters of the slug, and may itself contain `-` or `_`. */
+    urlPatterns: [
+      /^https?:\/\/(?:www\.)?unsplash\.com\/(?:photos|illustrations)\/(?:[^/?#]*-)?([A-Za-z0-9_-]{11})(?=[/?#]|$)/i,
+    ],
+    sync: { strategy: "cursor" },
+  },
+  {
+    id: "bluesky",
+    label: "Bluesky",
+    hosts: ["bsky.app"],
+    /** Keys by the post's rkey: a handle URL carries no DID, and TIDs embed a microsecond clock. */
+    urlPatterns: [
+      /^https?:\/\/(?:www\.)?bsky\.app\/profile\/[^/?#]+\/post\/([2-7a-z]{13})(?=[/?#]|$)/i,
+    ],
+    connect: "handle",
+    sync: { strategy: "cursor" },
   },
 ] as const satisfies readonly SourceDescriptor[];
 

@@ -2,27 +2,17 @@ import type { ChangelogEntry } from "@pond/schema/changelog";
 import { Button, Changelog, Dialog } from "@pond/ui";
 import { useEffect, useRef } from "react";
 import { loadAppInfo } from "@/shared/lib/app-info";
-import { useWhatsNewDialog, whatsNewDialog } from "@/shared/state/whats-new";
+import {
+  readWhatsNewSeen,
+  useWhatsNewDialog,
+  whatsNewDialog,
+  writeWhatsNewSeen,
+} from "@/shared/state/whats-new";
 import { CHANGELOG, unseenVersions } from "./entries";
 import styles from "./styles.module.css";
 
 const RELEASES_URL = "https://github.com/raphaelsalaja/pond/releases";
-const SEEN_KEY = "pond:whatsNewSeenVersion";
 const CHECK_DELAY_MS = 1500;
-
-function readSeen(): string | null {
-  try {
-    return localStorage.getItem(SEEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeSeen(version: string): void {
-  try {
-    localStorage.setItem(SEEN_KEY, version);
-  } catch {}
-}
 
 /** Opens once per version change, after the Library has had a moment to load. */
 function useShowAfterUpdate(): void {
@@ -31,13 +21,13 @@ function useShowAfterUpdate(): void {
     const timer = setTimeout(async () => {
       try {
         const { version } = await loadAppInfo();
-        const lastSeen = readSeen();
+        const lastSeen = readWhatsNewSeen();
         if (!active || lastSeen === version) return;
         const hasSaves =
           lastSeen !== null ||
           (await window.pond.query("saves.sidebarCounts", {})).library > 0;
         if (!active) return;
-        writeSeen(version);
+        writeWhatsNewSeen(version);
         const versions = unseenVersions({
           entries: CHANGELOG,
           current: version,

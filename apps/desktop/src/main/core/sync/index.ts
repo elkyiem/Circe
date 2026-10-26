@@ -57,6 +57,15 @@ const SYNC_WATCHDOG_MS = {
   tiktok: 20 * 60_000,
   reddit: 20 * 60_000,
   threads: 20 * 60_000,
+  github: 20 * 60_000,
+  substack: 20 * 60_000,
+  tumblr: 20 * 60_000,
+  savee: 20 * 60_000,
+  behance: 30 * 60_000,
+  vimeo: 30 * 60_000,
+  dribbble: 30 * 60_000,
+  unsplash: 20 * 60_000,
+  bluesky: 20 * 60_000,
   web: 20 * 60_000,
   local: 20 * 60_000,
 } satisfies Record<Source, number>;
@@ -71,6 +80,15 @@ const SYNCABLE_SOURCES: readonly Source[] = [
   "tiktok",
   "reddit",
   "threads",
+  "github",
+  "substack",
+  "tumblr",
+  "savee",
+  "behance",
+  "vimeo",
+  "dribbble",
+  "unsplash",
+  "bluesky",
 ];
 
 function isSyncableSource(source: Source): boolean {

@@ -1,5 +1,4 @@
 import { type PointerEvent, useEffect, useRef, useState } from "react";
-import { libraryChrome } from "@/features/library/state/library-chrome";
 import {
   clearSaveSelection,
   isLibraryBackgroundTarget,
@@ -38,8 +37,6 @@ export function useRectangleSelection() {
     const originalCursor = selection.getCursor();
     const originalAnchor = selection.getAnchor();
     const originalPrimary = primarySelection.get();
-    const originalPane = libraryChrome.getState().rightPane;
-    const originalInspector = libraryChrome.getState().inspectorSaveId;
     const additive = event.metaKey || event.ctrlKey || event.shiftKey;
     const key = resultNavigation.key();
     const start = {
@@ -75,7 +72,6 @@ export function useRectangleSelection() {
       const cursor = hits.at(-1) ?? (additive ? originalCursor : null);
       selection.setCursor(cursor);
       primarySelection.set(cursor);
-      if (cursor) libraryChrome.inspectSave(cursor);
       if (hits[0]) selection.setAnchor(hits[0]);
       const viewport = parent.getBoundingClientRect();
       const top = Math.max(viewport.top, area.top + rect.top);
@@ -130,11 +126,6 @@ export function useRectangleSelection() {
         selection.setCursor(originalCursor);
         if (originalAnchor) selection.setAnchor(originalAnchor);
         primarySelection.set(originalPrimary);
-        libraryChrome.setInspectorSaveId(originalInspector);
-        if (originalPane === "agent") libraryChrome.setAgentOpen(true);
-        else if (originalPane === "inspector" && originalInspector)
-          libraryChrome.openSaveDetails(originalInspector);
-        else libraryChrome.closeRightPane();
       }
     };
     const up = (next: globalThis.PointerEvent) => {

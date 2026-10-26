@@ -22,9 +22,34 @@ const JobSchema = z.object({
   saveIds: z.array(z.string()),
   duplicateCount: z.number().int().nonnegative().default(0),
   error: z.string().optional(),
+  warning: z.string().optional(),
   state: z.enum(["accepted", "processing", "complete", "failed", "cancelled"]),
 });
 type Job = z.infer<typeof JobSchema>;
+
+export interface ProcessedCapture {
+  id: string;
+  duplicate?: boolean;
+  warning?: string;
+}
+
+export const CAPTURE_METADATA_WARNING =
+  "Saved without your tags, notes or folders. Add them in Pond.";
+
+/** The save already exists by now, so a metadata failure downgrades to a warning instead of failing the capture. */
+export async function applyAfterSave(
+  saved: ProcessedCapture,
+  apply: () => Promise<void>,
+): Promise<ProcessedCapture> {
+  try {
+    await apply();
+    return saved;
+  } catch (error) {
+    log.warn("[pond capture] metadata failed after save", saved.id, error);
+    return { ...saved, warning: CAPTURE_METADATA_WARNING };
+  }
+}
+
 export interface CaptureQueuePorts {
   root(): string;
   readStored?: (path: string) => Promise<string>;
@@ -35,7 +60,7 @@ export interface CaptureQueuePorts {
     identity: string,
     originUrl?: string,
     trigger?: string,
-  ): Promise<{ id: string; duplicate?: boolean }>;
+  ): Promise<ProcessedCapture>;
   onComplete?: (receipt: CaptureReceipt) => void | Promise<void>;
   transfer<T>(operation: () => Promise<T>): Promise<T>;
 }
@@ -78,16 +103,20 @@ export function createCaptureQueue(ports: CaptureQueuePorts) {
       throw new Error("This capture belongs to another library.");
     return result;
   }
-  const receipt = (job: Job): CaptureReceipt => ({
-    id: job.draft.id,
-    library: job.library,
-    state: job.state,
-    completed: job.completed,
-    total: job.total ?? job.draft.items.length,
-    error: job.error,
-    saveIds: job.saveIds,
-    duplicateCount: job.duplicateCount,
-  });
+  const receipt = (job: Job): CaptureReceipt => {
+    const out: CaptureReceipt = {
+      id: job.draft.id,
+      library: job.library,
+      state: job.state,
+      completed: job.completed,
+      total: job.total ?? job.draft.items.length,
+      error: job.error,
+      saveIds: job.saveIds,
+      duplicateCount: job.duplicateCount,
+    };
+    if (job.warning) out.warning = job.warning;
+    return out;
+  };
   function run(job: Job) {
     const key = path(job.library, job.draft.id);
     if (active.has(key)) return;
@@ -124,6 +153,7 @@ export function createCaptureQueue(ports: CaptureQueuePorts) {
               );
               job.saveIds.push(result.id);
               if (result.duplicate) job.duplicateCount++;
+              if (result.warning) job.warning = result.warning;
               job.completed++;
               await persist(job);
             }

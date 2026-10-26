@@ -32,11 +32,14 @@ export function ZoomPill({
   onRatio: (ratio: number) => void;
 }) {
   return (
-    <ViewerHud.Tools tooltipSide="bottom" role="group" aria-label="Zoom">
+    <ViewerHud.Tools tooltipSide="top" role="group" aria-label="Zoom">
       <ViewerHud.Tool label="Zoom Out" onClick={onOut}>
         <IconMinus />
       </ViewerHud.Tool>
-      <SpecMenu buildItems={() => buildZoomRatioItems(actual, onRatio)}>
+      <SpecMenu
+        align="center"
+        buildItems={() => buildZoomRatioItems(actual, onRatio)}
+      >
         <Menu.Trigger size="sm" variant="ghost" aria-label="Zoom Ratio">
           {Math.round(actual * 100)}%
         </Menu.Trigger>

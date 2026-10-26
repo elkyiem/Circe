@@ -174,7 +174,7 @@ describe("pickAuthorProfileUrl", () => {
 });
 
 describe("collectIdentityRows", () => {
-  it("adds a From row for the connected source account", () => {
+  it("adds an Account row for the connected source account", () => {
     const from = collectIdentityRows(
       save({ id: "s1", accountId: cosmosAccount.id }),
       [cosmosAccount],
@@ -182,7 +182,7 @@ describe("collectIdentityRows", () => {
 
     expect(from).toEqual({
       id: "from",
-      label: "From",
+      label: "Account",
       value: "@jane",
       kind: "account",
       accountId: cosmosAccount.id,
@@ -190,7 +190,7 @@ describe("collectIdentityRows", () => {
     });
   });
 
-  it("omits From when the account is unknown", () => {
+  it("omits Account when the account is unknown", () => {
     const rows = collectIdentityRows(
       save({ id: "s1", accountId: cosmosAccount.id }),
       [],
@@ -208,15 +208,16 @@ describe("collectIdentityRows", () => {
       watch,
     ]).find((r) => r.id === "from");
     expect(from?.watch).toBe(true);
+    expect(from?.label).toBe("Watch");
   });
 
-  it("shows liked and saved as a List property", () => {
+  it("shows liked and saved as a Saved To property", () => {
     const row = collectIdentityRows(
       save({ id: "s1", listKinds: ["saved", "liked"], mediaType: null }),
     ).find((r) => r.id === "list");
     expect(row).toMatchObject({
       id: "list",
-      label: "List",
+      label: "Saved To",
       value: "Liked, Saved",
     });
   });

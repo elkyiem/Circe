@@ -1,5 +1,7 @@
 import { SOURCES, type Source, type WatchKind } from "@pond/schema/db";
-import { useCallback, useEffect, useState } from "react";
+import { useSelector } from "@tanstack/react-store";
+import { Store } from "@tanstack/store";
+import { useEffect } from "react";
 import { z } from "zod";
 import {
   SOURCE_FETCH_PREF_FIELDS,
@@ -97,50 +99,56 @@ const WatchesReplySchema = z
   })
   .catch({ watches: [] });
 
+interface WatchesState {
+  watches: WatchRow[];
+  loaded: boolean;
+}
+
+const store = new Store<WatchesState>({ watches: [], loaded: false });
+
 interface WatchesResult {
   watches: WatchRow[];
   loading: boolean;
   refetch: () => Promise<WatchRow[]>;
 }
 
-export function useWatches(): WatchesResult {
-  const [watches, setWatches] = useState<WatchRow[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  const refetch = useCallback(async (): Promise<WatchRow[]> => {
-    try {
-      const rows = WatchesReplySchema.parse(
-        await window.pond.query("watches.list", {}),
-      ).watches;
-      setWatches(rows);
-      for (const watch of rows) {
-        const status: Partial<SyncAccountStatus> = {
-          connected: true,
-          lastSyncedAt: watch.sync.lastSyncedAt,
-          lastError: watch.sync.lastError,
-        };
-        if (watch.syncing) status.state = "running";
-        syncMonitor.seed(watch.id, watch.source, status);
-      }
-      return rows;
-    } catch {
-      return [];
-    } finally {
-      setLoaded(true);
+async function refetchWatches(): Promise<WatchRow[]> {
+  try {
+    const rows = WatchesReplySchema.parse(
+      await window.pond.query("watches.list", {}),
+    ).watches;
+    store.setState(() => ({ watches: rows, loaded: true }));
+    for (const watch of rows) {
+      const status: Partial<SyncAccountStatus> = {
+        connected: true,
+        lastSyncedAt: watch.sync.lastSyncedAt,
+        lastError: watch.sync.lastError,
+      };
+      if (watch.syncing) status.state = "running";
+      syncMonitor.seed(watch.id, watch.source, status);
     }
-  }, []);
+    return rows;
+  } catch {
+    store.setState((s) => ({ ...s, loaded: true }));
+    return [];
+  }
+}
+
+export function useWatches(): WatchesResult {
+  const watches = useSelector(store, (s) => s.watches);
+  const loaded = useSelector(store, (s) => s.loaded);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
-    void refetch().then((rows) => {
+    void refetchWatches().then((rows) => {
       if (rows.some((row) => row.avatarUrl === undefined)) {
-        timer = setTimeout(() => void refetch(), 4000);
+        timer = setTimeout(() => void refetchWatches(), 4000);
       }
     });
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [refetch]);
+  }, []);
 
-  return { watches, loading: !loaded, refetch };
+  return { watches, loading: !loaded, refetch: refetchWatches };
 }

@@ -61,6 +61,20 @@ export const contextDependencies = {
   findDuplicateSaves,
 };
 
+/** Small models fill every optional filter with a guess, so an empty result names the filters to drop. */
+export function emptySearchNote(
+  input: z.infer<typeof searchLibraryInput>,
+): string | undefined {
+  const filters = [
+    input.source && `source "${input.source}"`,
+    input.folderId && `folderId "${input.folderId}"`,
+    input.media?.length && `media ${input.media.join(", ")}`,
+    input.untagged && "untagged",
+  ].filter(Boolean);
+  if (!filters.length) return undefined;
+  return `No Saves matched ${filters.join(", ")}. Remove any filter the request did not ask for and search again.`;
+}
+
 export function libraryContext(
   input: {
     scope: LibraryScope;
@@ -162,7 +176,7 @@ export function libraryContext(
     {
       name: "searchLibrary",
       description:
-        "Gather ranked evidence from titles, descriptions, authors, tags, captions, OCR, transcripts, notes, and URLs within the selected scope. Set task explicitly to code for source-code retrieval or fact-check to verify a claim; otherwise omit it for ordinary search. Use media as a filter rather than adding words such as pictures or videos to query. Omit query to list recent Saves. Then explain or act; call showSaves for a small set to display.",
+        "Gather ranked evidence from titles, descriptions, authors, tags, captions, OCR, transcripts, notes, and URLs within the selected scope. Set task explicitly to code for source-code retrieval or fact-check to verify a claim; otherwise omit it for ordinary search. Use media as a filter rather than adding words such as pictures or videos to query. Set untagged to only return Saves with no tags. Omit query to list recent Saves. Then explain or act; call showSaves for a small set to display.",
       schema: searchLibraryInput,
       execute: async (args) => {
         const parsed = searchLibraryInput.parse(args);
@@ -170,9 +184,9 @@ export function libraryContext(
           ...parsed,
           limit: parsed.limit ?? 24,
         });
-        return {
-          saves: saves.filter((save) => sources.has(save.id)).map(forModel),
-        };
+        const found = saves.filter((save) => sources.has(save.id));
+        const note = found.length ? undefined : emptySearchNote(parsed);
+        return { saves: found.map(forModel), ...(note && { note }) };
       },
     },
     {

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { OriginalFileActions } from "@/features/saves/components/viewers/original-file-actions";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import {
   type ViewerNavigation,
   ViewerNavigationControls,
@@ -97,48 +97,44 @@ export function TextFileViewer({
       <ChromePortal slot="top">
         <ViewerHud.Bar
           label="Text file"
-          start={<ViewerResultCount saveId={save.id} />}
+          start={<ViewerSaveNav saveId={save.id} />}
           center={
-            <>
-              {encoding !== "utf-8" ? (
-                <ViewerHud.Tool
-                  label={
-                    converting ? "Converting to UTF-8" : "Convert to UTF-8"
-                  }
-                  disabled={converting}
-                  onClick={() => void convert()}
-                >
-                  <IconArrowAnticlockwiseText />
-                </ViewerHud.Tool>
-              ) : null}
-              {/\.json$/i.test(file.path) ? (
-                <ViewerHud.Tool
-                  label="Export dotLottie"
-                  onClick={() => void exportDotLottie()}
-                >
-                  <IconFileExport />
-                </ViewerHud.Tool>
-              ) : null}
-              <ViewerHud.Tool
-                label="Copy Text"
-                onClick={() => void navigator.clipboard.writeText(text)}
-              >
-                <IconCopy />
-              </ViewerHud.Tool>
-            </>
-          }
-          end={
             <ViewerToolbarGroups
+              controls={
+                <>
+                  {encoding !== "utf-8" ? (
+                    <ViewerHud.Tool
+                      label={
+                        converting ? "Converting to UTF-8" : "Convert to UTF-8"
+                      }
+                      disabled={converting}
+                      onClick={() => void convert()}
+                    >
+                      <IconArrowAnticlockwiseText />
+                    </ViewerHud.Tool>
+                  ) : null}
+                  {/\.json$/i.test(file.path) ? (
+                    <ViewerHud.Tool
+                      label="Export dotLottie"
+                      onClick={() => void exportDotLottie()}
+                    >
+                      <IconFileExport />
+                    </ViewerHud.Tool>
+                  ) : null}
+                  <ViewerHud.Tool
+                    label="Copy Text"
+                    onClick={() => void navigator.clipboard.writeText(text)}
+                  >
+                    <IconCopy />
+                  </ViewerHud.Tool>
+                </>
+              }
               actions={
                 <OriginalFileActions save={save} fileIndex={fileIndex} />
               }
-              navigation={
-                navigation && navigation.count > 1 ? (
-                  <ViewerNavigationControls navigation={navigation} />
-                ) : null
-              }
             />
           }
+          end={<ViewerNavigationControls navigation={navigation} />}
         />
       </ChromePortal>
       <div className={styles.scroll}>

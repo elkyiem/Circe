@@ -1,8 +1,8 @@
-import { IconCheck, IconMagnifier } from "@pond/icons";
+import { IconMagnifier } from "@pond/icons";
 import { domainFromUrl } from "@pond/schema/domain";
 import { Button, Empty, Input, Popover, Tooltip } from "@pond/ui";
 import { type ReactElement, useEffect, useState } from "react";
-import { CardThumb } from "@/features/saves";
+import { SaveTile } from "@/features/saves";
 import { ensureSaves, useSave } from "@/features/saves/pool";
 import styles from "./styles.module.css";
 
@@ -109,7 +109,7 @@ function Picker({ onCanvas, onAdd }: PickerProps) {
           <Empty.Title>No results found</Empty.Title>
         </Empty.Root>
       ) : (
-        <div className={styles.grid} data-loading={ids ? undefined : true}>
+        <ul className={styles.grid} data-loading={ids ? undefined : true}>
           {ids?.map((id) => (
             <Choice
               key={id}
@@ -119,7 +119,7 @@ function Picker({ onCanvas, onAdd }: PickerProps) {
               onToggle={toggle}
             />
           ))}
-        </div>
+        </ul>
       )}
       <Button
         size="sm"
@@ -149,24 +149,16 @@ function Choice({ id, placed, picked, onToggle }: ChoiceProps) {
     (save.url ? domainFromUrl(save.url) : null) ||
     "Untitled";
   return (
-    <button
-      type="button"
-      className={styles.choice}
+    <SaveTile
+      saveId={id}
+      selected={picked}
+      dimmed={placed}
+      detail={placed ? "On this canvas" : undefined}
+      width={120}
+      aria-label={title}
       aria-pressed={picked}
       disabled={placed}
-      data-picked={picked || undefined}
-      title={placed ? `${title} is on this canvas` : title}
       onClick={() => onToggle(id)}
-    >
-      <span className={styles.thumb}>
-        <CardThumb save={save} view="grid" width={120} />
-        {picked || placed ? (
-          <span className={styles.tick} aria-hidden="true">
-            <IconCheck size={12} />
-          </span>
-        ) : null}
-      </span>
-      <span className={styles.label}>{title}</span>
-    </button>
+    />
   );
 }

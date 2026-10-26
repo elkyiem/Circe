@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CaptureDraft } from "@pond/schema/capture";
 import { afterEach, describe, expect, it } from "vitest";
-import { type CaptureQueuePorts, createCaptureQueue } from "./capture-queue";
+import {
+  applyAfterSave,
+  CAPTURE_METADATA_WARNING,
+  type CaptureQueuePorts,
+  createCaptureQueue,
+} from "./capture-queue";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -106,11 +111,43 @@ describe("durable capture queue", () => {
     expect(calls).toBe(2);
     expect((await queue.list())[0]?.duplicateCount).toBe(2);
   });
+  it("completes with a warning when a save landed but its metadata didn't", async () => {
+    const { queue } = await fixture(async (_item, _meta, id) =>
+      id.endsWith(":1") ? { id, warning: "Saved without folders." } : { id },
+    );
+    await queue.accept(draft());
+    await queue.idle();
+    expect((await queue.list())[0]).toMatchObject({
+      state: "complete",
+      saveIds: ["capture-1:0", "capture-1:1"],
+      warning: "Saved without folders.",
+    });
+  });
   it("rejects invalid capture IDs", async () => {
     const { queue } = await fixture(async () => ({ id: "id" }));
 
     await expect(queue.cancel("../outside")).rejects.toThrow(
       "Invalid capture ID",
     );
+  });
+});
+
+describe("applyAfterSave", () => {
+  it("keeps the save and warns when tags or folders fail", async () => {
+    await expect(
+      applyAfterSave({ id: "save-1", duplicate: false }, async () => {
+        throw new Error("folder is gone");
+      }),
+    ).resolves.toEqual({
+      id: "save-1",
+      duplicate: false,
+      warning: CAPTURE_METADATA_WARNING,
+    });
+  });
+
+  it("passes the save through when its metadata lands", async () => {
+    await expect(
+      applyAfterSave({ id: "save-1", duplicate: true }, async () => {}),
+    ).resolves.toEqual({ id: "save-1", duplicate: true });
   });
 });

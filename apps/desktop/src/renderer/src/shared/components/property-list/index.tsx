@@ -2,16 +2,28 @@ import { clsx as cn } from "clsx";
 import type { ComponentPropsWithoutRef } from "react";
 import styles from "./styles.module.css";
 
-interface RootProps extends ComponentPropsWithoutRef<"div"> {}
-
-function Root({ className, ...props }: RootProps) {
-  return <div className={cn(styles.root, className)} {...props} />;
+interface RootProps extends ComponentPropsWithoutRef<"div"> {
+  layout?: "list" | "tiles" | "grid";
 }
 
-interface RowProps extends ComponentPropsWithoutRef<"div"> {}
+function Root({ className, layout = "list", ...props }: RootProps) {
+  return (
+    <div
+      className={cn(styles.root, className)}
+      data-layout={layout}
+      {...props}
+    />
+  );
+}
 
-function Row({ className, ...props }: RowProps) {
-  return <div className={cn(styles.row, className)} {...props} />;
+interface RowProps extends ComponentPropsWithoutRef<"div"> {
+  span?: "full";
+}
+
+function Row({ className, span, ...props }: RowProps) {
+  return (
+    <div className={cn(styles.row, className)} data-span={span} {...props} />
+  );
 }
 
 interface LabelProps extends ComponentPropsWithoutRef<"span"> {}

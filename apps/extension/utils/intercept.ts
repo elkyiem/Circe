@@ -13,7 +13,37 @@ function emit(message: PondMessage): void {
   window.postMessage({ type: POND_EVENT, message }, "*");
 }
 
-export function capture(url: string, trigger: string): void {
+/** A click hook and the network interceptor both report one save, often seconds apart. */
+const CAPTURE_DEDUPE_MS = 4000;
+const recentCaptures = new Map<string, number>();
+
+/** Instagram serves one post under `/p/`, `/reel/` and `/tv/`, so the shortcode is the key there. */
+export function canonicalCaptureUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "instagram.com") {
+      const shortcode = /^\/(?:p|reels?|tv)\/([^/]+)/.exec(parsed.pathname);
+      if (shortcode?.[1]) return `instagram.com/p/${shortcode[1]}`;
+    }
+    return `${host}${parsed.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    return url;
+  }
+}
+
+export function capture(
+  url: string,
+  trigger: string,
+  now: number = Date.now(),
+): void {
+  const intent = /:(?:like|upvote)$/.test(trigger) ? "like" : "save";
+  const key = `${intent} ${canonicalCaptureUrl(url)}`;
+  const previous = recentCaptures.get(key);
+  if (previous !== undefined && now - previous < CAPTURE_DEDUPE_MS) return;
+  for (const [entry, at] of recentCaptures)
+    if (now - at >= CAPTURE_DEDUPE_MS) recentCaptures.delete(entry);
+  recentCaptures.set(key, now);
   emit({ kind: "capture", payload: { url, trigger } });
 }
 
@@ -53,14 +83,17 @@ interface Registry {
   patchedBeacon: boolean;
 }
 
+/** Every Pond injector on a page evaluates its own copy of this module, so `Symbol.for` gives them one shared registry. */
+const REGISTRY_KEY = Symbol.for("pond.interceptors");
+
 declare global {
   interface Window {
-    __pondInterceptors?: Registry;
+    [REGISTRY_KEY]?: Registry;
   }
 }
 
 function registry(): Registry {
-  const existing = window.__pondInterceptors;
+  const existing = window[REGISTRY_KEY];
   if (existing) return existing;
   const created: Registry = {
     handlers: [],
@@ -69,7 +102,7 @@ function registry(): Registry {
     patchedXhr: false,
     patchedBeacon: false,
   };
-  window.__pondInterceptors = created;
+  window[REGISTRY_KEY] = created;
   return created;
 }
 

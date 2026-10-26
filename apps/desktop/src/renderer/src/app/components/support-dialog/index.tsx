@@ -1,6 +1,7 @@
 import { IconCircleCheckFill } from "@pond/icons";
 import { Button, Dialog } from "@pond/ui";
 import { useEffect } from "react";
+import { fishIntroDialog } from "@/shared/state/fish-intro";
 import { supportDialog, useSupportDialogOpen } from "@/shared/state/support";
 import {
   firstSeenAt,
@@ -31,7 +32,7 @@ function useAskOnce(): void {
     const timer = setTimeout(async () => {
       try {
         const counts = await window.pond.query("saves.sidebarCounts", {});
-        if (!active || hasAskedForSupport()) return;
+        if (!active || hasAskedForSupport() || fishIntroDialog.isOpen()) return;
         if (
           !shouldAskForSupport({
             saves: counts.library,

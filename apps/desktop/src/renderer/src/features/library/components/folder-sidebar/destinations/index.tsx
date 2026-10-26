@@ -21,7 +21,6 @@ import {
   IconAlbum2,
   IconBookmark,
   IconBookmarkSlash,
-  IconChatBubble,
   IconClockPlus,
   IconFolderBan,
   IconHistory,
@@ -43,6 +42,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { canvasIdFromPath } from "@/features/canvas";
+import { fishIdFromPath } from "@/features/fish";
 import { useSidebarCounts } from "@/features/library/hooks/use-sidebar-counts";
 import type { LibraryNav } from "@/features/library/state/library-chrome";
 import {
@@ -133,8 +133,6 @@ function DestinationIcon({ destination }: { destination: SidebarDestination }) {
       return <IconAlbum2 />;
     case "uncategorized":
       return <IconFolderBan />;
-    case "assistant":
-      return <IconChatBubble />;
     case "untagged":
       return <IconBookmarkSlash />;
     case "recentlyAdded":
@@ -184,20 +182,20 @@ export function LibraryDestinations({
     }),
   );
   const destinations = sidebar.destinations;
-  const assistantPage = pathname === "/assistant";
   const sourcesPage = pathname === "/sources";
   const downloadsPage = pathname === "/downloads";
   const tagsPage = pathname === "/tags";
   const untaggedPage = pathname === "/untagged";
-  const canvasPage = canvasIdFromPath(pathname) !== null;
+  const featurePage =
+    canvasIdFromPath(pathname) !== null || fishIdFromPath(pathname) !== null;
   const libraryPage =
-    !assistantPage &&
     !sourcesPage &&
     !downloadsPage &&
     !tagsPage &&
     !untaggedPage &&
-    !canvasPage;
+    !featurePage;
   const downloadsCount = queueSummary.data?.actionable ?? 0;
+  const downloadingCount = queueSummary.data?.running ?? 0;
 
   useEffect(() => setOrder(sidebar.order), [sidebar.order]);
 
@@ -212,14 +210,12 @@ export function LibraryDestinations({
         return libraryPage && nav.kind === "all" && !activeViewId;
       case "uncategorized":
         return libraryPage && nav.kind === "uncategorized";
-      case "assistant":
-        return assistantPage;
       case "untagged":
         return untaggedPage;
       case "recentlyAdded":
-        return !canvasPage && nav.kind === "recentlyAdded";
+        return !featurePage && nav.kind === "recentlyAdded";
       case "recentlyUsed":
-        return !canvasPage && nav.kind === "recents";
+        return !featurePage && nav.kind === "recents";
       case "tags":
         return tagsPage;
       case "random":
@@ -255,7 +251,6 @@ export function LibraryDestinations({
         return counts.recentlyAdded;
       case "recentlyUsed":
         return counts.recentlyUsed;
-      case "assistant":
       case "random":
         return undefined;
     }
@@ -298,18 +293,6 @@ export function LibraryDestinations({
                 resetFilters();
                 selectLibraryNav({ kind: "uncategorized" });
               }}
-            />
-          </BuiltInVisibilityMenu>
-        );
-      case "assistant":
-        return (
-          <BuiltInVisibilityMenu destination={destination} key={destination}>
-            <Row
-              label="Assistant"
-              icon={<IconChatBubble />}
-              active={isDestinationActive(destination)}
-              {...dragProps}
-              onClick={() => goToLibraryPath("/assistant")}
             />
           </BuiltInVisibilityMenu>
         );
@@ -418,6 +401,7 @@ export function LibraryDestinations({
               label="Downloads"
               icon={<IconWindowDownload />}
               count={downloadsCount}
+              downloading={downloadingCount}
               badgeStyle={badgeStyle}
               active={isDestinationActive(destination)}
               {...dragProps}

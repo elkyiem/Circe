@@ -6,7 +6,7 @@
   color: rgb(226 232 240);
   background: #20252d;
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
 }
 
 .canvas,

@@ -42,6 +42,14 @@ A named set of filters with a saved layout and sort order.
 A free-form board in the Library where you arrange Saves from any folder, link them with connectors, and add notes, text, shapes, and drawings. A Save on a Canvas is a reference, so one Save can sit on many Canvases.
 _Avoid_: board, whiteboard, moodboard (as the stored object)
 
+**Fish**:
+A chat character stored in the Library's `fish.json`, with a name, color, instructions, an optional folder and tag scope, an optional model, and an optional routine. Every chat belongs to one fish. Changes a fish proposes, including routine runs, wait for your review.
+_Avoid_: Assistant, agent, bot, fishes
+
+**Routine**:
+Standing work a fish runs when new Saves arrive or on a schedule. Each run opens its own chat.
+_Avoid_: job, automation, cron
+
 ### Sources
 
 **Source**:

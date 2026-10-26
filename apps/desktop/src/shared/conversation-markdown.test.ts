@@ -10,7 +10,7 @@ it("exports visible conversation in order and preserves Markdown", () => {
       { role: "tool", content: "Internal result" },
     ]),
   ).toBe(
-    "# Typography notes\n\n## You\n\nExplain **kerning**\n\n## Assistant\n\nAdjust spacing.\n\n- Between letters\n\n",
+    "# Typography notes\n\n## You\n\nExplain **kerning**\n\n## Fish\n\nAdjust spacing.\n\n- Between letters\n\n",
   );
 });
 

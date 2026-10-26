@@ -33,9 +33,16 @@ const mediaProbe = z.discriminatedUnion("kind", [
 
 export const libraryRetrievalInput = z.object({
   query: z.string().optional(),
-  source: z.enum(SOURCES).optional(),
-  folderId: z.string().optional(),
+  source: z
+    .enum(SOURCES)
+    .optional()
+    .describe("Only Saves from this platform. Omit unless asked for one."),
+  folderId: z
+    .string()
+    .optional()
+    .describe("A folder id from listFolders. Omit to search every folder."),
   media: z.array(z.enum(MEDIA_TYPES)).max(MEDIA_TYPES.length).optional(),
+  untagged: z.boolean().optional().describe("Only Saves with no tags."),
   limit: z.number().int().min(1).max(500).optional(),
   task: z.enum(EMBEDDING_QUERY_TASKS).optional(),
   visual: mediaProbe.optional(),
@@ -47,6 +54,7 @@ export interface LibraryRetrievalScope {
   saveIds?: string[];
   folderId?: string;
   libraryQuery?: LibraryQueryRequest;
+  filter?: Query;
 }
 
 export type RetrievalChannel = "fts" | "text" | "media" | "recent";
@@ -94,6 +102,10 @@ export function libraryScopeClauses(scope: LibraryRetrievalScope): SQL[] {
     });
     if (compiled) clauses.push(compiled);
   }
+  if (scope.filter) {
+    const compiled = buildWhere(scope.filter);
+    if (compiled) clauses.push(compiled);
+  }
   return clauses;
 }
 
@@ -113,6 +125,8 @@ function inputClauses(input: LibraryRetrievalInput): SQL[] {
     const projectedType = sql<string>`case when ${saves.source} = 'web' then 'link' else lower(coalesce(${saves.mediaType}, '')) end`;
     clauses.push(inArray(projectedType, media));
   }
+  if (input.untagged)
+    clauses.push(sql`json_array_length(coalesce(${saves.tags}, '[]')) = 0`);
   return clauses;
 }
 

@@ -6,7 +6,6 @@
   flex: none;
   flex-direction: column;
   min-width: 0;
-  border-bottom: var(--search-chrome-border, 1px solid var(--ds-gray-a3));
 }
 
 .bar {
@@ -14,7 +13,7 @@
   gap: 6px;
   align-items: center;
   min-width: 0;
-  min-height: 48px;
+  min-height: var(--window-header-height, 48px);
   padding: 8px;
 }
 
@@ -45,11 +44,6 @@
   flex: none;
   gap: 4px;
   align-items: center;
-}
-
-.root[data-tone="plain"],
-.root[data-tone="header"] {
-  border-bottom: none;
 }
 
 .root[data-tone="plain"] .bar {

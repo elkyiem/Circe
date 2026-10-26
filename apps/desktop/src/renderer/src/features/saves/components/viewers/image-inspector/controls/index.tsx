@@ -19,6 +19,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import type { ReactNode } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import {
   type ViewerNavigation,
   ViewerNavigationControls,
@@ -39,8 +40,7 @@ interface HudProps {
   active: boolean;
   busy: boolean;
   canCrop: boolean;
-  itemIndex: number;
-  itemTotal: number;
+  saveId: string;
   isGif?: boolean;
   gifFramesOpen?: boolean;
   mode: InspectorMode;
@@ -66,8 +66,7 @@ function Hud({
   active,
   busy,
   canCrop,
-  itemIndex,
-  itemTotal,
+  saveId,
   isGif = false,
   gifFramesOpen = false,
   mode,
@@ -140,88 +139,83 @@ function Hud({
     );
 
   return (
-    <ChromePortal slot="top">
-      <ViewerHud.Bar
-        key="view"
-        className={styles["mode-bar"]}
-        data-mode="view"
-        label="Image"
-        collapseCenter
-        start={
-          itemIndex >= 0 && itemTotal > 0 ? (
-            <ViewerHud.Scale>
-              {itemIndex + 1} / {itemTotal}
-            </ViewerHud.Scale>
-          ) : null
-        }
-        center={
+    <>
+      <ChromePortal slot="bottom">
+        <ViewerHud.Pill className={styles.zoom}>
           <ZoomPill
             actual={actual}
             onOut={onZoomOut}
             onIn={onZoomIn}
             onRatio={onZoomRatio}
           />
-        }
-        end={
-          <ViewerToolbarGroups
-            actions={endActions}
-            edits={
-              edits === "full" ? (
+        </ViewerHud.Pill>
+      </ChromePortal>
+      <ChromePortal slot="top">
+        <ViewerHud.Bar
+          key="view"
+          className={styles["mode-bar"]}
+          data-mode="view"
+          label="Image"
+          start={<ViewerSaveNav saveId={saveId} />}
+          center={
+            <ViewerToolbarGroups
+              actions={endActions}
+              edits={
+                edits === "full" ? (
+                  <>
+                    <ViewerHud.Tool
+                      label="Flip"
+                      disabled={busy}
+                      onClick={onFlip}
+                    >
+                      <IconFlipHorizontal2 />
+                    </ViewerHud.Tool>
+                    <ViewerHud.Tool
+                      label="Rotate"
+                      disabled={busy}
+                      onClick={onRotate}
+                    >
+                      <IconRotateImageClockwise />
+                    </ViewerHud.Tool>
+                    <ViewerHud.Tool label="Crop" onClick={onToggleCrop}>
+                      <IconCrop />
+                    </ViewerHud.Tool>
+                  </>
+                ) : null
+              }
+              view={
                 <>
-                  <ViewerHud.Tool label="Flip" disabled={busy} onClick={onFlip}>
-                    <IconFlipHorizontal2 />
+                  <ViewerHud.Tool
+                    label="Actual Size"
+                    shortcut={<ShortcutKeys id="viewer.actual-size" />}
+                    onClick={onActualSize}
+                  >
+                    <IconSizeLg />
                   </ViewerHud.Tool>
                   <ViewerHud.Tool
-                    label="Rotate"
-                    disabled={busy}
-                    onClick={onRotate}
+                    label="Fit to Window"
+                    shortcut={<ShortcutKeys id="viewer.zoom-fit" />}
+                    onClick={onFit}
                   >
-                    <IconRotateImageClockwise />
+                    <IconExpand />
                   </ViewerHud.Tool>
-                  <ViewerHud.Tool label="Crop" onClick={onToggleCrop}>
-                    <IconCrop />
-                  </ViewerHud.Tool>
+                  {isGif && onToggleGifFrames ? (
+                    <ViewerHud.Tool
+                      label="GIF Frames"
+                      pressed={gifFramesOpen}
+                      onClick={onToggleGifFrames}
+                    >
+                      <IconAnimationFrames />
+                    </ViewerHud.Tool>
+                  ) : null}
                 </>
-              ) : null
-            }
-            view={
-              <>
-                <ViewerHud.Tool
-                  label="Actual Size"
-                  shortcut={<ShortcutKeys id="viewer.actual-size" />}
-                  onClick={onActualSize}
-                >
-                  <IconSizeLg />
-                </ViewerHud.Tool>
-                <ViewerHud.Tool
-                  label="Fit to Window"
-                  shortcut={<ShortcutKeys id="viewer.zoom-fit" />}
-                  onClick={onFit}
-                >
-                  <IconExpand />
-                </ViewerHud.Tool>
-                {isGif && onToggleGifFrames ? (
-                  <ViewerHud.Tool
-                    label="GIF Frames"
-                    pressed={gifFramesOpen}
-                    onClick={onToggleGifFrames}
-                  >
-                    <IconAnimationFrames />
-                  </ViewerHud.Tool>
-                ) : null}
-              </>
-            }
-            navigation={
-              slideNavigation && slideNavigation.count > 1 ? (
-                <div className={styles["slide-navigation"]}>
-                  <ViewerNavigationControls navigation={slideNavigation} />
-                </div>
-              ) : null
-            }
-          />
-        }
-      />
-    </ChromePortal>
+              }
+            />
+          }
+          end={<ViewerNavigationControls navigation={slideNavigation} />}
+        />
+      </ChromePortal>
+    </>
   );
 }
 

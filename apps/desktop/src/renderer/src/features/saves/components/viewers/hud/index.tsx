@@ -84,7 +84,6 @@ function Bar({
   start,
   center,
   end,
-  collapseCenter = false,
   className,
   ...props
 }: Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
@@ -92,26 +91,24 @@ function Bar({
   start?: ReactNode;
   center?: ReactNode;
   end?: ReactNode;
-  collapseCenter?: boolean;
 }) {
   return (
     <Tools
       tooltipSide="bottom"
       className={cn(styles.bar, className)}
-      data-collapse-center={collapseCenter || undefined}
       role="toolbar"
       aria-label={label}
       {...props}
     >
-      <div className={styles.start} data-viewer-bar-slot="start">
+      <Pill className={styles.start} data-viewer-bar-slot="start">
         {start}
-      </div>
-      <div className={styles.center} data-viewer-bar-slot="center">
+      </Pill>
+      <Pill className={styles.center} data-viewer-bar-slot="center">
         {center}
-      </div>
-      <div className={styles.end} data-viewer-bar-slot="end">
+      </Pill>
+      <Pill className={styles.end} data-viewer-bar-slot="end">
         {end}
-      </div>
+      </Pill>
     </Tools>
   );
 }

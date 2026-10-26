@@ -1,40 +1,5 @@
 .notice {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: start;
   width: 100%;
-  padding: 12px;
-  background: var(--ds-gray-2);
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-xs);
-}
-
-.icon {
-  margin-top: 1px;
-  color: var(--ds-gray-11);
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.title,
-.description {
-  line-height: 1.2;
-  color: var(--ds-gray-12);
-}
-
-.title {
-  font-size: var(--ds-text-md);
-  font-weight: var(--ds-weight-lg);
-  color: var(--ds-gray-12);
-}
-
-.description {
-  font-size: var(--ds-text-md);
-  color: var(--ds-gray-10);
+  max-width: var(--message-max-width, 420px);
+  margin-block: 8px;
 }

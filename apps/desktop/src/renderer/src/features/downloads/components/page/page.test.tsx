@@ -7,7 +7,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { downloadsColumnsLayout } from "@/features/downloads/state/downloads-columns";
 import { downloadsFilters } from "@/features/downloads/state/downloads-filters";
 import { downloadsSelection } from "@/features/downloads/state/downloads-selection";
-import { libraryChrome } from "@/features/library";
 import { primarySelection } from "@/features/saves/navigation";
 import { savesStore } from "@/features/saves/pool";
 import type { Save } from "@/features/saves/types";
@@ -98,8 +97,6 @@ beforeEach(() => {
   downloadsFilters.reset();
   downloadsColumnsLayout.reset();
   primarySelection.set(null);
-  libraryChrome.inspectSave(null);
-  libraryChrome.closeRightPane();
   Object.assign(window, {
     pond: { query, pipelinePause, pipelineCancelSaves },
   });
@@ -285,7 +282,6 @@ it("selects rows with checkboxes and prunes completed selections after live upda
   await click('[title="Failed video"]');
   expect(primarySelection.get()).toBeNull();
   expect(document.querySelector('[role="dialog"]')).toBeNull();
-  expect(libraryChrome.getState().inspectorSaveId).toBeNull();
 });
 
 it("selects a download row on click", async () => {

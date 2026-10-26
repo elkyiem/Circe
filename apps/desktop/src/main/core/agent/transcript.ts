@@ -3,6 +3,7 @@ import type { ModelMessage } from "ai";
 import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { assistantMetadata } from "../../../shared/assistant";
+import { joinMessages } from "../../../shared/assistant-text";
 import { type Db, getDb } from "../../db";
 import { answerProblem } from "./output";
 
@@ -70,11 +71,14 @@ function projectMessages(
     .map((message) => {
       const details = assistantMetadata.parse(message.metadata ?? {});
       const role = z.enum(["user", "assistant"]).parse(message.role);
+      const text = details.messages?.length
+        ? joinMessages(details.messages)
+        : message.content;
       return {
         role,
         content: details.question
-          ? `${message.content}\n${details.question.question}\n${details.question.options.join("; ")}`
-          : message.content,
+          ? `${text}\n${details.question.question}\n${details.question.options.join("; ")}`
+          : text,
       };
     });
 }

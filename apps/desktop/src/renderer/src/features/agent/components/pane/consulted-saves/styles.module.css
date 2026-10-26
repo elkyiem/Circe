@@ -1,5 +1,7 @@
 .card {
+  width: 100%;
   min-width: 0;
+  max-width: var(--message-max-width, 420px);
   margin-block: 8px;
   overflow: hidden;
   font-size: var(--ds-text-md);
@@ -70,8 +72,10 @@
 
 .media {
   display: flex;
-  flex: 0 0 auto;
+  flex: none;
   align-items: center;
+  justify-content: center;
+  width: 32px;
   height: 32px;
   margin-right: 4px;
 }
@@ -117,6 +121,25 @@
   text-overflow: ellipsis;
   text-align: left;
   white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  flex: none;
+  gap: 16px;
+  align-items: center;
+  margin-left: 16px;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-md);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-gray-9);
+  white-space: nowrap;
+}
+
+.type {
+  font-family: var(--ds-code-font-family);
+  font-size: var(--ds-text-xxs);
+  letter-spacing: 0.02em;
 }
 
 .expand {

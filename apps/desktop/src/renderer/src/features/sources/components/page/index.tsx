@@ -256,7 +256,7 @@ export function SourcesPage() {
       {toolbar}
       <div className={styles.page}>
         <div className={styles.content}>
-          {loaded && tableRows.length === 0 ? (
+          {!loaded ? null : tableRows.length === 0 ? (
             <SourcesEmpty />
           ) : showMatchesEmpty ? (
             <div className={styles.empty}>
@@ -266,7 +266,7 @@ export function SourcesPage() {
             <div ref={tableRef} className={styles.table}>
               <DataTable.Root className={styles.grid} aria-label="Sources">
                 <DataTable.Empty>
-                  {loaded ? <SourcesMatchesEmpty /> : null}
+                  <SourcesMatchesEmpty />
                 </DataTable.Empty>
               </DataTable.Root>
             </div>

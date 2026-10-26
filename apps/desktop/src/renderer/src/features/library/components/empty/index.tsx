@@ -1,12 +1,12 @@
 import {
   IconAlbum2Fill,
   IconBookmarkSlashFill,
-  IconClockPlus,
+  IconClockFill,
+  IconClockPlusFill,
   IconFolderBanFill,
   IconFolderOpenFill,
-  IconHistory,
   IconNodes3Fill,
-  IconTrashXmarkFill,
+  IconTrashFill,
   IconWindowDownloadFill,
 } from "@pond/icons";
 import { Button, Empty } from "@pond/ui";
@@ -20,7 +20,7 @@ export function LibraryEmpty() {
   return (
     <Empty.Root>
       <Empty.Media>
-        <IconAlbum2Fill />
+        <IconAlbum2Fill size={32} />
       </Empty.Media>
       <Empty.Title>No saves yet</Empty.Title>
       <Empty.Description>
@@ -43,7 +43,7 @@ export function TrashEmpty() {
   return (
     <Empty.Root>
       <Empty.Media>
-        <IconTrashXmarkFill />
+        <IconTrashFill size={32} />
       </Empty.Media>
       <Empty.Title>Trash is empty</Empty.Title>
       <Empty.Description>
@@ -78,7 +78,7 @@ export function UncategorizedEmpty() {
   return (
     <Empty.Root role="status" aria-live="polite">
       <Empty.Media>
-        <IconFolderBanFill />
+        <IconFolderBanFill size={32} />
       </Empty.Media>
       <Empty.Title>No uncategorized saves</Empty.Title>
       <Empty.Description>
@@ -105,7 +105,7 @@ export function FolderEmpty({ downloading = 0 }: { downloading?: number }) {
     return (
       <Empty.Root role="status" aria-live="polite">
         <Empty.Media>
-          <IconWindowDownloadFill />
+          <IconWindowDownloadFill size={32} />
         </Empty.Media>
         <Empty.Title>
           Downloading {downloading} {downloading === 1 ? "save" : "saves"}
@@ -128,7 +128,7 @@ export function FolderEmpty({ downloading = 0 }: { downloading?: number }) {
   return (
     <Empty.Root role="status" aria-live="polite">
       <Empty.Media>
-        <IconFolderOpenFill />
+        <IconFolderOpenFill size={32} />
       </Empty.Media>
       <Empty.Title>This folder is empty</Empty.Title>
       <Empty.Description>
@@ -144,31 +144,33 @@ export function LibrarySectionEmpty({ mode }: { mode: LibrarySection }) {
   const content =
     mode === "untagged"
       ? {
-          icon: <IconBookmarkSlashFill />,
+          icon: IconBookmarkSlashFill,
           title: "No untagged saves",
           description: "Saves without tags appear here.",
         }
       : mode === "recents"
         ? {
-            icon: <IconHistory />,
+            icon: IconClockFill,
             title: "No recent saves",
             description: "Recently opened saves appear here.",
           }
         : mode === "recentlyAdded"
           ? {
-              icon: <IconClockPlus />,
+              icon: IconClockPlusFill,
               title: "No new saves",
               description: "Saves from the last 7 days appear here.",
             }
           : {
-              icon: <IconNodes3Fill />,
+              icon: IconNodes3Fill,
               title: "No saves from this source",
               description: "Saves synced from this source appear here.",
             };
 
   return (
     <Empty.Root role="status" aria-live="polite">
-      <Empty.Media>{content.icon}</Empty.Media>
+      <Empty.Media>
+        <content.icon size={32} />
+      </Empty.Media>
       <Empty.Title>{content.title}</Empty.Title>
       <Empty.Description>{content.description}</Empty.Description>
       <Empty.Action>

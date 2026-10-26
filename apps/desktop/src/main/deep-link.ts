@@ -2,6 +2,7 @@ import { app, type BrowserWindow, dialog } from "electron";
 import log from "electron-log/main.js";
 import { IPC } from "../shared/constants";
 import { linkMatchesLibrary } from "../shared/library-links";
+import { handleSaveLink, parseSaveLink } from "./deep-link-save";
 import { libraryId } from "./paths";
 
 let pendingDeepLink: string | null = null;
@@ -30,6 +31,12 @@ export function handleDeepLink(
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "pond:") return;
+    if (parsed.hostname === "save") {
+      const link = parseSaveLink(parsed);
+      if (link) void app.whenReady().then(() => handleSaveLink(link));
+      else log.info("[pond deep-link] ignored", url);
+      return;
+    }
     if (parsed.searchParams.has("library")) {
       if (!app.isReady()) {
         void app.whenReady().then(() => handleDeepLink(url, mainWindow));

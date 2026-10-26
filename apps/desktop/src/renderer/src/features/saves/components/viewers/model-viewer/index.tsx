@@ -19,6 +19,7 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { ViewerToolbarGroups } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import { bindCameraKeys } from "./camera-keyboard";
 import { loadModel } from "./load-model";
 import styles from "./styles.module.css";
@@ -28,7 +29,8 @@ interface ModelViewerProps {
   path: string;
   onUnavailable: () => void;
   toolbarStart?: ReactNode;
-  toolbarEnd?: ReactNode;
+  toolbarActions?: ReactNode;
+  toolbarNavigation?: ReactNode;
 }
 
 export function ModelViewer({
@@ -36,7 +38,8 @@ export function ModelViewer({
   path,
   onUnavailable,
   toolbarStart,
-  toolbarEnd,
+  toolbarActions,
+  toolbarNavigation,
 }: ModelViewerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const resetRef = useRef<(() => void) | null>(null);
@@ -180,24 +183,29 @@ export function ModelViewer({
         <ViewerHud.Bar
           label="Model"
           start={toolbarStart}
-          end={
-            <>
-              <ViewerHud.Tool
-                label="Reset View"
-                onClick={() => resetRef.current?.()}
-              >
-                <IconRefresh />
-              </ViewerHud.Tool>
-              <ViewerHud.Tool
-                label="Grid"
-                pressed={gridVisible}
-                onClick={() => setGridVisible((visible) => !visible)}
-              >
-                <IconGroundPlaneDetection />
-              </ViewerHud.Tool>
-              {toolbarEnd}
-            </>
+          center={
+            <ViewerToolbarGroups
+              controls={
+                <>
+                  <ViewerHud.Tool
+                    label="Reset View"
+                    onClick={() => resetRef.current?.()}
+                  >
+                    <IconRefresh />
+                  </ViewerHud.Tool>
+                  <ViewerHud.Tool
+                    label="Grid"
+                    pressed={gridVisible}
+                    onClick={() => setGridVisible((visible) => !visible)}
+                  >
+                    <IconGroundPlaneDetection />
+                  </ViewerHud.Tool>
+                </>
+              }
+              actions={toolbarActions}
+            />
           }
+          end={toolbarNavigation}
         />
       </ChromePortal>
     </div>

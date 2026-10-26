@@ -39,6 +39,12 @@ function labeledButton(host: HTMLElement, label: string): HTMLButtonElement {
   return button;
 }
 
+function slideControls(host: HTMLElement): (string | null)[] {
+  return [...host.querySelectorAll('[data-viewer-bar-slot="end"] button')].map(
+    (button) => button.getAttribute("aria-label"),
+  );
+}
+
 function buttonByText(
   host: HTMLElement,
   text: string,
@@ -121,19 +127,19 @@ describe("SaveViewer", () => {
 
     expect(host.querySelector('img[alt="Mixed viewer"]')).not.toBeNull();
     expect(host.querySelectorAll("[data-viewer-root]")).toHaveLength(1);
-    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(1);
+    expect(slideControls(host)).toEqual(["Previous Slide", "Next Slide"]);
     expect(labeledButton(host, "Previous Slide").disabled).toBe(true);
 
     await click(host, "Next Slide");
     await findToolbar(host, "PDF");
     expect(host.querySelectorAll("[data-viewer-root]")).toHaveLength(1);
-    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(1);
+    expect(slideControls(host)).toEqual(["Previous Slide", "Next Slide"]);
 
     await click(host, "Next Slide");
     await findToolbar(host, "Font");
     expect(labeledButton(host, "Next Slide").disabled).toBe(true);
     expect(host.querySelectorAll("[data-viewer-root]")).toHaveLength(1);
-    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(1);
+    expect(slideControls(host)).toEqual(["Previous Slide", "Next Slide"]);
   });
 
   it("keeps later image and font originals reachable when PDF is first", async () => {

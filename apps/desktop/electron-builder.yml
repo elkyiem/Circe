@@ -27,16 +27,20 @@ icon: icon.png
 files:
   - out/**/*
   - package.json
+  # Vite bundles main, preload, and the renderer into `out`, so app.asar ships
+  # only the packages main loads from disk at runtime (the externals in
+  # electron.vite.config.ts, plus onnxruntime-node, which transformers
+  # requires by name) and their runtime dependencies. electron-builder applies
+  # only exclusions to node_modules, so the allowlist is one negated extglob.
+  # scripts/verify-runtime-packages.cjs fails the pack when it falls behind.
+  - "!node_modules/!(better-sqlite3|sqlite-vec|sqlite-vec-*|sharp|@img|detect-libc|semver|onnxruntime-node|onnxruntime-common){,/**}"
   - "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
   - "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
   - "!**/*.{d.ts,map}"
   - "!**/*.tsbuildinfo"
-  # These dependencies are already bundled into `out`; keeping their source
-  # packages duplicates tens of megabytes in app.asar.
-  - "!node_modules/@pond/icons/brand/tints/**"
-  - "!node_modules/ffmpeg-static/**"
-  - "!node_modules/gpt-tokenizer/**"
-  - "!node_modules/onnxruntime-web/**"
+  # better-sqlite3 loads its prebuilt binary; the SQLite and C++ sources only
+  # matter when it compiles from source.
+  - "!node_modules/better-sqlite3/{deps,src}/**"
 
 # Tray icons and any other runtime-loaded assets. At runtime we read
 # them from `process.resourcesPath` which lands inside `Contents/Resources`
@@ -53,6 +57,9 @@ extraResources:
     to: .
     filter:
       - "**/*"
+      # App extensions belong in Contents/PlugIns only; see mac.extraFiles.
+      - "!SafariExtension{,/**}"
+      - "!ShareExtension{,/**}"
   - from: ../../packages/icons/brand/tints
     to: app-icons
     filter:
@@ -104,9 +111,20 @@ mac:
   # the hardened runtime after notarization.
   entitlements: packaging/entitlements.mac.plist
   entitlementsInherit: packaging/entitlements.mac.inherit.plist
+  # Signs the app extensions, which electron-builder skips, then the app as usual.
+  sign: scripts/sign-mac.cjs
   extraResources:
     - from: node_modules/ffmpeg-static/ffmpeg
       to: bin/ffmpeg
+  # App extensions: the Safari App Extension (scripts/build-safari-extension.mjs) and
+  # the Share extension (scripts/build-share-extension.mjs). Safari cannot launch an
+  # external native-messaging host, so its handler ships inside the app bundle; macOS
+  # only loads a .appex from Contents/PlugIns, and sign-mac.cjs signs each one.
+  extraFiles:
+    - from: resources/SafariExtension/Pond Extension.appex
+      to: PlugIns/Pond Extension.appex
+    - from: resources/ShareExtension/Pond Share.appex
+      to: PlugIns/Pond Share.appex
   # Register `.pond` as a macOS package so Finder shows a library as a
   # single bundle instead of a folder full of items/, trash/, metadata.
   # LaunchServices only honors this in packaged builds, not `dev`.

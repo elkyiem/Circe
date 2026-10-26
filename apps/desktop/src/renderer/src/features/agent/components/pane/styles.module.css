@@ -1,14 +1,11 @@
 .assistant {
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-}
-
-.assistant[data-layout="page"] {
-  width: 100%;
 }
 
 .assistant-workspace {
@@ -28,12 +25,16 @@
 }
 
 .chat-viewport {
-  padding: 16px 16px 8px;
+  padding: 24px 24px 12px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: none;
 }
 
-.assistant[data-layout="page"] .chat-viewport {
-  padding: 24px 24px 12px;
+.time {
+  display: block;
+  margin-block: 16px 6px;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-gray-9);
+  text-align: center;
 }

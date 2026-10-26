@@ -192,7 +192,7 @@ describe("workspace menu", () => {
     );
   });
 
-  it("downloads the browser extension from its dialog", async () => {
+  async function openExtensionDialog(): Promise<Element | null> {
     await openMenu();
     const item = [...document.querySelectorAll('[role="menuitem"]')].find(
       (entry) => entry.textContent?.includes("Browser Extension"),
@@ -203,19 +203,36 @@ describe("workspace menu", () => {
     await vi.waitFor(() =>
       expect(document.querySelector('[role="dialog"]')).not.toBeNull(),
     );
-    const dialog = document.querySelector('[role="dialog"]');
-    expect(dialog?.querySelector("video")).not.toBeNull();
-    const download = [...(dialog?.querySelectorAll("button") ?? [])].find(
-      (button) => button.textContent === "Download",
+    return document.querySelector('[role="dialog"]');
+  }
+
+  function storeButton(dialog: Element | null, label: string) {
+    const button = [...(dialog?.querySelectorAll("button") ?? [])].find(
+      (entry) => entry.textContent === label,
     );
-    if (!download) throw new Error("Missing Download button");
-    await act(async () => download.click());
-    await vi.waitFor(() =>
-      expect(query).toHaveBeenCalledWith("extension.install", {}),
+    if (!button) throw new Error(`Missing ${label} button`);
+    return button;
+  }
+
+  it("opens each browser's store listing from the extension dialog", async () => {
+    const dialog = await openExtensionDialog();
+    await act(async () => storeButton(dialog, "Add to Chrome").click());
+    expect(openExternal).toHaveBeenLastCalledWith(
+      "https://chromewebstore.google.com/detail/ghigndnldiagchoaifgndleogpkendbc",
     );
+    await act(async () => storeButton(dialog, "Add to Firefox").click());
+    expect(openExternal).toHaveBeenLastCalledWith(
+      "https://addons.mozilla.org/firefox/addon/desktop%40pond.so/",
+    );
+  });
+
+  it("says so when a store page doesn't open", async () => {
+    openExternal.mockResolvedValueOnce({ ok: false });
+    const dialog = await openExtensionDialog();
+    await act(async () => storeButton(dialog, "Add to Chrome").click());
     await vi.waitFor(() =>
       expect(dialog?.textContent).toContain(
-        "Pond Extension is in your Downloads folder.",
+        "Pond couldn't open the store page. Try again.",
       ),
     );
   });

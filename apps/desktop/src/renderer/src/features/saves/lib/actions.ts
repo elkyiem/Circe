@@ -96,6 +96,12 @@ export async function copyId(id: string): Promise<void> {
   });
 }
 
+export async function copyValue(label: string, value: string): Promise<void> {
+  if (!value) return;
+  await writeClipboardText(value);
+  notify({ id: "copy-value", title: `${label} copied to clipboard` });
+}
+
 export async function copyName(save: Save): Promise<void> {
   const fallback = save.files[0]?.path.split(/[/\\]/).at(-1) ?? save.id;
   await writeClipboardText(save.title?.trim() || fallback);

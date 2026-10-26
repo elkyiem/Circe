@@ -2,7 +2,11 @@ import { isStepCount, simulateReadableStream, ToolLoopAgent, tool } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { expect, it, vi } from "vitest";
 import { z } from "zod";
-import { contextDependencies, libraryContext } from "./context";
+import {
+  contextDependencies,
+  emptySearchNote,
+  libraryContext,
+} from "./context";
 import { textChunks, toolCallChunks } from "./mock-model";
 
 const dependencies = {
@@ -272,4 +276,19 @@ it("gates image description with the current model's vision capability", async (
     images: 1,
   });
   expect(describeSaves).toHaveBeenCalledExactlyOnceWith({ ids: ["known"] });
+});
+
+it("names the filters that emptied a search", () => {
+  expect(
+    emptySearchNote({
+      query: "",
+      source: "local",
+      folderId: "Library",
+      media: [],
+      untagged: true,
+    }),
+  ).toBe(
+    'No Saves matched source "local", folderId "Library", untagged. Remove any filter the request did not ask for and search again.',
+  );
+  expect(emptySearchNote({ query: "dog", media: [] })).toBeUndefined();
 });

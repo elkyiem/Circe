@@ -68,7 +68,7 @@
 
 .disclosure svg {
   width: 8px;
-  transition: transform var(--ds-duration-fast) var(--ds-easing-standard);
+  transition: transform var(--ds-duration-bounce) var(--ds-easing-bounce);
 }
 
 .disclosure[aria-expanded="true"] svg {

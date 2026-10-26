@@ -484,3 +484,65 @@ it("goes back to every post type when you remove the last chip", async () => {
     start: false,
   });
 });
+
+it("locks Bluesky Bookmarks until you sign in, then unlocks them", async () => {
+  query.mockImplementation(async (name: string) => {
+    if (name === "accounts.blueskySession") {
+      return { ok: true, signedIn: false, handle: null };
+    }
+    if (name === "accounts.blueskySignIn") {
+      return { ok: true, handle: "alice.bsky.social" };
+    }
+    return { ok: true };
+  });
+  await renderFor({
+    id: "acc-bluesky",
+    source: "bluesky",
+    sync: { importPending: false },
+  });
+  await vi.waitFor(() => expect(host.textContent).toContain("Not signed in"));
+  expect(toggle("Likes").getAttribute("aria-checked")).toBe("true");
+  expect(toggle("Bookmarks").getAttribute("aria-checked")).toBe("false");
+  expect(toggle("Bookmarks").getAttribute("aria-disabled")).toBe("true");
+
+  await act(async () => button("Sign In").click());
+  await vi.waitFor(() =>
+    expect(host.textContent).toContain("Signed in as @alice.bsky.social"),
+  );
+  expect(query).toHaveBeenCalledWith("accounts.blueskySignIn", {
+    accountId: "acc-bluesky",
+  });
+  await vi.waitFor(() =>
+    expect(toggle("Bookmarks").getAttribute("aria-checked")).toBe("true"),
+  );
+  expect(toggle("Bookmarks").getAttribute("aria-disabled")).toBeNull();
+  expect(button("Sign Out")).toBeTruthy();
+});
+
+it("shows why a Bluesky sign-in didn't take", async () => {
+  query.mockImplementation(async (name: string) => {
+    if (name === "accounts.blueskySession") {
+      return { ok: true, signedIn: false, handle: null };
+    }
+    if (name === "accounts.blueskySignIn") {
+      return {
+        ok: false,
+        error:
+          "You signed in as @bob.bsky.social. Sign in as @alice.bsky.social to import its bookmarks.",
+      };
+    }
+    return { ok: true };
+  });
+  await renderFor({
+    id: "acc-bluesky",
+    source: "bluesky",
+    sync: { importPending: false },
+  });
+  await vi.waitFor(() => expect(button("Sign In").disabled).toBe(false));
+  await act(async () => button("Sign In").click());
+  await vi.waitFor(() =>
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "You signed in as @bob.bsky.social",
+    ),
+  );
+});

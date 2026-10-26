@@ -104,11 +104,11 @@ describe("unseenVersions", () => {
     ).toEqual([]);
   });
 
-  it("stays closed on nightly builds", () => {
+  it("stays closed on prerelease builds", () => {
     expect(
       unseenVersions({
         entries,
-        current: "1.5.1-nightly.20261022.1",
+        current: "1.5.1-beta.1",
         lastSeen: "1.4.0",
         hasSaves: true,
       }),

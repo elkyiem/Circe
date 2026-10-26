@@ -1,0 +1,8 @@
+.popup {
+  --ds-popup-min-width: 260px;
+  width: min(280px, var(--available-width));
+}
+
+.list {
+  max-height: min(360px, calc(var(--available-height) - 72px));
+}

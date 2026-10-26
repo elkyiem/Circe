@@ -2,6 +2,7 @@ import type { ListKind, Source } from "@pond/schema/db";
 import { mergeListKinds } from "@pond/schema/list-kinds";
 import type { ImportableCookie } from "../refresh/harvest-window/session";
 import { classifyUrlToSource } from "./extractors";
+import { firstMatch, GITHUB_PATTERNS } from "./extractors/url-patterns";
 import { listKindsFromTrigger } from "./list-kinds";
 import type { EnqueueSeed } from "./seed";
 import { sourceIdFromUrl } from "./url";
@@ -35,6 +36,10 @@ export interface NormalizedEnqueueItems {
   failed: number;
 }
 
+/** Substack's share links wrap the publication's own post address. */
+const OPEN_SUBSTACK_POST =
+  /^open\.substack\.com\/pub\/([a-z0-9-]+)\/p\/([A-Za-z0-9_-]+)\/?$/i;
+
 export function normalizeUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);
@@ -49,6 +54,11 @@ export function normalizeUrl(rawUrl: string): string {
         url.searchParams.delete(key);
       }
     }
+    const repo = firstMatch(url, GITHUB_PATTERNS)?.[1];
+    /** GitHub repo names are case-insensitive, so every spelling of a repo lands on one save. */
+    if (repo) return `https://github.com/${repo.toLowerCase()}`;
+    const shared = OPEN_SUBSTACK_POST.exec(`${url.host}${url.pathname}`);
+    if (shared) return `https://${shared[1]}.substack.com/p/${shared[2]}`;
     return url.toString();
   } catch {
     return rawUrl;

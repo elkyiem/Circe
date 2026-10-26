@@ -1,7 +1,6 @@
 import {
   IconAlbum2,
   IconBookmark,
-  IconChatBubble,
   IconChevronDown,
   IconCircleWarning,
   IconEye,
@@ -32,7 +31,6 @@ const library: ReadonlyArray<{
     count: "36",
     icon: <IconFolderBan />,
   },
-  { id: "assistant", label: "Assistant", count: "", icon: <IconChatBubble /> },
   {
     id: "recentlyUsed",
     label: "Recently Used",

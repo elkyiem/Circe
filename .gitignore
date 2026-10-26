@@ -73,6 +73,18 @@ apps/desktop/resources/replay/sw.js
 # compiled Chrome native-messaging host
 apps/desktop/resources/bin/pond-native-host
 apps/desktop/resources/bin/pond-native-host.exe
+apps/desktop/resources/bin/pond-apple-model
+
+# Safari App Extension compiled by apps/desktop/scripts/build-safari-extension.mjs
+apps/desktop/resources/SafariExtension/
+apps/desktop/.safari-build/
+
+# Share extension compiled by apps/desktop/scripts/build-share-extension.mjs
+apps/desktop/resources/ShareExtension/
+apps/desktop/.share-build/
+
+# Alfred workflow staging from apps/alfred/scripts/pack.mjs
+apps/alfred/.pack/
 
 # generated icon previews
 apps/desktop/src/renderer/src/generated/

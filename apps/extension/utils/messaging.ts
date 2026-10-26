@@ -21,11 +21,17 @@ export interface Tag {
   lastUsedAt: number | null;
 }
 
-/** Everything a capture picker needs to offer folders and tags without a native round trip. */
+export interface FishTarget {
+  id: string;
+  name: string;
+}
+
+/** Everything a capture picker needs to offer folders, tags, and fish without a native round trip. */
 export interface LibraryTargets {
   name: string;
   folders: Folder[];
   tags: Tag[];
+  fish: FishTarget[];
   recentFolderIds: string[];
   recentTags: string[];
 }
@@ -64,6 +70,7 @@ export interface DetailsMetadata {
   rating: number;
   tags: string[];
   folderIds: string[];
+  fishId: string | null;
 }
 
 export interface PageItem {

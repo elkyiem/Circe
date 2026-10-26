@@ -16,7 +16,7 @@ import {
   isAccountConnected,
   listSourceCollections,
 } from "../../core/refresh/harvest-window";
-import { isSyncing } from "../../core/sync";
+import { isSyncing, syncAccount } from "../../core/sync";
 import { resolveAccountHandle } from "../../core/sync/account-key";
 import {
   getAccount,
@@ -245,6 +245,59 @@ export const accountsQueries = {
       const account = await getAccount(params.accountId);
       if (!account) return ACCOUNT_NOT_FOUND;
       await removeAccount(params.accountId);
+      return { ok: true as const };
+    },
+  ),
+
+  "accounts.blueskySession": query(
+    z.object({ accountId: StringParam }),
+    async (params) => {
+      const account = await getAccount(params.accountId);
+      if (account?.source !== "bluesky") return ACCOUNT_NOT_FOUND;
+      const { blueskySessionStatus } = await import(
+        "../../core/refresh/harvest/bluesky/session"
+      );
+      const status = await blueskySessionStatus(account);
+      return {
+        ok: true as const,
+        signedIn: status.signedIn,
+        handle: status.signedIn ? status.handle : null,
+      };
+    },
+  ),
+
+  "accounts.blueskySignIn": query(
+    z.object({ accountId: StringParam }),
+    async (params) => {
+      const account = await getAccount(params.accountId);
+      if (account?.source !== "bluesky") return ACCOUNT_NOT_FOUND;
+      const { signInToBluesky } = await import(
+        "../../core/refresh/harvest/bluesky/session"
+      );
+      const result = await signInToBluesky(account);
+      if (result.ok) {
+        void syncAccount(account.id, { trigger: "manual" }).catch(() => {});
+        return { ok: true as const, handle: result.handle };
+      }
+      if (result.reason === "cancelled") {
+        return { ok: false as const, reason: "cancelled" as const };
+      }
+      return {
+        ok: false as const,
+        error: `You signed in as @${result.otherHandle}. Sign in as @${account.handle ?? "this Account"} to import its bookmarks.`,
+      };
+    },
+  ),
+
+  "accounts.blueskySignOut": query(
+    z.object({ accountId: StringParam }),
+    async (params) => {
+      const account = await getAccount(params.accountId);
+      if (account?.source !== "bluesky") return ACCOUNT_NOT_FOUND;
+      const { signOutOfBluesky } = await import(
+        "../../core/refresh/harvest/bluesky/session"
+      );
+      await signOutOfBluesky(account);
       return { ok: true as const };
     },
   ),

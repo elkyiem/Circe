@@ -1,42 +1,40 @@
 import { useCallback, useRef } from "react";
 
-interface ScrollPosition {
-  top: number;
-  bottom: number;
-}
+const READER_INPUTS = ["wheel", "touchmove", "pointerdown", "keydown"] as const;
 
-function readPosition(node: HTMLDivElement): ScrollPosition {
-  return {
-    top: node.scrollTop,
-    bottom: Math.max(0, node.scrollHeight - node.clientHeight - node.scrollTop),
-  };
-}
-
-function restorePosition(node: HTMLDivElement, position: ScrollPosition) {
-  const maximum = Math.max(0, node.scrollHeight - node.clientHeight);
-  node.scrollTop =
-    position.bottom <= 24
-      ? Math.max(0, maximum - position.bottom)
-      : Math.min(position.top, maximum);
-}
-
-export function useRememberedChatScroll(chatKey: string) {
-  const positions = useRef(new Map<string, ScrollPosition>());
-  const viewport = useRef<HTMLDivElement | null>(null);
-  const activeChat = useRef(chatKey);
-  return useCallback(
-    (node: HTMLDivElement | null) => {
-      if (viewport.current)
-        positions.current.set(
-          activeChat.current,
-          readPosition(viewport.current),
-        );
-      viewport.current = node;
-      activeChat.current = chatKey;
-      if (!node) return;
-      const position = positions.current.get(chatKey);
-      if (position) restorePosition(node, position);
-    },
-    [chatKey],
-  );
+/** History and media load after a chat opens, so hold it at the latest message until the reader scrolls. */
+export function useOpenAtBottom() {
+  const release = useRef<(() => void) | null>(null);
+  return useCallback((node: HTMLDivElement | null) => {
+    release.current?.();
+    release.current = null;
+    if (!node) return;
+    const pin = () => {
+      node.scrollTop = node.scrollHeight;
+    };
+    const mutations = new MutationObserver(pin);
+    const resize = new ResizeObserver(pin);
+    const stop = () => {
+      mutations.disconnect();
+      resize.disconnect();
+      node.removeEventListener("load", pin, true);
+      for (const type of READER_INPUTS) node.removeEventListener(type, onInput);
+      release.current = null;
+    };
+    function onInput(event: Event) {
+      if (event.type === "wheel" || event.type === "touchmove") stop();
+      else if (event.target === node) stop();
+    }
+    pin();
+    mutations.observe(node, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    resize.observe(node);
+    node.addEventListener("load", pin, true);
+    for (const type of READER_INPUTS)
+      node.addEventListener(type, onInput, { passive: true });
+    release.current = stop;
+  }, []);
 }

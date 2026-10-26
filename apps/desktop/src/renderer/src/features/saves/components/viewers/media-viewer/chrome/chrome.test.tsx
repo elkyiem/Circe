@@ -89,7 +89,7 @@ it("places image inspector controls in the integrated top toolbar", async () => 
   const fit = [...host.querySelectorAll("button")].find(
     (button) => button.getAttribute("aria-label") === "Fit to Window",
   );
-  expect(host.textContent).toContain("1 / 493");
+  expect(host.querySelector('[aria-label="Previous Save"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Previous Item"]')).toBeNull();
   expect(host.querySelector('[aria-label="Next Item"]')).toBeNull();
   expect(fit).toBeTruthy();
@@ -168,7 +168,7 @@ it("suppresses portal toolbars and direct HUD overlays when controls are disable
   expect(host.querySelector('[aria-label="Table of contents"]')).toBeNull();
 });
 
-it("adds slide arrows without restoring the local slide count", async () => {
+it("shows the slide count beside the slide arrows", async () => {
   const first = save.files[0];
   if (!first) throw new Error("Missing fixture file");
   const gallery: Save = {
@@ -197,14 +197,16 @@ it("adds slide arrows without restoring the local slide count", async () => {
     );
   const zoom = labeled("Zoom In");
   const crop = labeled("Crop");
-  expect(host.textContent).toContain("2 / 493");
-  expect(host.textContent).not.toContain("1 / 2");
+  expect(host.textContent).not.toContain("2 / 493");
+  expect(host.textContent).toContain("1 / 2");
   expect(labeled("Previous Item")).toBeUndefined();
   expect(labeled("Next Item")).toBeUndefined();
   expect(labeled("Previous Slide")?.disabled).toBe(true);
   expect(labeled("Next Slide")?.disabled).toBe(false);
   expect(crop?.closest("[data-slot]")?.getAttribute("data-slot")).toBe("top");
-  expect(zoom?.closest("[data-slot]")?.getAttribute("data-slot")).toBe("top");
+  expect(zoom?.closest("[data-slot]")?.getAttribute("data-slot")).toBe(
+    "bottom",
+  );
   expect(crop?.closest("[data-anchor]")).toBeNull();
   expect(zoom?.closest("[data-anchor]")).toBeNull();
   expect(crop?.closest("[data-blossom-slide]")).toBeNull();
@@ -246,11 +248,16 @@ it("composes video result count and actions into one top bar", async () => {
   expect(
     top?.querySelector('[role="toolbar"]')?.getAttribute("aria-label"),
   ).toBe("Video");
-  expect(top?.textContent).toContain("1 / 1");
+  expect(top?.querySelector('[aria-label="Next Save"]')).not.toBeNull();
+  expect(top?.textContent).not.toContain("1 / 1");
   expect(top?.querySelector('[aria-label="Rotate Video"]')).not.toBeNull();
   expect(top?.querySelector('[aria-label="Fill"]')).toBeNull();
   expect(top?.querySelector('[aria-label="Fit"]')).toBeNull();
-  expect(top?.querySelectorAll('[role="separator"]')).toHaveLength(1);
-  expect(top?.querySelector('[aria-label="Previous Slide"]')).not.toBeNull();
-  expect(top?.querySelector('[aria-label="Next Slide"]')).not.toBeNull();
+  expect(top?.querySelectorAll('[role="separator"]')).toHaveLength(0);
+  const center = top?.querySelector('[data-viewer-bar-slot="center"]');
+  const end = top?.querySelector('[data-viewer-bar-slot="end"]');
+  expect(center?.querySelector('[aria-label="Rotate Video"]')).not.toBeNull();
+  expect(end?.querySelector('[aria-label="Previous Slide"]')).not.toBeNull();
+  expect(end?.querySelector('[aria-label="Next Slide"]')).not.toBeNull();
+  expect(end?.textContent).toBe("1 / 2");
 });

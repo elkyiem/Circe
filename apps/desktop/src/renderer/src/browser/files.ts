@@ -24,6 +24,7 @@ const DEVICE_QUERIES = new Set<string>([
   "saves.importEaglePackage",
   "saves.importBookmarks",
   "saves.importMymind",
+  "saves.importDataExport",
   "saves.exportPackage",
   "saves.exportEaglePackage",
   "saves.exportFiles",
@@ -302,9 +303,16 @@ export function createBrowserFiles(transport: FileTransport) {
           "saves.importEaglePackage",
           "saves.importBookmarks",
           "saves.importMymind",
+          "saves.importDataExport",
         ].includes(name)
       ) {
-        const picked = await pickDeviceFiles(false, false);
+        const picked = await pickDeviceFiles(
+          false,
+          false,
+          name === "saves.importDataExport"
+            ? ".zip,application/zip"
+            : undefined,
+        );
         if (!picked.length) return { ok: false, reason: "cancelled" };
         return importSelected(name, { paths: picked.map(pathForFile) });
       }

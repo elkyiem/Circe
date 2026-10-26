@@ -26,3 +26,12 @@ it.each(["ollama", "lmstudio"])(
 it("does not treat an unconfigured local provider as connected", () => {
   expect(isLocalProviderConnected("ollama", { enabledKeys: {} })).toBe(false);
 });
+it("treats a connected Apple Intelligence as a local provider", () => {
+  expect(
+    isLocalProviderConnected("apple", {
+      enabledKeys: { apple: false },
+      connectedLocalProviders: { apple: true },
+    }),
+  ).toBe(true);
+  expect(isLocalProviderConnected("apple", { enabledKeys: {} })).toBe(false);
+});

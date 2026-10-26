@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { sep as pathSep, resolve as resolvePath } from "node:path";
 import { saves } from "@pond/schema/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { ipcMain } from "electron";
 import log from "electron-log/main.js";
@@ -58,26 +58,78 @@ export async function resolveSaveFilePath(
     const row = rows[0];
     if (!row) return { ok: false, reason: "not_found" };
 
-    const files = toWireSave(row).files ?? [];
-    if (files.length === 0) return { ok: false, reason: "no_files" };
-
-    const file = files[fileIndex ?? 0];
-    if (!file) return { ok: false, reason: "out_of_range" };
-    if (isAuxiliaryKind(file.kind)) {
-      return { ok: false, reason: "auxiliary_file" };
-    }
-
-    const absolute = resolvePath(saveFile(id, file.path));
-    if (!isInsideLibrary(absolute)) {
-      log.warn("[pond ipc] refused path outside library", { id, absolute });
-      return { ok: false, reason: "unsafe_path" };
-    }
-    if (!existsSync(absolute)) return { ok: false, reason: "missing" };
-    return { ok: true, path: absolute };
+    return resolveRowFile(id, toWireSave(row).files ?? [], fileIndex);
   } catch (err) {
     log.warn("[pond ipc] resolveSaveFilePath failed", err);
     return { ok: false, reason: "not_found" };
   }
+}
+
+function resolveRowFile(
+  id: string,
+  files: ReadonlyArray<{ kind: string; path: string }>,
+  fileIndex: number | undefined,
+): ReasonResult<SaveFileFailure, { path: string }> {
+  if (files.length === 0) return { ok: false, reason: "no_files" };
+  const file = files[fileIndex ?? 0];
+  if (!file) return { ok: false, reason: "out_of_range" };
+  if (isAuxiliaryKind(file.kind)) {
+    return { ok: false, reason: "auxiliary_file" };
+  }
+  const absolute = resolvePath(saveFile(id, file.path));
+  if (!isInsideLibrary(absolute)) {
+    log.warn("[pond ipc] refused path outside library", { id, absolute });
+    return { ok: false, reason: "unsafe_path" };
+  }
+  if (!existsSync(absolute)) return { ok: false, reason: "missing" };
+  return { ok: true, path: absolute };
+}
+
+export interface SaveDragFile {
+  id: string;
+  path: string;
+  preview: string | null;
+}
+
+const PREVIEW_KINDS = ["thumbnail", "poster"];
+
+/** One query for the whole selection, each save resolving its own file index. */
+export async function resolveSaveDragFiles(
+  requests: ReadonlyArray<{ id: string; fileIndex: number }>,
+): Promise<SaveDragFile[]> {
+  if (requests.length === 0) return [];
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(saves)
+    .where(
+      inArray(
+        saves.id,
+        requests.map((request) => request.id),
+      ),
+    );
+  const byId = new Map(rows.map((row) => [row.id, toWireSave(row)]));
+  return requests.flatMap(({ id, fileIndex }) => {
+    const files = byId.get(id)?.files ?? [];
+    const target = resolveRowFile(id, files, fileIndex);
+    if (!target.ok) return [];
+    const dragged = files[fileIndex];
+    const previewFile =
+      PREVIEW_KINDS.map((kind) =>
+        files.find((file) => file.kind === kind),
+      ).find(Boolean) ??
+      (dragged?.mimeType?.startsWith("image/") ? dragged : undefined);
+    const preview = previewFile
+      ? resolvePath(saveFile(id, previewFile.path))
+      : null;
+    return [
+      {
+        id,
+        path: target.path,
+        preview: preview && isInsideLibrary(preview) ? preview : null,
+      },
+    ];
+  });
 }
 
 export function resolvePondSavePath(

@@ -47,27 +47,6 @@ interface FilterChoices {
   account: FilterOption[];
 }
 
-export function FilterToggle() {
-  const { open } = useFilterToolbar();
-  const query = useFilterQuery();
-  const semantic = useSemanticQuery();
-  const visual = useVisualProbe();
-  const active =
-    query.rules.some(isPredicate) || Boolean(semantic) || Boolean(visual);
-  return (
-    <FilterToolbar.Toggle
-      variant="ghost"
-      open={open}
-      active={active}
-      controlsId="library-filter-toolbar"
-      onToggle={() => {
-        libraryHeader.closePopover();
-        filterToolbar.setOpen(!open);
-      }}
-    />
-  );
-}
-
 interface FilterBarData {
   tags: readonly { name: string }[];
   tagGroups: readonly { name: string; tagNames: readonly string[] }[];
@@ -82,74 +61,71 @@ interface FilterBarData {
   refs: ReturnType<typeof accountRefsFromSync>;
 }
 
-export function FilterBar() {
+function useFilterBarData(): FilterBarData {
   const tags = useTags();
   const tagGroups = useTagGroups();
   const folders = useFolders();
   const facets = useNlFacets();
   const [sync] = usePrefs("sync");
   const [folderViews] = usePrefs("folderViews");
+  return {
+    tags,
+    tagGroups,
+    folders: folders.map((folder) => ({
+      ...folder,
+      icon: folderViews[folder.id]?.icon,
+    })),
+    facets,
+    refs: accountRefsFromSync(sync),
+  };
+}
+
+export function FilterToggle() {
+  return <FilterToggleView {...useFilterBarData()} />;
+}
+
+export function FilterBar() {
+  return <FilterBarView {...useFilterBarData()} />;
+}
+
+export function FilterToggleView(data: FilterBarData) {
+  const { open, layout } = useFilterToolbar();
+  const query = useFilterQuery();
+  const semantic = useSemanticQuery();
+  const visual = useVisualProbe();
+  const rows = query.rules.filter(isPredicate);
+  if (layout === "applied") {
+    return (
+      <AddFilter
+        choices={filterChoices(data, rows)}
+        rows={rows}
+        onChange={updateLocalFilters}
+        applied={[
+          ...rows.map((row) => (row.field === "height" ? "width" : row.field)),
+          ...(visual ? (["visual"] as const) : []),
+          ...(semantic ? (["semantic"] as const) : []),
+        ]}
+      />
+    );
+  }
   return (
-    <FilterBarView
-      tags={tags}
-      tagGroups={tagGroups}
-      folders={folders.map((folder) => ({
-        ...folder,
-        icon: folderViews[folder.id]?.icon,
-      }))}
-      facets={facets}
-      refs={accountRefsFromSync(sync)}
+    <FilterToolbar.Toggle
+      variant="ghost"
+      open={open}
+      active={rows.length > 0 || Boolean(semantic) || Boolean(visual)}
+      controlsId="library-filter-toolbar"
+      onToggle={() => {
+        libraryHeader.closePopover();
+        filterToolbar.setOpen(!open);
+      }}
     />
   );
 }
 
-export function FilterBarView({
-  tags,
-  tagGroups,
-  folders,
-  facets,
-  refs,
-}: FilterBarData) {
-  const { open, layout, pinned, overlays } = useFilterToolbar();
-  const query = useFilterQuery();
-  const semantic = useSemanticQuery();
-  const visual = useVisualProbe();
-  const activeViewId = useViewStore().activeViewId;
-  const rows = query.rules.filter(isPredicate);
-  const activeFields = rows.map((row) =>
-    row.field === "height" ? "width" : row.field,
-  );
-  const appliedLayout = layout === "applied";
-  const fields = [
-    ...new Set(
-      (appliedLayout ? activeFields : [...pinned, ...activeFields]).map(
-        (field) => (field === "height" ? "width" : field),
-      ),
-    ),
-  ];
-  const shownOverlays: OverlayId[] = appliedLayout
-    ? [
-        ...(visual ? (["visual"] as const) : []),
-        ...(semantic ? (["semantic"] as const) : []),
-      ]
-    : [
-        ...(overlays.includes("visual") || visual ? (["visual"] as const) : []),
-        ...(overlays.includes("semantic") || semantic
-          ? (["semantic"] as const)
-          : []),
-      ];
-  const chips: FilterChipId[] = appliedLayout
-    ? [...shownOverlays, ...fields]
-    : [
-        ...fields.filter((field) => field === "color"),
-        ...shownOverlays,
-        ...fields.filter((field) => field !== "color"),
-      ];
-  const appliedChips: FilterChipId[] = [
-    ...activeFields,
-    ...(visual ? (["visual"] as const) : []),
-    ...(semantic ? (["semantic"] as const) : []),
-  ];
+function filterChoices(
+  { tags, tagGroups, folders, facets, refs }: FilterBarData,
+  rows: readonly Predicate[],
+): FilterChoices {
   const selectedSources = rows
     .filter((row) => row.field === "source")
     .flatMap((row) =>
@@ -163,7 +139,7 @@ export function FilterBarView({
   const folderNames = new Map(
     folders.map((folder) => [folder.id, folder.name]),
   );
-  const choices: FilterChoices = {
+  return {
     tags: choiceOptions(
       "tags",
       tags.map((tag) => ({ label: tag.name, value: tag.name.toLowerCase() })),
@@ -209,6 +185,45 @@ export function FilterBarView({
         : option;
     }),
   };
+}
+
+export function FilterBarView(data: FilterBarData) {
+  const { open, layout, pinned, overlays } = useFilterToolbar();
+  const query = useFilterQuery();
+  const semantic = useSemanticQuery();
+  const visual = useVisualProbe();
+  const activeViewId = useViewStore().activeViewId;
+  const rows = query.rules.filter(isPredicate);
+  const activeFields = rows.map((row) =>
+    row.field === "height" ? "width" : row.field,
+  );
+  const appliedLayout = layout === "applied";
+  const fields = [
+    ...new Set(
+      (appliedLayout ? activeFields : [...pinned, ...activeFields]).map(
+        (field) => (field === "height" ? "width" : field),
+      ),
+    ),
+  ];
+  const shownOverlays: OverlayId[] = appliedLayout
+    ? [
+        ...(visual ? (["visual"] as const) : []),
+        ...(semantic ? (["semantic"] as const) : []),
+      ]
+    : [
+        ...(overlays.includes("visual") || visual ? (["visual"] as const) : []),
+        ...(overlays.includes("semantic") || semantic
+          ? (["semantic"] as const)
+          : []),
+      ];
+  const chips: FilterChipId[] = appliedLayout
+    ? [...shownOverlays, ...fields]
+    : [
+        ...fields.filter((field) => field === "color"),
+        ...shownOverlays,
+        ...fields.filter((field) => field !== "color"),
+      ];
+  const choices = filterChoices(data, rows);
 
   const apply = (next: Predicate[]) => {
     updateLocalFilters(next);
@@ -272,7 +287,7 @@ export function FilterBarView({
   );
   return (
     <FilterToolbar.Bar
-      open={open}
+      open={appliedLayout ? chips.length > 0 : open}
       id="library-filter-toolbar"
       label="Library Filters"
       wrap={appliedLayout}
@@ -312,15 +327,6 @@ export function FilterBarView({
           />
         ),
       )}
-      {appliedLayout ? (
-        <AddFilter
-          choices={choices}
-          rows={rows}
-          onChange={apply}
-          applied={appliedChips}
-          compact={chips.length > 0}
-        />
-      ) : null}
     </FilterToolbar.Bar>
   );
 }

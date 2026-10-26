@@ -3,18 +3,15 @@ import type {
   ReasonFailure,
 } from "../../shared/query-contracts-shared";
 import type { UpdateNotice } from "../../shared/update-notice";
-import type { UpdateChannel } from "./update-channel";
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
 export interface UpdatePreferences {
   autoInstall: boolean;
-  channel: UpdateChannel;
 }
 
 export interface UpdaterPort {
   autoDownload(): boolean;
-  setChannel(channel: UpdateChannel): void;
   setAutoDownload(value: boolean): void;
   setAutoInstallOnQuit(value: boolean): void;
   onAvailable(listener: (version: string) => void): void;
@@ -43,32 +40,20 @@ function message(error: Error | null, fallback: string): string {
 
 export function createUpdaterCoordinator(dependencies: UpdaterDependencies) {
   let latestNotice: UpdateNotice | null = null;
-  let appliedChannel: UpdateChannel | null = null;
 
   function publish(notice: UpdateNotice): void {
     latestNotice = notice;
     dependencies.publish(notice);
   }
 
-  async function applyPrefsTo(updater: UpdaterPort): Promise<boolean> {
-    const { autoInstall, channel } = await dependencies.loadPreferences();
-    const changed = appliedChannel !== null && appliedChannel !== channel;
-    appliedChannel = channel;
-    updater.setChannel(channel);
+  async function applyPrefsTo(updater: UpdaterPort): Promise<void> {
+    const { autoInstall } = await dependencies.loadPreferences();
     updater.setAutoDownload(autoInstall);
-    return changed;
   }
 
   async function applyPrefs(): Promise<void> {
     if (!dependencies.isPackaged()) return;
-    const updater = await dependencies.loadUpdater();
-    if (!(await applyPrefsTo(updater))) return;
-    void updater.check().catch((error) => {
-      dependencies.warn(
-        "[pond updater] channel check failed",
-        error instanceof Error ? error : new Error("Unknown updater error"),
-      );
-    });
+    await applyPrefsTo(await dependencies.loadUpdater());
   }
 
   async function start(): Promise<void> {
@@ -77,8 +62,6 @@ export function createUpdaterCoordinator(dependencies: UpdaterDependencies) {
     try {
       await applyPrefsTo(updater);
     } catch (error) {
-      appliedChannel = "stable";
-      updater.setChannel("stable");
       updater.setAutoDownload(false);
       dependencies.warn(
         "[pond updater] prefs apply failed",

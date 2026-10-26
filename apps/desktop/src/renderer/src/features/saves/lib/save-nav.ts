@@ -1,13 +1,8 @@
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
+import { ensureSaves } from "@/features/saves/lib/ensure-saves";
 import {
   getLastListPath,
   rememberListPath,
 } from "@/features/saves/lib/list-path";
-import {
-  cardMedia,
-  transitionSave,
-  viewerMedia,
-} from "@/features/saves/lib/save-transition";
 import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { primarySelection, selection } from "@/features/saves/state/selection";
 import { getAppRouter } from "@/shared/lib/app-router";
@@ -26,20 +21,20 @@ export function openSave(id: string): void {
   const path = `/save/${encodeURIComponent(id)}`;
   primarySelection.set(id);
   selection.setCursor(id);
-  saveLibraryBridge.openSaveDetails(id);
   const router = getAppRouter();
   if (!router) return;
   const { pathname, searchStr } = router.state.location;
   rememberListPath(pathname, searchStr);
-  if (saveIdFromPath(pathname) !== null) {
-    router.history.push(path);
-    return;
-  }
-  transitionSave({
-    router,
-    path,
-    source: cardMedia(id),
-    target: viewerMedia,
+  router.history.push(path);
+}
+
+/** Drops the step when the viewer has already moved on, so a slow page load cannot jump back. */
+export function stepSave(id: string, delta: number): void {
+  void resultNavigation.next(id, delta).then(async (next) => {
+    if (!next || selection.getCursor() !== id) return;
+    await ensureSaves([next]);
+    if (selection.getCursor() !== id) return;
+    openSave(next);
   });
 }
 
@@ -51,26 +46,13 @@ export function closeSave(): void {
   const reveal = cursor
     ? () => resultNavigation.reveal(cursor, { focus: true })
     : undefined;
-  if (saveIdFromPath(router.state.location.pathname) === null) {
-    router.history.push(getLastListPath());
-    void reveal?.();
-    return;
-  }
-  transitionSave({
-    router,
-    path: getLastListPath(),
-    source: viewerMedia(),
-    target: () => (cursor ? cardMedia(cursor) : null),
-    settle: reveal,
-  });
+  router.history.push(getLastListPath());
+  void reveal?.();
 }
 
 export function syncPrimaryFromPath(pathname: string): void {
   const id = saveIdFromPath(pathname);
   const primary = id ?? selection.getCursor();
-  if (id) saveLibraryBridge.inspectSave(id);
-  else if (primary) saveLibraryBridge.setInspectorSaveId(primary);
-  else saveLibraryBridge.inspectSave(null);
   if (primarySelection.get() !== primary) primarySelection.set(primary);
   rememberListPath(pathname);
 }

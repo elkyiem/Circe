@@ -1,29 +1,39 @@
-import {
-  IconCopy,
-  IconDots,
-  IconDownload,
-  IconPencil,
-  IconTrash,
-} from "@pond/icons";
-import { Dialog, Menu, Tooltip } from "@pond/ui";
+import { IconBroom, IconCopy, IconDots, IconDownload } from "@pond/icons";
+import { Dialog, Menu, type MenuItemSpec, Tooltip } from "@pond/ui";
 import type { AssistantMessage } from "@shared/assistant";
 import { conversationMarkdown } from "@shared/conversation-markdown";
+import { DEFAULT_FISH_NAME } from "@shared/fish-contracts";
+import { fishPaneItems, useFish } from "@/features/fish";
 import { errorCopy } from "@/shared/lib/error-copy";
 import { notify } from "@/shared/lib/toast";
-import { assistant } from "../../state/assistant";
+import { assistant, useAssistant } from "../../state/assistant";
+
+export function FishChatActions() {
+  const state = useAssistant();
+  const target = useFish(state.fishId);
+  return (
+    <ChatActions
+      chatId={state.chatId}
+      title={target?.name ?? DEFAULT_FISH_NAME}
+      messages={state.messages}
+      disabled={state.busy || state.loading}
+      items={target ? fishPaneItems(target) : undefined}
+    />
+  );
+}
 
 export function ChatActions({
   chatId,
   title,
   messages,
   disabled,
-  onRename,
+  items = [],
 }: {
   chatId: string | null;
   title: string | null;
   messages: AssistantMessage[];
   disabled: boolean;
-  onRename: () => void;
+  items?: MenuItemSpec[];
 }) {
   async function transfer(kind: "copy" | "export") {
     if (!chatId) return;
@@ -56,14 +66,8 @@ export function ChatActions({
   }
   return (
     <Menu.Root>
-      <Tooltip label="Chat Actions" side="bottom">
-        <Menu.Trigger
-          icon
-          size="sm"
-          variant="ghost"
-          aria-label="Chat Actions"
-          disabled={disabled || (!chatId && !messages.length)}
-        >
+      <Tooltip label="Fish Actions" side="bottom">
+        <Menu.Trigger icon size="sm" variant="ghost" aria-label="Fish Actions">
           <IconDots />
         </Menu.Trigger>
       </Tooltip>
@@ -72,12 +76,6 @@ export function ChatActions({
           <Menu.Popup>
             <Menu.Items
               items={[
-                {
-                  label: "Rename Chat",
-                  icon: <IconPencil />,
-                  disabled: disabled || !chatId,
-                  onClick: onRename,
-                },
                 {
                   label: "Copy Conversation",
                   icon: <IconCopy />,
@@ -92,21 +90,25 @@ export function ChatActions({
                 },
                 { type: "separator" },
                 {
-                  label: "Delete Chat",
-                  icon: <IconTrash />,
+                  label: "Clear Conversation",
+                  icon: <IconBroom />,
                   variant: "destructive",
                   disabled: disabled || !chatId,
                   onClick: () => {
                     if (!chatId) return;
                     Dialog.confirm({
-                      title: "Delete Chat",
+                      title: "Clear Conversation",
                       description:
-                        "This permanently deletes the conversation. Your Saves stay in your library.",
-                      confirmLabel: "Delete",
+                        "This permanently deletes every message. Your Saves stay in your Library.",
+                      confirmLabel: "Clear",
+                      confirmVariant: "destructive",
                       onConfirm: () => assistant.deleteChat(chatId),
                     });
                   },
                 },
+                ...(items.length
+                  ? [{ type: "separator" } as const, ...items]
+                  : []),
               ]}
             />
           </Menu.Popup>

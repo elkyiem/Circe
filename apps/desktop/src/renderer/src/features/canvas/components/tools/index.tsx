@@ -217,7 +217,9 @@ export function Tools({
                   if (node) buttons.current.set(mode, node);
                   else buttons.current.delete(mode);
                 }}
-                render={<Button icon size="sm" variant="text" />}
+                render={
+                  <Button icon size="sm" variant="text" rounding="full" />
+                }
                 className={styles.mode}
                 data-pressed={tool === mode || undefined}
                 aria-label={label}
@@ -230,7 +232,7 @@ export function Tools({
           ))}
           <AddSaves onCanvas={onCanvas} onAdd={onAddSaves}>
             <Toolbar.Button
-              render={<Button icon size="sm" variant="text" />}
+              render={<Button icon size="sm" variant="text" rounding="full" />}
               className={styles.mode}
             >
               <IconImages />
@@ -260,6 +262,7 @@ export function Tools({
               {PENS.map(({ mode, label, Icon }) => (
                 <Tooltip key={mode} label={label} side="top">
                   <Button
+                    rounding="full"
                     icon
                     size="sm"
                     variant="ghost"
@@ -278,6 +281,7 @@ export function Tools({
             <fieldset className={styles.choices} aria-label="Placement">
               <Tooltip label="Keep Selected" side="top">
                 <Button
+                  rounding="full"
                   icon
                   size="sm"
                   variant="ghost"

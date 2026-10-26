@@ -10,7 +10,7 @@ export function SourcesEmpty() {
   return (
     <Empty.Root>
       <Empty.Media>
-        <IconNodes3Fill />
+        <IconNodes3Fill size={32} />
       </Empty.Media>
       <Empty.Title>No sources yet</Empty.Title>
       <Empty.Description>

@@ -302,16 +302,6 @@ export function inject(): void {
   if (window.__pondThreadsInjected) return;
   window.__pondThreadsInjected = true;
 
-  const recent = new Map<string, number>();
-
-  function emit(url: string, trigger: string): void {
-    const now = Date.now();
-    const prev = recent.get(url);
-    if (prev && now - prev < 4000) return;
-    recent.set(url, now);
-    capture(url, trigger);
-  }
-
   /** Save is a portaled menu item; keep the permalink from the last click that was still inside the post. */
   let pendingPostUrl: string | null = null;
 
@@ -323,12 +313,12 @@ export function inject(): void {
         if (nearby) pendingPostUrl = nearby;
         if (isSaveClick(ev.target)) {
           const url = nearby ?? pendingPostUrl ?? postUrlFromPath();
-          if (url) emit(url, "threads:save");
+          if (url) capture(url, "threads:save");
           return;
         }
         if (!isLikeClick(ev.target)) return;
         const url = nearby ?? pendingPostUrl ?? postUrlFromPath();
-        if (url) emit(url, "threads:like");
+        if (url) capture(url, "threads:like");
       } catch (e) {
         log("warn", "threads dom-click hook error", String(e));
       }
@@ -348,12 +338,12 @@ export function inject(): void {
       const bodyStr = await req.readBody();
       if (isLikeMutation(req.getHeader, req.url, bodyStr)) {
         const url = postUrlFromSaveRequest(req.url, bodyStr) ?? pendingPostUrl;
-        if (url) emit(url, "threads:like");
+        if (url) capture(url, "threads:like");
         return;
       }
       if (!isSaveMutation(req.getHeader, req.url, bodyStr)) return;
       const url = postUrlFromSaveRequest(req.url, bodyStr) ?? pendingPostUrl;
-      if (url) emit(url, "threads:graphql-save");
+      if (url) capture(url, "threads:graphql-save");
     },
   });
 }

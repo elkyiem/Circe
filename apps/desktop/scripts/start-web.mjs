@@ -9,6 +9,11 @@ const sandbox = resolve(
 mkdirSync(sandbox, { recursive: true });
 const runtimeEnv = { ...process.env };
 delete runtimeEnv.ELECTRON_RUN_AS_NODE;
+for (const address of [
+  runtimeEnv.PORTLESS_URL,
+  runtimeEnv.PORTLESS_TAILSCALE_URL,
+])
+  if (address) console.info(`Iris: ${address}`);
 const child = spawn(
   electron,
   [".", "--enable-logging", "--use-mock-keychain"],

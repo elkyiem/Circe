@@ -10,7 +10,7 @@
     radial-gradient(circle at 50% 20%, rgb(255 255 255 / 90%), transparent 46%),
     light-dark(#e8e0d2, #26231f);
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
 }
 
 .epub img {

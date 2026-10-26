@@ -35,15 +35,23 @@
   transform: translateX(var(--toast-swipe-movement-x, 0px))
     translateY(var(--toast-swipe-movement-y, 0px));
   transition:
-    transform var(--ds-duration-medium) var(--ds-easing-decelerate),
+    transform var(--ds-duration-bounce) var(--ds-easing-bounce),
     opacity var(--ds-duration-snap) var(--ds-easing-standard);
   -webkit-app-region: no-drag;
 
-  &[data-starting-style],
+  &[data-starting-style] {
+    opacity: 0;
+    transform: translateX(var(--toast-swipe-movement-x, 0px))
+      translateY(calc(var(--toast-swipe-movement-y, 0px) + 16px));
+  }
+
   &[data-ending-style] {
     opacity: 0;
     transform: translateX(var(--toast-swipe-movement-x, 0px))
       translateY(calc(var(--toast-swipe-movement-y, 0px) + 8px));
+    transition:
+      transform var(--ds-duration-medium) var(--ds-easing-decelerate),
+      opacity var(--ds-duration-snap) var(--ds-easing-standard);
   }
 
   &[data-limited] {

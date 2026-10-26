@@ -1,0 +1,19 @@
+{
+  "name": "@pond/alfred",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Search and save to your Pond library from Alfred.",
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "pack:workflow": "pnpm build && node scripts/pack.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

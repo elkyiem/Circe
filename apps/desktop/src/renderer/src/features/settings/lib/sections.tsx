@@ -86,7 +86,7 @@ export const SECTION_CONFIGS = new Map<string, SectionConfig>([
       component: AgentSection,
       title: "Providers",
       description:
-        "Connect the AI providers Assistant uses with your keys or a local host you run.",
+        "Connect the AI providers your fish use with your keys or a local host you run.",
       keywords: [
         "ai",
         "agent",
@@ -108,7 +108,7 @@ export const SECTION_CONFIGS = new Map<string, SectionConfig>([
     {
       component: ModelsSection,
       title: "Models",
-      description: "Choose which models appear in Assistant.",
+      description: "Choose which models your fish can use.",
       keywords: [
         "ai",
         "agent",
@@ -126,7 +126,7 @@ export const SECTION_CONFIGS = new Map<string, SectionConfig>([
     {
       component: PersonalizationSection,
       title: "Personalization",
-      description: "Give Assistant context about you and how you like replies.",
+      description: "Give your fish context about you and how you like replies.",
       keywords: [
         "ai",
         "agent",

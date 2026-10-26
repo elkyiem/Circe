@@ -2,6 +2,7 @@ import { IconCode, IconEye } from "@pond/icons";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { ViewerToolbarGroups } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import { type MhtmlPage, parseMhtml } from "./mhtml";
 import { sanitizeOfflineHtml } from "./sanitize";
 import styles from "./styles.module.css";
@@ -12,7 +13,8 @@ interface SafeWebViewerProps {
   size: number;
   onUnavailable: () => void;
   toolbarStart?: ReactNode;
-  toolbarEnd?: ReactNode;
+  toolbarActions?: ReactNode;
+  toolbarNavigation?: ReactNode;
 }
 
 const MAX_HTML_BYTES = 10 * 1024 ** 2;
@@ -23,7 +25,8 @@ export function SafeWebViewer({
   size,
   onUnavailable,
   toolbarStart,
-  toolbarEnd,
+  toolbarActions,
+  toolbarNavigation,
 }: SafeWebViewerProps) {
   const [source, setSource] = useState<string | null>(null);
   const [pages, setPages] = useState<MhtmlPage[]>([]);
@@ -85,22 +88,27 @@ export function SafeWebViewer({
           label="Web archive"
           start={toolbarStart}
           center={
-            <>
-              <ViewerHud.Tool
-                label="Rendered"
-                pressed={mode === "rendered"}
-                onClick={() => setMode("rendered")}
-              >
-                <IconEye />
-              </ViewerHud.Tool>
-              <ViewerHud.Tool
-                label="Source"
-                pressed={mode === "source"}
-                onClick={() => setMode("source")}
-              >
-                <IconCode />
-              </ViewerHud.Tool>
-            </>
+            <ViewerToolbarGroups
+              controls={
+                <>
+                  <ViewerHud.Tool
+                    label="Rendered"
+                    pressed={mode === "rendered"}
+                    onClick={() => setMode("rendered")}
+                  >
+                    <IconEye />
+                  </ViewerHud.Tool>
+                  <ViewerHud.Tool
+                    label="Source"
+                    pressed={mode === "source"}
+                    onClick={() => setMode("source")}
+                  >
+                    <IconCode />
+                  </ViewerHud.Tool>
+                </>
+              }
+              actions={toolbarActions}
+            />
           }
           end={
             <>
@@ -119,7 +127,7 @@ export function SafeWebViewer({
                     </ViewerHud.Tool>
                   ))
                 : null}
-              {toolbarEnd}
+              {toolbarNavigation}
             </>
           }
         />

@@ -1,5 +1,6 @@
-import { IconTriangleWarning } from "@pond/icons";
 import { Button } from "@pond/ui";
+import { ErrorNotice } from "@pond/ui/error-notice";
+import { openSettings } from "@/shared/lib/open-settings";
 import styles from "./styles.module.css";
 
 const OPENAI_BILLING_URL =
@@ -8,11 +9,10 @@ const OPENAI_BILLING_URL =
 export interface ResponseErrorCopy {
   title: string;
   description: string;
-  action?: {
-    label: string;
-    url: string;
-  };
+  action?: { label: string; url: string } | { label: string; settings: true };
 }
+
+const OPEN_PROVIDERS = { label: "Open Providers", settings: true } as const;
 
 export function responseErrorCopy(error: string): ResponseErrorCopy {
   if (/no credits remaining|insufficient_quota/i.test(error)) {
@@ -35,33 +35,41 @@ export function responseErrorCopy(error: string): ResponseErrorCopy {
   if (/invalid api key|incorrect api key|authentication/i.test(error)) {
     return {
       title: "Couldn't authenticate with the model provider",
-      description: "Check your API key in Assistant Settings, then try again.",
+      description: "Check your API key in Providers, then try again.",
+      action: OPEN_PROVIDERS,
     };
   }
   return {
     title: "Couldn't finish this response",
-    description: "Check your Assistant provider settings, then try again.",
+    description: "Check your provider in Providers, then try again.",
+    action: OPEN_PROVIDERS,
   };
 }
 
 export function ResponseError({ error }: { error: string }) {
   const copy = responseErrorCopy(error);
+  const action = copy.action;
   return (
-    <div className={styles.notice} role="alert">
-      <IconTriangleWarning className={styles.icon} />
-      <div className={styles.content}>
-        <span className={styles.title}>{copy.title}</span>
-        <span className={styles.description}>{copy.description}</span>
-      </div>
-      {copy.action ? (
-        <Button
-          variant="secondary"
-          size="xs"
-          onClick={() => void window.pond.openExternal(copy.action?.url ?? "")}
-        >
-          {copy.action.label}
-        </Button>
-      ) : null}
-    </div>
+    <ErrorNotice
+      className={styles.notice}
+      title={copy.title}
+      actions={
+        action ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() =>
+              "url" in action
+                ? void window.pond.openExternal(action.url)
+                : openSettings("models")
+            }
+          >
+            {action.label}
+          </Button>
+        ) : null
+      }
+    >
+      {copy.description}
+    </ErrorNotice>
   );
 }

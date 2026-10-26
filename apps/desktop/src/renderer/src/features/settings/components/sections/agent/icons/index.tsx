@@ -1,5 +1,6 @@
 import type { AssistantProvider } from "@shared/assistant";
 import anthropic from "@/assets/logos/providers/anthropic.webp";
+import apple from "@/assets/logos/providers/apple.webp";
 import azure from "@/assets/logos/providers/azure.webp";
 import baseten from "@/assets/logos/providers/baseten.webp";
 import cerebras from "@/assets/logos/providers/cerebras.webp";
@@ -40,6 +41,7 @@ const logos = {
   deepseek,
   "opencode-go": opencodeGo,
   openrouter,
+  apple,
   ollama,
   lmstudio,
 } satisfies Record<AssistantProvider, string>;

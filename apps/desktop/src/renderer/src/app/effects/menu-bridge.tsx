@@ -1,13 +1,16 @@
 import { isSource } from "@pond/schema/sources";
 import { Dialog } from "@pond/ui";
 import { isBlankDocumentKind } from "@shared/blank-documents";
+import { DEFAULT_FISH_ID } from "@shared/fish-contracts";
 import { useEffect } from "react";
+import { fishIdFromPath, fishPath } from "@/features/fish";
 import {
   createBlankDocument,
   createNote,
   findDuplicates,
   importBookmarks,
   importClipboard,
+  importDataExport,
   importEagle,
   importFilePaths,
   importMymind,
@@ -55,7 +58,7 @@ import {
   untrashSave,
 } from "@/features/saves/lib/actions";
 import { confirmEmptyTrash } from "@/features/saves/lib/empty-trash";
-import { closeSave, openSave } from "@/features/saves/lib/save-nav";
+import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
 import { trashSelection } from "@/features/saves/lib/selection";
 import { inspect } from "@/features/saves/state/inspect";
 import { pool } from "@/features/saves/state/pool";
@@ -119,9 +122,10 @@ export function MenuBridge() {
           return;
 
         case "view.inspector.toggle": {
-          const openId = primarySelection.get();
-          if (openId) {
-            closeSave();
+          const pathname = getAppRouter()?.state.location.pathname ?? "";
+          const openId = saveIdFromPath(pathname);
+          if (openId || fishIdFromPath(pathname)) {
+            libraryChrome.toggleDetails();
           } else {
             const anchor = selection.getAnchor();
             if (anchor) openSave(anchor);
@@ -180,7 +184,7 @@ export function MenuBridge() {
           return;
 
         case "nav.agent":
-          getAppRouter()?.history.push("/assistant");
+          getAppRouter()?.history.push(fishPath(DEFAULT_FISH_ID));
           return;
 
         case "nav.trash":
@@ -208,10 +212,6 @@ export function MenuBridge() {
 
         case "view.sidebar.toggle":
           libraryChrome.toggleSidebar();
-          return;
-
-        case "view.agent.toggle":
-          libraryChrome.toggleAgent();
           return;
 
         case "view.grayscale":
@@ -323,6 +323,10 @@ export function MenuBridge() {
 
         case "library.import-mymind":
           void runNewAction(importMymind);
+          return;
+
+        case "library.import-data-export":
+          void runNewAction(importDataExport);
           return;
 
         case "library.import-page-assets":

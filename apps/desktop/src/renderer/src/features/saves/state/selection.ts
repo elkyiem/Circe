@@ -117,10 +117,6 @@ export const selection = {
   },
 };
 
-export function useSelectedSaveIds(): readonly string[] {
-  return useSelector(selectionStore, (s) => s.snapshot);
-}
-
 export function useSelectionSize(): number {
   return useSelector(selectionStore, (s) => s.ids.size);
 }

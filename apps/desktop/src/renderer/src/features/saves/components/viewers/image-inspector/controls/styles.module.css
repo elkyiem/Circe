@@ -7,10 +7,8 @@
   }
 }
 
-.slide-navigation {
-  display: flex;
-  gap: 2px;
-  align-items: center;
+.zoom {
+  margin-inline: auto;
 }
 
 .gif {

@@ -2,7 +2,7 @@
   min-width: 0;
   font-size: inherit;
   line-height: 1.5;
-  color: var(--ds-gray-12);
+  color: inherit;
   overflow-wrap: anywhere;
 }
 
@@ -88,7 +88,7 @@
 
 .response :is(ul, ol) > li::marker {
   font-weight: var(--ds-weight-xl);
-  color: var(--ds-gray-12);
+  color: inherit;
 }
 
 .response :global(.contains-task-list) {
@@ -125,7 +125,7 @@
 
 .response blockquote {
   padding-inline-start: 16px;
-  color: var(--ds-gray-12);
+  color: inherit;
   border: 0;
   border-left: 2px solid var(--ds-gray-6);
 }
@@ -134,7 +134,7 @@
   padding: 2px 4px;
   font-family: var(--ds-font-mono);
   font-size: 0.875em;
-  background: var(--ds-gray-3);
+  background: var(--ds-gray-a3);
   border-radius: var(--ds-radius-xs);
 }
 
@@ -142,7 +142,7 @@
   padding: 14px;
   overflow: auto;
   white-space: pre;
-  background: var(--ds-gray-2);
+  background: var(--ds-gray-a2);
   border: 0;
   border-radius: var(--ds-radius-md);
 }

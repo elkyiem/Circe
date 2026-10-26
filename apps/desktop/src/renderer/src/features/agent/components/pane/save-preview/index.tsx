@@ -32,12 +32,14 @@ export function SourceThumbnail({
   previewUrl,
   source,
   size,
+  fit = "square",
   visual = false,
 }: {
   id: string;
   previewUrl?: string;
   source?: AssistantSource;
   size?: "compact";
+  fit?: "square" | "natural";
   visual?: boolean;
 }) {
   const save = useSelector(savesStore, (state) => state.byId.get(id));
@@ -68,6 +70,7 @@ export function SourceThumbnail({
     <span
       className={styles.thumbnail}
       data-size={size}
+      data-fit={fit === "square" ? undefined : fit}
       data-visual={visual || undefined}
       style={thumbnailStyle}
       aria-hidden

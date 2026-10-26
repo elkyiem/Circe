@@ -89,7 +89,7 @@
   margin-left: 4px;
   opacity: 0;
   transition:
-    transform var(--ds-duration-snap) var(--ds-easing-standard),
+    transform var(--ds-duration-bounce) var(--ds-easing-bounce),
     opacity var(--ds-duration-fast) var(--ds-easing-standard);
 }
 
@@ -238,6 +238,19 @@ button.label:hover {
       box-shadow: var(--ds-shadow-sm);
     }
   }
+
+  &[data-size="lg"] {
+    height: auto;
+    min-height: 44px;
+    padding: 6px;
+  }
+
+  &[data-size="lg"] .icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 10px;
+    overflow: visible;
+  }
 }
 
 .item-label {
@@ -245,6 +258,17 @@ button.label:hover {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-detail {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-md);
+  color: var(--ds-gray-9);
   white-space: nowrap;
 }
 

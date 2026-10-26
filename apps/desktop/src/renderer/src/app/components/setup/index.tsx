@@ -3,6 +3,7 @@ import { useBootReady, useSavePaging } from "@/features/saves/hooks/use-saves";
 import { loadPrefs } from "@/shared/state/prefs";
 import {
   type SetupProfile,
+  type SetupStart,
   setupFlow,
   useSetupFlow,
 } from "@/shared/state/setup";
@@ -11,13 +12,18 @@ import {
   parentFolder,
   SETUP_VERSION,
   type Session,
+  STEP_IDS,
 } from "./model";
+import { setupResume } from "./resume";
 
 const SetupDialog = lazy(() =>
   import("./dialog").then((module) => ({ default: module.SetupDialog })),
 );
 
-async function startSession(profile: SetupProfile): Promise<Session> {
+async function startSession(
+  profile: SetupProfile,
+  start: SetupStart | null,
+): Promise<Session> {
   const [prefs, info] = await Promise.all([
     loadPrefs(),
     window.pond.query("library.info", {}),
@@ -34,7 +40,7 @@ async function startSession(profile: SetupProfile): Promise<Session> {
     library,
     initial: choices,
     choices,
-    index: 0,
+    index: start ? Math.max(0, STEP_IDS.indexOf(start)) : 0,
     direction: 1,
     busy: false,
     error: "",
@@ -50,6 +56,10 @@ function useLaunchCheck(): void {
   useEffect(() => {
     if (!bootReady || launchChecked) return;
     launchChecked = true;
+    if (setupResume.take()) {
+      setupFlow.open(total > 0 || loaded > 0 ? "existing" : "new", "import");
+      return;
+    }
     void loadPrefs()
       .then((prefs) => {
         if (prefs.setup.version >= SETUP_VERSION) return;
@@ -67,14 +77,14 @@ function useLaunchCheck(): void {
 
 export function SetupHost() {
   useLaunchCheck();
-  const { open, profile } = useSetupFlow();
+  const { open, profile, start } = useSetupFlow();
   const { total } = useSavePaging();
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    startSession(profile).then(
+    startSession(profile, start).then(
       (next) => {
         if (!cancelled) setSession(next);
       },
@@ -85,7 +95,7 @@ export function SetupHost() {
     return () => {
       cancelled = true;
     };
-  }, [open, profile]);
+  }, [open, profile, start]);
 
   if (!session) return null;
   return (

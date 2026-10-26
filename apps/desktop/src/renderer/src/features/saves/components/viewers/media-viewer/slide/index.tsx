@@ -6,7 +6,7 @@ import { ImageInspector } from "@/features/saves/components/viewers/image-inspec
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { OriginalFileActions } from "@/features/saves/components/viewers/original-file-actions";
 import { ViewerFallback } from "@/features/saves/components/viewers/viewer-fallback";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import {
   type ViewerNavigation,
   ViewerNavigationControls,
@@ -218,20 +218,9 @@ function VideoSlide({
             <ChromePortal slot="top">
               <ViewerHud.Bar
                 label="Video"
-                start={<ViewerResultCount saveId={saveId} />}
-                end={
-                  <ViewerToolbarGroups
-                    actions={actions}
-                    edits={edits}
-                    navigation={
-                      slideNavigation && slideNavigation.count > 1 ? (
-                        <ViewerNavigationControls
-                          navigation={slideNavigation}
-                        />
-                      ) : null
-                    }
-                  />
-                }
+                start={<ViewerSaveNav saveId={saveId} />}
+                center={<ViewerToolbarGroups actions={actions} edits={edits} />}
+                end={<ViewerNavigationControls navigation={slideNavigation} />}
               />
             </ChromePortal>
           ) : null

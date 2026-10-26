@@ -7,12 +7,11 @@ import {
   splitPrefsPatch,
 } from "./prefs-scope";
 
-it("keeps All, Assistant, and Trash visible in the sidebar", () => {
+it("keeps All and Trash visible in the sidebar", () => {
   const prefs = PrefsSchema.parse({
     sidebar: {
       destinations: {
         all: false,
-        assistant: false,
         trash: false,
         random: false,
       },
@@ -20,7 +19,6 @@ it("keeps All, Assistant, and Trash visible in the sidebar", () => {
   });
 
   expect(prefs.sidebar.destinations.all).toBe(true);
-  expect(prefs.sidebar.destinations.assistant).toBe(true);
   expect(prefs.sidebar.destinations.trash).toBe(true);
   expect(prefs.sidebar.destinations.random).toBe(false);
 });
@@ -37,13 +35,25 @@ it("completes saved destination order", () => {
     "downloads",
     "all",
     "uncategorized",
-    "assistant",
     "untagged",
     "recentlyAdded",
     "recentlyUsed",
     "tags",
     "random",
   ]);
+});
+
+it("keeps a saved sidebar layout that names a retired destination", () => {
+  const prefs = PrefsSchema.parse({
+    sidebar: {
+      order: ["trash", "assistant", "all"],
+      badgeOverrides: { assistant: "none", trash: "none" },
+    },
+  });
+
+  expect(prefs.sidebar.order.slice(0, 2)).toEqual(["trash", "sources"]);
+  expect(prefs.sidebar.order).not.toContain("assistant");
+  expect(prefs.sidebar.badgeOverrides).toEqual({ trash: "none" });
 });
 
 describe("splitPrefsPatch", () => {
@@ -124,6 +134,18 @@ describe("mergePondSlice (sync account registry)", () => {
     });
     expect(next.sync.accounts).toEqual({ [account.id]: account });
     expect(next.sync.cron).toEqual({ enabled: false, intervalHours: 12 });
+  });
+
+  it("drops accounts for a source Pond doesn't know", () => {
+    const prefs = PrefsSchema.parse({
+      sync: {
+        accounts: {
+          [account.id]: account,
+          "02GONE": { ...account, id: "02GONE", source: "gone" },
+        },
+      },
+    });
+    expect(prefs.sync.accounts).toEqual({ [account.id]: account });
   });
 });
 

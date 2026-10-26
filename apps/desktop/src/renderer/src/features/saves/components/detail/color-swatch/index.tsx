@@ -96,10 +96,11 @@ export function ColorSwatch({
         icon
         size="xs"
         variant="ghost"
+        rounding="full"
         title={color}
         aria-label={copied ? `Copied ${color}` : `Color ${color}`}
       >
-        <Chip.Swatch color={color} />
+        <Chip.Swatch color={color} selected={primary} />
       </Menu.Trigger>
     </SpecMenu>
   );

@@ -12,6 +12,7 @@ export function Zoom() {
       <fieldset className={styles.zoom} aria-label="Zoom">
         <Tooltip label="Zoom Out" side="bottom">
           <Button
+            rounding="full"
             icon
             size="xs"
             variant="text"
@@ -27,6 +28,7 @@ export function Zoom() {
           side="bottom"
         >
           <Button
+            rounding="full"
             size="xs"
             variant="text"
             className={styles.level}
@@ -38,6 +40,7 @@ export function Zoom() {
         </Tooltip>
         <Tooltip label="Zoom In" side="bottom">
           <Button
+            rounding="full"
             icon
             size="xs"
             variant="text"

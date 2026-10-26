@@ -1,12 +1,15 @@
 import {
   isLockedSidebarDestination,
+  SIDEBAR_SECTIONS,
   type SidebarDestination,
+  type SidebarSection,
 } from "@pond/schema";
 import { Button, Checkbox, Dialog, Switch } from "@pond/ui";
 import { useId } from "react";
 import {
   SIDEBAR_DESTINATION_GROUPS,
   SIDEBAR_DESTINATION_LABELS,
+  SIDEBAR_SECTION_LABELS,
 } from "@/features/settings/lib/sidebar-customization";
 import { usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
@@ -26,6 +29,9 @@ export function SidebarCustomizationDialog({
       destinations: { ...sidebar.destinations, [destination]: visible },
     });
 
+  const setSectionVisible = (section: SidebarSection, visible: boolean) =>
+    void patch({ sections: { ...sidebar.sections, [section]: visible } });
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -40,7 +46,7 @@ export function SidebarCustomizationDialog({
             </Dialog.Description>
             {SIDEBAR_DESTINATION_GROUPS.map((group) => (
               <fieldset className={styles.card} key={group.label}>
-                <legend className={styles.heading}>Show in Sidebar</legend>
+                <legend className={styles.heading}>{group.label}</legend>
                 <div className={styles.grid}>
                   {sidebar.order
                     .filter(
@@ -72,6 +78,31 @@ export function SidebarCustomizationDialog({
                 </div>
               </fieldset>
             ))}
+            <fieldset className={styles.card}>
+              <legend className={styles.heading}>Sections</legend>
+              <div className={styles.grid}>
+                {SIDEBAR_SECTIONS.map((section) => (
+                  <label
+                    className={styles.option}
+                    htmlFor={`${id}-${section}`}
+                    key={section}
+                  >
+                    <Checkbox.Root
+                      id={`${id}-${section}`}
+                      size="sm"
+                      checked={sidebar.sections[section]}
+                      disabled={!loaded}
+                      onCheckedChange={(visible) =>
+                        setSectionVisible(section, visible)
+                      }
+                    >
+                      <Checkbox.Indicator />
+                    </Checkbox.Root>
+                    <span>{SIDEBAR_SECTION_LABELS[section]}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div className={styles.card} data-row>
               <span className={styles.heading} id={`${id}-count`}>
                 Show Count

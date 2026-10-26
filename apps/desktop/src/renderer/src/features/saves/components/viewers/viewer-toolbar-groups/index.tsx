@@ -12,27 +12,28 @@ export interface ViewerNavigation {
 }
 
 interface ViewerToolbarGroupsProps {
+  controls?: ReactNode;
   actions?: ReactNode;
   edits?: ReactNode;
   view?: ReactNode;
-  navigation?: ReactNode;
 }
 
 export function ViewerToolbarGroups({
+  controls,
   actions,
   edits,
   view,
-  navigation,
 }: ViewerToolbarGroupsProps) {
+  const rest = actions || edits || view;
   return (
     <>
+      {controls}
+      {controls && rest ? (
+        <Tray.Separator role="separator" aria-hidden={false} />
+      ) : null}
       {actions}
       {edits}
       {view}
-      {navigation ? (
-        <Tray.Separator role="separator" aria-hidden={false} />
-      ) : null}
-      {navigation}
     </>
   );
 }
@@ -42,23 +43,30 @@ export function ViewerNavigationControls({
 }: {
   navigation?: ViewerNavigation;
 }) {
-  if (!navigation || navigation.count <= 1) return null;
+  const index = navigation?.index ?? 0;
+  const count = Math.max(navigation?.count ?? 1, 1);
+  const single = count <= 1;
 
   return (
     <>
       <ViewerHud.Tool
         label="Previous Slide"
         shortcut={<ShortcutKeys id="viewer.prev-slide" />}
-        disabled={navigation.index <= 0}
-        onClick={navigation.onPrevious}
+        disabled={index <= 0}
+        onClick={() => navigation?.onPrevious()}
       >
         <IconArrowLeft />
       </ViewerHud.Tool>
+      {single ? null : (
+        <ViewerHud.Scale>
+          {index + 1} / {count}
+        </ViewerHud.Scale>
+      )}
       <ViewerHud.Tool
         label="Next Slide"
         shortcut={<ShortcutKeys id="viewer.next-slide" />}
-        disabled={navigation.index >= navigation.count - 1}
-        onClick={navigation.onNext}
+        disabled={index >= count - 1}
+        onClick={() => navigation?.onNext()}
       >
         <IconArrowRight />
       </ViewerHud.Tool>

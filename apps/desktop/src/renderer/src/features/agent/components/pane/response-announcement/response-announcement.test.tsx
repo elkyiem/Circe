@@ -21,13 +21,13 @@ it("announces response boundaries without adding a persistent visual control", a
     expect(host.querySelector('[role="status"]')?.textContent).toBe("");
     await render({ running: false, responseId: "new" });
     expect(host.querySelector('[role="status"]')?.textContent).toBe(
-      "Assistant response complete.",
+      "Response complete.",
     );
     expect(host.querySelector("button")).toBeNull();
     expect(document.activeElement).toBe(document.body);
     await render({ running: false, responseId: "new", stopped: true });
     expect(host.querySelector('[role="status"]')?.textContent).toBe(
-      "Assistant response stopped.",
+      "Response stopped.",
     );
     await render({
       running: false,
@@ -39,7 +39,7 @@ it("announces response boundaries without adding a persistent visual control", a
     );
     await render({ running: false, error: "Connection lost" });
     expect(host.querySelector('[role="status"]')?.textContent).toBe(
-      "Assistant response failed: Connection lost",
+      "Response failed: Connection lost",
     );
   } finally {
     await act(async () => root.unmount());

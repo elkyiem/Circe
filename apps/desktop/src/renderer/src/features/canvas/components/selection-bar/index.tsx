@@ -147,7 +147,13 @@ export function SelectionBar({
               onAdd={onReplace}
               label="Replace Save"
             >
-              <Button icon size="xs" variant="ghost" aria-label="Replace Save">
+              <Button
+                icon
+                size="xs"
+                variant="ghost"
+                rounding="full"
+                aria-label="Replace Save"
+              >
                 <IconImages />
               </Button>
             </AddSaves>

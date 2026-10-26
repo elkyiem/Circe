@@ -1,5 +1,6 @@
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 import { useEffect } from "react";
+import { fishIdFromPath } from "@/features/fish";
 import {
   createNote,
   importPaths,
@@ -26,11 +27,7 @@ import {
   collectionOwnsKeyboard,
   saveOwnsKeyboard,
 } from "@/features/saves/lib/keyboard-owner";
-import {
-  closeSave,
-  openSave,
-  saveIdFromPath,
-} from "@/features/saves/lib/save-nav";
+import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
 import { inspect } from "@/features/saves/state/inspect";
 import { selection } from "@/features/saves/state/selection";
 import { openSources } from "@/features/sources/lib/open";
@@ -203,11 +200,10 @@ export function AppHotkeys() {
       {
         hotkey: bindingKeys(shortcuts, "view.inspector"),
         callback: () => {
-          const openId = saveIdFromPath(
-            getAppRouter()?.state.location.pathname ?? "",
-          );
-          if (openId) {
-            closeSave();
+          const pathname = getAppRouter()?.state.location.pathname ?? "";
+          const openId = saveIdFromPath(pathname);
+          if (openId || fishIdFromPath(pathname)) {
+            libraryChrome.toggleDetails();
             return;
           }
           const anchor = selection.getCursor();
@@ -235,14 +231,6 @@ export function AppHotkeys() {
         callback: () => {
           if (slideNavActive()) return;
           libraryChrome.toggleSidebar();
-        },
-        options: { ignoreInputs: true, conflictBehavior: "allow" as const },
-      },
-      {
-        hotkey: bindingKeys(shortcuts, "view.agent"),
-        callback: () => {
-          if (slideNavActive()) return;
-          libraryChrome.toggleAgent();
         },
         options: { ignoreInputs: true, conflictBehavior: "allow" as const },
       },

@@ -120,6 +120,14 @@ export interface CaptureLinkCard {
   large?: boolean;
 }
 
+export interface CaptureArticle {
+  html: string;
+  subtitle?: string;
+  canonicalUrl?: string;
+  /** The source served a paywall preview, not the whole post. */
+  preview?: boolean;
+}
+
 export const QUOTE_DEPTH_CAP = 3;
 
 export interface CaptureExtras {
@@ -156,6 +164,8 @@ export interface Capture {
   replyingTo?: string;
   conversationId?: string;
   extras?: CaptureExtras;
+  /** Written to the save's `article` file by the harvest, never kept in `rawJson`. */
+  article?: CaptureArticle;
 }
 
 export interface RawJson {

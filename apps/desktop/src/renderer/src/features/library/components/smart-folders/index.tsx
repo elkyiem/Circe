@@ -17,8 +17,11 @@ import {
 } from "@/features/library/state/saved-views";
 import { useViewStore } from "@/features/library/state/view-store";
 import { savesStore } from "@/features/saves/pool";
+import {
+  SidebarSectionMenu,
+  useRevealSidebarSection,
+} from "@/features/settings";
 import { useTags } from "@/features/tags";
-import { SpecContextMenu } from "@/shared/components/spec-context-menu";
 import { usePrefs } from "@/shared/state/prefs";
 import { useOrganizationTree } from "../../hooks/use-organization-tree";
 import { resetFilters, setQuery } from "../../state/view-store";
@@ -44,9 +47,11 @@ export function SmartFoldersSection({
   const views = useSavedViews();
   const { activeViewId } = useViewStore();
   const [presentations] = usePrefs("savedViewViews");
+  const [sidebar] = usePrefs("sidebar");
   const [open, setOpen] = useState(true);
   const [editor, setEditor] = useState<EditorRequest | null>(null);
   const editingViewId = useEditingSavedViewId();
+  useRevealSidebarSection("smartFolders", editingViewId !== null);
   const editorRequest = useSavedViewEditorRequest();
   const handledEditorRequest = useRef(0);
   useEffect(() => {
@@ -118,10 +123,21 @@ export function SmartFoldersSection({
       savedViews.startEditing,
     );
 
+  const editorDialog = editor ? (
+    <SmartFolderEditor
+      request={editor}
+      views={views}
+      onClose={() => setEditor(null)}
+    />
+  ) : null;
+
+  if (!sidebar.sections.smartFolders) return editorDialog;
+
   return (
     <>
       <Sidebar.CollapsibleGroup open={open} onOpenChange={setOpen}>
-        <SpecContextMenu
+        <SidebarSectionMenu
+          section="smartFolders"
           search
           searchLabel="Search Smart Folder operations"
           buildItems={items}
@@ -153,7 +169,7 @@ export function SmartFoldersSection({
               </Menu.Portal>
             </Menu.Root>
           </Sidebar.GroupHeader>
-        </SpecContextMenu>
+        </SidebarSectionMenu>
         <Sidebar.CollapsibleGroupContent
           ref={organization.root}
           role="tree"
@@ -182,13 +198,7 @@ export function SmartFoldersSection({
           ))}
         </Sidebar.CollapsibleGroupContent>
       </Sidebar.CollapsibleGroup>
-      {editor ? (
-        <SmartFolderEditor
-          request={editor}
-          views={views}
-          onClose={() => setEditor(null)}
-        />
-      ) : null}
+      {editorDialog}
     </>
   );
 }

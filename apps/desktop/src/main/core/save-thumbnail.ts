@@ -1,7 +1,6 @@
 import type { Save } from "@pond/schema/db";
 import { saves } from "@pond/schema/db";
 import {
-  hasMediaThumbnail,
   primaryOriginalPath,
   TEXT_THUMBNAIL_WEBP_FILE,
   THUMBNAIL_DARK_KIND,
@@ -15,7 +14,7 @@ import { getDb } from "../db";
 import { saveFile } from "../paths";
 import { persistSave } from "./persist-save";
 import type { WriteFileArgs } from "./pipeline/workers/apply";
-import { renderThumbnail, thumbnailSource } from "./save-thumbnail-file";
+import { renderThumbnail, thumbnailToRender } from "./save-thumbnail-file";
 
 export { renderThumbnail };
 
@@ -24,6 +23,7 @@ function thumbnailWriteArgs(
   bytes: Buffer,
   width?: number,
   height?: number,
+  custom = false,
 ): WriteFileArgs {
   const primary = primaryOriginalPath(files);
   const write: WriteFileArgs = {
@@ -34,10 +34,12 @@ function thumbnailWriteArgs(
   };
   if (width) write.width = width;
   if (height) write.height = height;
+  if (custom) write.custom = true;
   return write;
 }
 
-export const THUMBNAIL_REPLACE_KINDS = [THUMBNAIL_KIND];
+/** Cards prefer `thumbnail_dark` in dark mode, so any new thumbnail has to replace both. */
+export const THUMBNAIL_REPLACE_KINDS = [THUMBNAIL_KIND, THUMBNAIL_DARK_KIND];
 
 export async function persistSaveThumbnail(
   saveId: string,
@@ -62,6 +64,7 @@ export async function persistSaveThumbnail(
           bytes,
           meta?.width ?? undefined,
           meta?.height ?? undefined,
+          true,
         ),
       ],
     },
@@ -72,11 +75,11 @@ export async function persistSaveThumbnail(
 export async function ensureSaveThumbnail(
   saveId: string,
   save?: Pick<Save, "files"> | null,
+  options: { force?: boolean } = {},
 ): Promise<void> {
   const files = save?.files;
   if (!files?.length) return;
-  if (hasMediaThumbnail(files)) return;
-  const primary = thumbnailSource(files);
+  const primary = thumbnailToRender(files, options.force === true);
   if (!primary) return;
   const thumbnail = await renderThumbnail(saveFile(saveId, primary.path));
   if (!thumbnail) return;
@@ -89,7 +92,7 @@ export async function ensureSaveThumbnail(
       {},
       {
         actorReason: "pipeline:ensure-thumbnail",
-        replaceFilesWithKind: [THUMBNAIL_KIND, THUMBNAIL_DARK_KIND],
+        replaceFilesWithKind: THUMBNAIL_REPLACE_KINDS,
         newFiles: [
           thumbnailWriteArgs(
             files,

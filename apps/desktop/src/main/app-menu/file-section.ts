@@ -92,6 +92,10 @@ export function buildFileSection(context: AppMenuContext): AppMenuItem {
             click: sendMenuAction("library.import-mymind"),
           },
           {
+            label: "Import Data Export",
+            click: sendMenuAction("library.import-data-export"),
+          },
+          {
             label: "Import Page Assets",
             click: sendMenuAction("library.import-page-assets"),
           },

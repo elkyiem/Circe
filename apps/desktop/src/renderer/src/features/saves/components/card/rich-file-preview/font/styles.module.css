@@ -15,7 +15,7 @@
     radial-gradient(circle at 50% 25%, var(--ds-gray-1), transparent 55%),
     var(--ds-gray-3);
   border-radius: var(--ds-radius-xs);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-save);
 }
 
 .font span {

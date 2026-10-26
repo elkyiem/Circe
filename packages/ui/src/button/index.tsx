@@ -1,5 +1,6 @@
 import { Button as Base } from "@base-ui/react/button";
 import { clsx as cn } from "clsx";
+import { pop } from "../shared/pop";
 import styles from "./styles.module.css";
 
 export interface ButtonProps extends Base.Props {
@@ -28,11 +29,16 @@ export function Button({
   icon,
   loading,
   disabled,
+  onClick,
   ...props
 }: ButtonProps) {
   return (
     <Base
       {...props}
+      onClick={(event) => {
+        if (icon) pop(event.currentTarget.querySelector(":scope > svg"));
+        onClick?.(event);
+      }}
       data-width={width}
       data-variant={variant}
       data-size={size}

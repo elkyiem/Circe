@@ -10,7 +10,6 @@ interface SectionProps {
   title: string;
   className?: string;
   defaultOpen?: boolean;
-  divider?: boolean;
   action?: React.ReactNode;
   empty?: boolean;
   collapsible?: boolean;
@@ -21,7 +20,6 @@ export function Section({
   title,
   className,
   defaultOpen = true,
-  divider = true,
   action,
   empty = false,
   collapsible = true,
@@ -37,7 +35,6 @@ export function Section({
     return (
       <section
         className={cn(styles.section, className)}
-        data-divider={divider ? undefined : "none"}
         aria-labelledby={`${id}-title`}
       >
         <h3 className={styles.header}>
@@ -60,7 +57,6 @@ export function Section({
   return (
     <Accordion.Root
       className={cn(styles.section, className)}
-      data-divider={divider ? undefined : "none"}
       multiple
       value={expanded ? [title] : []}
       onValueChange={(next) => {
@@ -70,8 +66,10 @@ export function Section({
       <Accordion.Item value={title} className={styles.item}>
         <Accordion.Header className={styles.header}>
           {empty ? (
-            <span className={styles.title} id={`${id}-title`}>
-              {title}
+            <span className={styles.static}>
+              <span className={styles.title} id={`${id}-title`}>
+                {title}
+              </span>
             </span>
           ) : (
             <Accordion.Trigger
@@ -95,7 +93,7 @@ export function Section({
               aria-labelledby={`${id}-trigger`}
               className={styles.panel}
               initial={{ height: 0, opacity: 0, marginTop: 0 }}
-              animate={{ height: "auto", opacity: 1, marginTop: 8 }}
+              animate={{ height: "auto", opacity: 1, marginTop: 10 }}
               exit={{ height: 0, opacity: 0, marginTop: 0 }}
               transition={reduceMotion ? { duration: 0 } : gentleSpring}
             >

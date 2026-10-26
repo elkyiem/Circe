@@ -244,16 +244,6 @@ export function inject(): void {
   if (window.__pondRedditInjected) return;
   window.__pondRedditInjected = true;
 
-  const recent = new Map<string, number>();
-
-  function emit(url: string, trigger: string): void {
-    const now = Date.now();
-    const prev = recent.get(url);
-    if (prev && now - prev < 4000) return;
-    recent.set(url, now);
-    capture(url, trigger);
-  }
-
   /** Overflow Save is inside a shadow menu; keep the permalink from the last in-post click. */
   let pendingPermalink: string | null = null;
 
@@ -265,7 +255,7 @@ export function inject(): void {
         if (nearby) pendingPermalink = nearby;
         if (!isSaveClick(ev)) return;
         const url = nearby ?? pendingPermalink ?? permalinkFromLocation();
-        if (url) emit(url, "reddit:save");
+        if (url) capture(url, "reddit:save");
       } catch (e) {
         log("warn", "reddit dom-click hook error", String(e));
       }
@@ -286,24 +276,24 @@ export function inject(): void {
       if (LEGACY_VOTE_RE.test(req.url)) {
         if (voteDir(req.url, body) !== "1") return;
         const url = fullnameToUrl(readLegacyFullname(req.url, body));
-        if (url) emit(url, "reddit:upvote");
+        if (url) capture(url, "reddit:upvote");
         return;
       }
       if (LEGACY_SAVE_RE.test(req.url)) {
         const url = fullnameToUrl(readLegacyFullname(req.url, body));
-        if (url) emit(url, "reddit:save");
+        if (url) capture(url, "reddit:save");
         return;
       }
       if (isGraphqlUpvote(body)) {
         const id = postIdFromGraphql(body);
         const url = id ? `https://redd.it/${id}` : pendingPermalink;
-        if (url) emit(url, "reddit:upvote");
+        if (url) capture(url, "reddit:upvote");
         return;
       }
       if (!isGraphqlSave(body)) return;
       const id = postIdFromGraphql(body);
       const url = id ? `https://redd.it/${id}` : pendingPermalink;
-      if (url) emit(url, "reddit:graphql-save");
+      if (url) capture(url, "reddit:graphql-save");
     },
   });
 }

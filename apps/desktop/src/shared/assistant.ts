@@ -23,7 +23,7 @@ const host = {
 export const ASSISTANT_MODELS = [
   {
     id: "codex",
-    name: "Codex Default",
+    name: "Codex",
     provider: "Codex",
     model: "default",
     local: true,
@@ -34,7 +34,7 @@ export const ASSISTANT_MODELS = [
   },
   {
     id: "claude-code",
-    name: "Claude Code Default",
+    name: "Claude Code",
     provider: "Claude Code",
     model: "default",
     local: true,
@@ -244,6 +244,18 @@ export const ASSISTANT_MODELS = [
     capabilities: chat,
   },
   {
+    id: "apple",
+    name: "Apple Intelligence",
+    provider: "Apple",
+    model: "system",
+    local: true,
+    needsKey: false,
+    macOnly: true,
+    setupUrl: "https://support.apple.com/en-us/121115",
+    quality: "custom",
+    capabilities: text,
+  },
+  {
     id: "ollama",
     name: "Llama 3.2",
     provider: "Ollama",
@@ -431,6 +443,23 @@ export const assistantToolStep = z.object({
 });
 export type AssistantToolStep = z.infer<typeof assistantToolStep>;
 
+export const assistantRoutine = z.object({
+  trigger: z.enum(["manual", "schedule", "newSaves"]),
+  saves: z.number().int().min(0).optional(),
+  routineId: z.string().optional(),
+  name: z.string().optional(),
+});
+export type AssistantRoutine = z.infer<typeof assistantRoutine>;
+
+/** A routine the fish set up, changed, or removed while replying. */
+export const assistantRoutineEvent = z.object({
+  kind: z.enum(["created", "updated", "deleted"]),
+  fishId: z.string(),
+  routineId: z.string(),
+  name: z.string(),
+});
+export type AssistantRoutineEvent = z.infer<typeof assistantRoutineEvent>;
+
 export const assistantSend = z.object({
   chatId: z.string().min(1),
   requestId: z.string().min(1).max(100),
@@ -450,6 +479,7 @@ export const assistantSend = z.object({
   replyToQuestion: z.string().min(1).optional(),
   semanticQuery: z.string().nullable().optional(),
   visualSaveId: z.string().nullable().optional(),
+  routine: assistantRoutine.optional(),
 });
 export type AssistantSend = z.infer<typeof assistantSend>;
 
@@ -533,8 +563,13 @@ export const assistantMetadata = z.object({
     .optional(),
   question: assistantQuestion.optional(),
   replyToQuestion: z.string().optional(),
+  /** Set on the message a routine sends in your place, so the chat can show it as an event. */
+  routine: assistantRoutine.optional(),
+  routineEvents: z.array(assistantRoutineEvent).optional(),
   results: z.array(assistantResultSet).optional(),
   steps: z.array(assistantToolStep).optional(),
+  /** A reply sent as separate chat messages, in order; absent when the reply is one message. */
+  messages: z.array(z.string()).optional(),
   stopped: z.boolean().optional(),
   error: z.string().optional(),
 });
@@ -546,6 +581,7 @@ export const assistantMessage = z.object({
   role: z.string(),
   content: z.string(),
   metadata: assistantMetadata.nullable(),
+  createdAt: z.coerce.date().optional(),
 });
 export type AssistantMessage = z.infer<typeof assistantMessage>;
 export const assistantMessages = z.array(assistantMessage);
@@ -557,6 +593,13 @@ export type AssistantActivity =
   | "reading"
   | "writing"
   | "preparing";
+export const ASSISTANT_ACTIVITY_LABELS = {
+  thinking: "Thinking",
+  searching: "Searching your library",
+  reading: "Reading Saves",
+  writing: "Writing a response",
+  preparing: "Preparing changes",
+} satisfies Record<AssistantActivity, string>;
 export type AssistantEvent =
   | { type: "activity"; activity: AssistantActivity }
   | { type: "sources"; sources: AssistantSource[] }

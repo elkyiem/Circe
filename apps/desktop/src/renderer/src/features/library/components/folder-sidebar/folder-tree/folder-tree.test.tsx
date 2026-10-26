@@ -187,7 +187,6 @@ describe("folder sidebar tree", () => {
     ).toEqual([
       "all",
       "uncategorized",
-      "assistant",
       "untagged",
       "recentlyAdded",
       "recentlyUsed",
@@ -270,10 +269,9 @@ describe("folder sidebar tree", () => {
       ),
     ).toEqual([
       "uncategorized",
-      "assistant",
       "untagged",
-      "all",
       "recentlyAdded",
+      "all",
       "recentlyUsed",
       "tags",
       "random",

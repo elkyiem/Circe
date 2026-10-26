@@ -129,7 +129,7 @@ export function buildDetailItems({
   canRemoveVideo,
   fileIndex,
   hasFiles,
-  hasCustomThumbnail,
+  canResetThumbnail,
   hasUrl,
   archivable,
 }: SaveMenuContext): DetailMenuItems {
@@ -342,7 +342,7 @@ export function buildDetailItems({
         label: "Reset Thumbnail",
         icon: glyph(IconImageMinus),
         variant: "destructive",
-        hidden: batch || !hasCustomThumbnail,
+        hidden: batch || !canResetThumbnail,
         onClick: () => {
           void window.pond.query("saves.removeCustomThumbnail", {
             id: save.id,

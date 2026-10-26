@@ -12,7 +12,6 @@ import {
   IconGridLayoutCols,
   IconGridLayoutRows,
   IconSidebarLeft,
-  IconSidebarRight,
   IconText,
 } from "@pond/icons";
 import { Input, Select, Toggle, ToggleGroup, Tooltip } from "@pond/ui";
@@ -26,8 +25,6 @@ import { useView } from "@/features/library/hooks/use-view";
 import type { LayoutValue } from "@/features/library/lib/view-prefs";
 import {
   libraryChrome,
-  useInspectorSaveId,
-  useRightPane,
   useSidebarOpen,
 } from "@/features/library/state/library-chrome";
 import {
@@ -70,7 +67,7 @@ const LAYOUT_OPTIONS: Array<IconOption<LayoutValue>> = [
 
 type CardDetail = "name" | "info" | "extension" | "source";
 
-type Panel = "subfolders" | "sidebar" | "inspector";
+type Panel = "subfolders" | "sidebar";
 
 const CARD_DETAIL_OPTIONS: Array<IconOption<CardDetail>> = [
   { value: "name", label: "Show Name", icon: <IconText size={14} /> },
@@ -387,12 +384,9 @@ function ThumbnailSection() {
   const [viewer, patchViewer] = usePrefs("viewer");
   const includeSubfolders = useIncludeSubfolders();
   const sidebarOpen = useSidebarOpen();
-  const inspectorOn = useRightPane() === "inspector";
-  const canInspect = useInspectorSaveId() !== null;
   const panels = {
     subfolders: includeSubfolders,
     sidebar: sidebarOpen,
-    inspector: inspectorOn,
   } satisfies Record<Panel, boolean>;
   const panelOptions: Array<IconOption<Panel>> = [
     {
@@ -405,19 +399,11 @@ function ThumbnailSection() {
       label: "Show Sidebar",
       icon: <IconSidebarLeft size={14} />,
     },
-    {
-      value: "inspector",
-      label: "Show Inspector",
-      icon: <IconSidebarRight size={14} />,
-      disabled: !canInspect && !inspectorOn,
-    },
   ];
 
   function setPanel(panel: Panel, on: boolean) {
     if (panel === "subfolders") setIncludeSubfolders(on);
-    else if (panel === "sidebar") libraryChrome.toggleSidebar();
-    else if (on) libraryChrome.toggleInspector();
-    else libraryChrome.closeRightPane();
+    else libraryChrome.toggleSidebar();
   }
 
   return (

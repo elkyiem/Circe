@@ -17,6 +17,7 @@ interface BreadcrumbInput {
   folders: readonly Pick<Folder, "id" | "name" | "parentId">[];
   saveLabel?: string;
   canvasLabel?: string;
+  fishLabel?: string;
   sourceLabel?: string;
   searchResultCount?: number;
 }
@@ -40,21 +41,25 @@ function settingsCrumbs(path: string): Breadcrumb[] {
     : [crumb];
 }
 
+type DestinationLabels = Pick<
+  BreadcrumbInput,
+  "canvasLabel" | "fishLabel" | "sourceLabel"
+>;
+
 function destinationCrumbs(
   base: string,
-  canvasLabel?: string,
-  sourceLabel?: string,
+  { canvasLabel, fishLabel, sourceLabel }: DestinationLabels,
 ): Breadcrumb[] | null {
   if (base.startsWith("/canvas/"))
     return [{ label: canvasLabel || "Canvas", path: base }];
+  if (base.startsWith("/fish/"))
+    return [{ label: fishLabel || "Fish", path: base }];
   if (base.startsWith("/sources/"))
     return [
       { label: "Sources", path: "/sources", nav: { kind: "sources" } },
       { label: sourceLabel || "Source", path: base },
     ];
   switch (base) {
-    case "/assistant":
-      return [{ label: "Assistant", path: base }];
     case "/sources":
       return [{ label: "Sources", path: base, nav: { kind: "sources" } }];
     case "/tags":
@@ -75,6 +80,8 @@ function destinationCrumbs(
       return [{ label: "Downloads", path: base, nav: { kind: "downloads" } }];
     case "/trash":
       return [{ label: "Trash", path: base, nav: { kind: "trash" } }];
+    case "/gallery":
+      return [{ label: "Gallery", path: base }];
     default:
       break;
   }
@@ -104,12 +111,17 @@ export function buildBreadcrumbs({
   folders,
   saveLabel,
   canvasLabel,
+  fishLabel,
   sourceLabel,
   searchResultCount,
 }: BreadcrumbInput): Breadcrumb[] {
   const isSave = saveIdFromPath(pathname) !== null;
   const base = isSave ? listPath : pathname;
-  const destination = destinationCrumbs(base, canvasLabel, sourceLabel);
+  const destination = destinationCrumbs(base, {
+    canvasLabel,
+    fishLabel,
+    sourceLabel,
+  });
   const searchCrumb =
     !isSave && searchResultCount !== undefined
       ? { label: `Search results (${searchResultCount})`, path: base }

@@ -39,6 +39,10 @@
   margin-top: 20px;
   border-top: 1px solid var(--ds-gray-4);
   border-bottom: 1px solid var(--ds-gray-4);
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .details-title {
@@ -84,6 +88,10 @@
 
   & + & {
     padding-top: 6px;
+  }
+
+  &[data-state="silent"] {
+    color: var(--ds-gray-12);
   }
 }
 

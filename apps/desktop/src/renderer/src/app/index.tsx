@@ -42,10 +42,12 @@ import { libraryScopedKey } from "../shared/lib/library-scope";
 import { BootScreen } from "./components/boot-screen";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ErrorScreen } from "./components/error-screen";
+import { FishIntroDialog } from "./components/fish-intro-dialog";
 import { SetupHost } from "./components/setup";
 import { SupportDialog } from "./components/support-dialog";
 import { WhatsNewDialog } from "./components/whats-new-dialog";
 import { AgentLibraryBridge } from "./effects/agent-library-bridge";
+import { FishOpenBridge } from "./effects/fish-open-bridge";
 import { MenuRecentsBridge } from "./effects/menu-recents-bridge";
 import "./effects/save-library-bridge";
 
@@ -213,6 +215,7 @@ function LibraryApp() {
               <NotificationStatusBridge />
               <MenuRecentsBridge />
               <AgentLibraryBridge />
+              <FishOpenBridge />
               <SyncStatusBridge />
               <ExtensionCaptureToast />
               <EnrichmentSweep />
@@ -233,6 +236,7 @@ function LibraryApp() {
               <UpdateDialog />
               <WhatsNewDialog />
               <SupportDialog />
+              <FishIntroDialog />
               <CommandMenuHost />
               <ToastHost />
             </Dialog.PortalProvider>

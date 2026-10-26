@@ -1,0 +1,42 @@
+import { useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { draftInChat } from "@/features/agent";
+import {
+  fishIdFromPath,
+  useFishEditingId,
+  useOpenRoutineId,
+} from "@/features/fish";
+import { FishProfile } from "@/features/fish/profile";
+import { useFolders } from "@/features/library/state/folders";
+import { libraryChrome } from "@/features/library/state/library-chrome";
+import { useTags } from "@/features/tags";
+
+/** Keeps the last fish mounted so the column can animate closed after leaving its page. */
+export function FishDetails() {
+  const openId = useRouterState({
+    select: (s) => fishIdFromPath(s.location.pathname),
+  });
+  const [fishId, setFishId] = useState(openId);
+  if (openId && openId !== fishId) setFishId(openId);
+  const editingId = useFishEditingId();
+  const routineId = useOpenRoutineId(fishId);
+  const folders = useFolders();
+  const tags = useTags();
+
+  useEffect(() => {
+    if (editingId || routineId) libraryChrome.setDetailsOpen(true);
+  }, [editingId, routineId]);
+
+  if (!fishId) return null;
+  return (
+    <FishProfile
+      fishId={fishId}
+      folders={folders}
+      tagNames={tags.map((tag) => tag.name)}
+      onClose={() => libraryChrome.setDetailsOpen(false)}
+      onEditRoutine={(routine) =>
+        draftInChat(`Edit your routine: ${routine.name}. `)
+      }
+    />
+  );
+}

@@ -26,11 +26,7 @@ import { beginSaveDrag } from "@/features/saves/lib/start-drag";
 import { FIT_POSE, zoomImageAt } from "@/features/saves/lib/viewer-memory";
 import { cardThumbnailFor } from "@/features/saves/state/card-thumbnails";
 import { useInspect } from "@/features/saves/state/inspect";
-import {
-  resultNavigation,
-  useResultIndex,
-  useResultTotal,
-} from "@/features/saves/state/result-navigation";
+import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { useViewerEscapeLayer } from "@/features/saves/state/viewer-escape";
 import type { Save } from "@/features/saves/types";
 import { errorCopy } from "@/shared/lib/error-copy";
@@ -73,8 +69,6 @@ export function ImageInspector({
   slideNavigation,
 }: ImageInspectorProps) {
   const [prefs] = usePrefs("viewer");
-  const itemIndex = useResultIndex(save.id);
-  const itemTotal = useResultTotal();
   const instructionsId = useId();
   const { grayscale, showNavigator } = useInspect();
   const file = save.files[fileIndex];
@@ -331,10 +325,6 @@ export function ImageInspector({
         >
           <div
             className={styles.content}
-            data-save-hero={
-              (active && mode === "view" && viewport.pose.zoom <= 1) ||
-              undefined
-            }
             style={
               viewport.size.width && viewport.size.height
                 ? {
@@ -437,8 +427,7 @@ export function ImageInspector({
         edits={edits}
         endActions={endActions}
         slideNavigation={slideNavigation}
-        itemIndex={itemIndex}
-        itemTotal={itemTotal}
+        saveId={save.id}
         isGif={isGif}
         gifFramesOpen={gifFramesOpen}
         onActualSize={actualSize}

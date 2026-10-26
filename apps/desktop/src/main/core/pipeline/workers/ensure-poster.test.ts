@@ -69,7 +69,9 @@ describe("ensureRemotePoster", () => {
         ],
       }),
     );
-    expect(ensureSaveThumbnail).toHaveBeenCalledWith("s1", null);
+    expect(ensureSaveThumbnail).toHaveBeenCalledWith("s1", null, {
+      force: true,
+    });
   });
 
   it("does nothing when no poster URL is known", async () => {

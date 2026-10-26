@@ -88,7 +88,7 @@ export function buildSaveMenu(
     },
     {
       type: "submenu",
-      label: "Assistant",
+      label: "Fish",
       icon: glyph(IconMediaPlay),
       hidden: context.allTrashed || submenuHidden(agentItems),
       items: agentItems,

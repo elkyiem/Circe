@@ -3,9 +3,12 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
-import { saves } from "@pond/schema/db";
+import { type Save, saves } from "@pond/schema/db";
+import { isVideoFile } from "@shared/media-index";
+import { POSTER_KIND } from "@shared/save-file-names";
 import { eq } from "drizzle-orm";
 import { app, BrowserWindow, dialog, nativeImage } from "electron";
+import log from "electron-log/main.js";
 import mime from "mime-types";
 import { z } from "zod";
 import { isBlankDocumentKind } from "../../../shared/blank-documents";
@@ -20,6 +23,7 @@ import {
 import { gifFramePng } from "../../core/gif-thumbnail";
 import { createManualSave } from "../../core/manual-import";
 import { persistSave } from "../../core/persist-save";
+import { runEnsurePoster } from "../../core/pipeline/workers/ensure-poster";
 import {
   ensureSaveThumbnail,
   persistSaveThumbnail,
@@ -49,6 +53,20 @@ const LottieAnimationSchema = z
   .passthrough();
 const blankDocumentIconCache = new Map<string, Promise<string | null>>();
 const run = promisify(execFile);
+
+/** Video thumbnails come from the poster, so a reset refetches the poster before rendering. */
+async function resetSaveThumbnail(id: string, save: Pick<Save, "files">) {
+  const files = save.files ?? [];
+  if (files.some((file) => file.kind === POSTER_KIND || isVideoFile(file))) {
+    try {
+      await runEnsurePoster(id, { force: true });
+      return;
+    } catch (error) {
+      log.warn("[pond thumbnail] poster reset failed", id, error);
+    }
+  }
+  await ensureSaveThumbnail(id, save, { force: true });
+}
 
 async function readBundleIcon(path: string) {
   try {
@@ -342,7 +360,7 @@ export const savesImportPersistenceQueries = {
         },
       );
       if (!updated) return SAVE_NOT_FOUND;
-      await ensureSaveThumbnail(params.id, updated);
+      await resetSaveThumbnail(params.id, updated);
       return { ok: true };
     },
   ),

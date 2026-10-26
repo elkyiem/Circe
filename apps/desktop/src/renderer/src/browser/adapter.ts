@@ -192,7 +192,7 @@ export async function installBrowserAdapter(libraryId: string) {
     },
     appInfo: async () => ({
       name: "Iris",
-      version: "1.6.3-web",
+      version: "2.0.0-web",
       platform: "browser",
       arch: "browser",
       username: "",
@@ -263,6 +263,8 @@ export async function installBrowserAdapter(libraryId: string) {
         );
       return result;
     },
+    connectSourceHandle: (source, handle) =>
+      command("connectSourceHandle", { source, handle }),
     clearPendingSession: (source) => command("clearPendingSession", { source }),
     sourceStatus: (source) => command("sourceStatus", { source }),
     syncRunNow: (accountId, opts) =>
@@ -336,6 +338,8 @@ export async function installBrowserAdapter(libraryId: string) {
     onStorageStatus: (callback) => onEvent("storage", callback),
     onUpdateNotice: (callback) => onEvent("update", callback),
     onArchiveNavigate: noNativeEvents,
+    onFish: (callback) => onEvent("fish", callback),
+    onFishOpen: (callback) => onEvent("fish-open", callback),
     onAgentChunk: noNativeEvents,
     onAgentFilter: (callback) => onEvent("agent-filter", callback),
     onAgentCite: (callback) => onEvent("agent-cite", callback),
@@ -408,6 +412,7 @@ type CommandName =
   | "pipelinePause"
   | "pipelineCancelSaves"
   | "pipelineCancelAll"
+  | "connectSourceHandle"
   | "connectSource"
   | "clearPendingSession"
   | "sourceStatus"
@@ -432,6 +437,8 @@ async function command<Name extends CommandName>(
 }
 
 interface BrowserHostEvents {
+  fish: Parameters<Parameters<PondApi["onFish"]>[0]>[0];
+  "fish-open": Parameters<Parameters<PondApi["onFishOpen"]>[0]>[0];
   "import-progress": EagleImportProgress;
   "session-imported": WireSessionImported;
   "session-failed": WireSessionImportFailed;

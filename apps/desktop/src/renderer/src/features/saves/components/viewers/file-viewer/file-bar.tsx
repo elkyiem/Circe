@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { OriginalFileActions } from "@/features/saves/components/viewers/original-file-actions";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import {
   type ViewerNavigation,
   ViewerNavigationControls,
@@ -20,32 +20,21 @@ export function FileBar({
     <ChromePortal slot="top">
       <ViewerHud.Bar
         label={label}
-        start={<ViewerResultCount saveId={props.save.id} />}
-        end={
+        start={<ViewerSaveNav saveId={props.save.id} />}
+        center={
           <ViewerToolbarGroups
             actions={<FileActions {...props} />}
             view={children}
-            navigation={navigationControls(props.navigation)}
           />
         }
+        end={navigationControls(props.navigation)}
       />
     </ChromePortal>
   );
 }
 
-export function FileToolbarEnd(props: ViewerProps) {
-  return (
-    <ViewerToolbarGroups
-      actions={<FileActions {...props} />}
-      navigation={navigationControls(props.navigation)}
-    />
-  );
-}
-
 export function navigationControls(navigation?: ViewerNavigation): ReactNode {
-  return navigation && navigation.count > 1 ? (
-    <ViewerNavigationControls navigation={navigation} />
-  ) : null;
+  return <ViewerNavigationControls navigation={navigation} />;
 }
 
 export function FileActions(props: ViewerProps) {

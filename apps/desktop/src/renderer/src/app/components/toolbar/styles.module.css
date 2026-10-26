@@ -3,7 +3,7 @@
   grid-template-columns:
     minmax(max-content, var(--window-left-width))
     minmax(0, 1fr)
-    minmax(max-content, var(--window-right-width));
+    auto;
   flex-shrink: 0;
   align-items: center;
   width: 100%;
@@ -135,6 +135,14 @@
 
 .more {
   color: var(--ds-gray-10);
+}
+
+.position {
+  flex: none;
+  margin-left: 2px;
+  font-weight: var(--ds-weight-md);
+  color: var(--ds-gray-9);
+  white-space: nowrap;
 }
 
 .actions {

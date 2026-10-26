@@ -1,33 +1,5 @@
 .popup {
-  --width: 520px;
-}
-
-.hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  height: 264px;
-  padding-top: 24px;
-  overflow: hidden;
-  background: var(--ds-gray-2);
-  border-bottom: var(--ds-border-width) solid var(--ds-gray-a4);
-}
-
-.window {
-  flex: none;
-  width: 480px;
-  aspect-ratio: 2 / 1;
-  overflow: hidden;
-  background: var(--ds-gray-1);
-  border-radius: var(--ds-radius-xl) var(--ds-radius-xl) 0 0;
-  box-shadow: var(--ds-shadow-xs), var(--ds-shadow-md);
-}
-
-.video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  --width: 440px;
 }
 
 .body {
@@ -42,59 +14,20 @@
   font-weight: var(--ds-weight-xxxl);
 }
 
-.steps {
-  display: grid;
-  gap: 4px;
-  margin: 8px 0 0;
-  font-size: var(--ds-text-md);
-  line-height: 20px;
-  color: var(--ds-gray-11);
-  counter-reset: step;
-
-  /* The reset strips `list-style` from every `li`, so numbers come from a counter. */
-  & li {
-    position: relative;
-    padding-inline-start: 18px;
-    counter-increment: step;
-  }
-
-  & li::before {
-    position: absolute;
-    inset-inline-start: 0;
-    font-variant-numeric: tabular-nums;
-    color: var(--ds-gray-9);
-    content: counter(step) ".";
-  }
-
-  & code {
-    font-family: var(--ds-font-mono);
-    font-size: var(--ds-text-sm);
-    color: var(--ds-gray-12);
-  }
-}
-
-.status,
 .error {
   margin: 8px 0 0;
   font-size: var(--ds-text-md);
-}
-
-.status {
-  color: var(--ds-gray-11);
-}
-
-.error {
   color: var(--ds-red-11);
 }
 
-.browsers {
+.stores {
   display: flex;
   flex-direction: column;
   margin-top: 14px;
   border-top: var(--ds-border-width) solid var(--ds-border-subtle);
 }
 
-.browser {
+.store {
   display: flex;
   gap: 16px;
   align-items: center;
@@ -105,9 +38,20 @@
   }
 }
 
-.name {
+.text {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+
+.name {
   font-size: var(--ds-text-md);
   font-weight: var(--ds-weight-xl);
+}
+
+.browsers {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-gray-11);
 }

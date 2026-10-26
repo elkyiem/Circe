@@ -19,6 +19,24 @@ export function homeUrlForSource(source: Source): string {
       return "https://www.reddit.com/login/";
     case "threads":
       return "https://www.threads.com/login";
+    case "github":
+      return "https://github.com/login";
+    case "substack":
+      return "https://substack.com/sign-in";
+    case "tumblr":
+      return "https://www.tumblr.com/login";
+    case "savee":
+      return "https://savee.com/login/";
+    case "behance":
+      return "https://www.behance.net/";
+    case "vimeo":
+      return "https://vimeo.com/log_in";
+    case "dribbble":
+      return "https://dribbble.com/session/new";
+    case "unsplash":
+      return "https://unsplash.com/login";
+    case "bluesky":
+      return "";
     case "web":
       return "";
     case "local":

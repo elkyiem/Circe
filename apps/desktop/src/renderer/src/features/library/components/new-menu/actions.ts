@@ -1,4 +1,5 @@
 import type { Source } from "@pond/schema/db";
+import { sourceLabel } from "@pond/schema/sources";
 import type { BlankDocumentKind } from "@shared/blank-documents";
 import type { EagleImportProgress } from "@shared/saves-import-contracts";
 import { z } from "zod";
@@ -27,6 +28,8 @@ const SaveResultSchema = z.object({
   ids: z.array(z.string()).optional(),
   reason: z.string().optional(),
 });
+
+const LIST_FORMAT = new Intl.ListFormat("en", { type: "conjunction" });
 
 export interface NewActionServices {
   notify: typeof notify;
@@ -182,6 +185,30 @@ export function createNewActions({
         : "Nothing new to import",
       description: result.skipped > 0 ? `${result.skipped} skipped` : undefined,
       timeout: 5000,
+    });
+  }
+
+  async function importDataExport(): Promise<void> {
+    const result = await window.pond.query("saves.importDataExport", {});
+    if (!result.ok) {
+      if (result.reason === "cancelled") return;
+      throw new Error(result.error);
+    }
+    await refreshFolders();
+    const from = LIST_FORMAT.format(result.platforms);
+    const connect = LIST_FORMAT.format(result.connect.map(sourceLabel));
+    notify({
+      id: "new-import",
+      title: result.imported
+        ? `Imported ${result.imported} ${result.imported === 1 ? "Save" : "Saves"} from ${from}`
+        : "Nothing new to import",
+      description:
+        result.imported && connect
+          ? `Connect ${connect} so Pond can capture them.`
+          : result.skipped > 0
+            ? `${result.skipped} skipped`
+            : undefined,
+      timeout: 8000,
     });
   }
 
@@ -511,6 +538,7 @@ export function createNewActions({
     importClipboard,
     importBookmarks,
     importMymind,
+    importDataExport,
     importPageAssets,
     importEagle,
     importEaglePackage,
@@ -539,6 +567,7 @@ export const {
   importClipboard,
   importBookmarks,
   importMymind,
+  importDataExport,
   importPageAssets,
   importEagle,
   importEaglePackage,

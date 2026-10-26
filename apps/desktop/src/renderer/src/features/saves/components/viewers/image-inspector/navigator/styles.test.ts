@@ -14,7 +14,7 @@ describe("image navigator", () => {
     const map = css.match(/\.map\s*\{(?<rules>[^}]*)\}/)?.groups?.rules;
     const viewport = css.match(/\.viewport\s*\{(?<rules>[^}]*)\}/)?.groups
       ?.rules;
-    expect(root).toContain("var(--ds-shadow-sm)");
+    expect(root).toContain("var(--ds-shadow-float)");
     expect(root).not.toContain("overflow: hidden");
     expect(map).toContain("overflow: hidden");
     expect(map).toContain("border-radius: inherit");

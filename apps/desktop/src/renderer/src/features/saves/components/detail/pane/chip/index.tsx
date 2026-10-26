@@ -12,6 +12,7 @@ function List({ className, ...props }: ListProps) {
 
 interface ItemProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
   label: string;
+  crumb?: string;
   count: number;
   total: number;
   removeLabel: string;
@@ -20,6 +21,7 @@ interface ItemProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
 
 function Item({
   label,
+  crumb,
   count,
   total,
   removeLabel,
@@ -34,13 +36,30 @@ function Item({
       data-mixed={mixed || undefined}
       {...props}
     >
-      <span className={styles.label}>
-        {mixed ? `${label} (${count}/${total})` : label}
+      <span
+        className={styles.label}
+        title={props.title ?? (crumb ? `${crumb} › ${label}` : label)}
+      >
+        {crumb ? (
+          <>
+            <span className={styles.crumb}>{crumb}</span>
+            <span aria-hidden className={styles.separator}>
+              ›
+            </span>
+          </>
+        ) : null}
+        <span className={styles.name}>{label}</span>
+        {mixed ? (
+          <span className={styles.count}>
+            {count}/{total}
+          </span>
+        ) : null}
       </span>
       <Button
         icon
         size="xs"
         variant="ghost"
+        rounding="full"
         aria-label={removeLabel}
         onClick={onRemove}
       >

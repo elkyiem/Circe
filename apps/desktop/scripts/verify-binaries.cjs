@@ -2,6 +2,7 @@ const { spawnSync } = require("node:child_process");
 const { existsSync, readdirSync, rmSync, statSync } = require("node:fs");
 const { join, sep } = require("node:path");
 const { z } = require("zod");
+const { verifyRuntimePackages } = require("./verify-runtime-packages.cjs");
 
 /** Fails the pack when a bundled binary is missing; yt-dlp is fetched into userData at runtime. */
 exports.default = (context) => verify(context);
@@ -12,6 +13,7 @@ async function verify(context, { runFfmpeg = runFfmpegVersion } = {}) {
   const arch = normalizeArch(context.arch);
   pruneOnnxRuntime(resourcesDir, platform, arch);
   pruneBetterSqlitePrebuilds(resourcesDir, platform, arch);
+  await verifyRuntimePackages(resourcesDir);
   if (platform === "darwin") verifySharpRuntime(resourcesDir, arch);
   if (platform === "win32") {
     verifySharpWindowsRuntime(resourcesDir, arch);

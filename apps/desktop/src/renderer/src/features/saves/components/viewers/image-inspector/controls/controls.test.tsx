@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { ImageControls } from ".";
 
 describe("image inspector toolbar", () => {
@@ -11,6 +12,7 @@ describe("image inspector toolbar", () => {
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
+    resultNavigation.setSource({ ids: ["image"], total: 493 });
   });
 
   afterEach(async () => {
@@ -27,8 +29,7 @@ describe("image inspector toolbar", () => {
           active
           busy={false}
           canCrop={false}
-          itemIndex={0}
-          itemTotal={493}
+          saveId="image"
           mode="view"
           onActualSize={noop}
           onApplyCrop={noop}
@@ -52,15 +53,30 @@ describe("image inspector toolbar", () => {
       "Zoom Out",
       "Zoom Ratio",
       "Zoom In",
+      "Previous Save",
+      "Next Save",
       "Flip",
       "Rotate",
       "Crop",
       "Actual Size",
       "Fit to Window",
+      "Previous Slide",
+      "Next Slide",
     ]);
-    expect(host.textContent).toContain("1 / 493");
-    expect(host.querySelector('[aria-label="Previous Item"]')).toBeNull();
-    expect(host.querySelector('[aria-label="Next Item"]')).toBeNull();
+    expect(host.textContent).not.toContain("1 / 493");
+    const end = host.querySelector('[data-viewer-bar-slot="end"]');
+    expect(end?.textContent).toBe("");
+    for (const label of ["Previous Slide", "Next Slide"])
+      expect(
+        end?.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)
+          ?.disabled,
+      ).toBe(true);
+    const start = host.querySelector('[data-viewer-bar-slot="start"]');
+    expect(start?.textContent).toBe("");
+    expect(
+      start?.querySelector<HTMLButtonElement>('[aria-label="Previous Save"]')
+        ?.disabled,
+    ).toBe(true);
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(0);
 
     for (const label of labels) {
@@ -72,7 +88,7 @@ describe("image inspector toolbar", () => {
     }
   });
 
-  it("adds slide arrows after the image actions only for multiple slides", async () => {
+  it("puts slide arrows on the right and image actions in the middle", async () => {
     const noop = vi.fn();
     const onNext = vi.fn();
     const onPrevious = vi.fn();
@@ -83,8 +99,7 @@ describe("image inspector toolbar", () => {
           active
           busy={false}
           canCrop={false}
-          itemIndex={0}
-          itemTotal={493}
+          saveId="image"
           mode="view"
           slideNavigation={{
             index: 0,
@@ -115,10 +130,12 @@ describe("image inspector toolbar", () => {
     );
     expect(previous?.disabled).toBe(true);
     expect(next?.disabled).toBe(false);
-    expect(
-      previous?.parentElement?.previousElementSibling?.getAttribute("role"),
-    ).toBe("separator");
-    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(1);
+    const end = host.querySelector('[data-viewer-bar-slot="end"]');
+    const center = host.querySelector('[data-viewer-bar-slot="center"]');
+    expect(end?.contains(previous ?? null)).toBe(true);
+    expect(end?.textContent).toBe("1 / 2");
+    expect(center?.querySelector('[aria-label="Flip"]')).not.toBeNull();
+    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(0);
     expect(
       [...host.querySelectorAll("button")]
         .map((button) => button.getAttribute("aria-label"))
@@ -138,8 +155,7 @@ describe("image inspector toolbar", () => {
           active
           busy={false}
           canCrop={false}
-          itemIndex={0}
-          itemTotal={1}
+          saveId="image"
           isGif
           gifFramesOpen
           mode="view"
@@ -173,8 +189,7 @@ describe("image inspector toolbar", () => {
           busy={false}
           canCrop={false}
           edits="none"
-          itemIndex={0}
-          itemTotal={1}
+          saveId="image"
           mode="view"
           onActualSize={noop}
           onApplyCrop={noop}
@@ -209,8 +224,7 @@ describe("image inspector toolbar", () => {
           active
           busy={false}
           canCrop
-          itemIndex={0}
-          itemTotal={1}
+          saveId="image"
           mode="crop"
           onActualSize={noop}
           onApplyCrop={noop}

@@ -9,7 +9,7 @@ import {
 } from "@shared/assistant";
 import type { ReactNode } from "react";
 import { AnimateHeight } from "@/shared/components/animate-height";
-import { THIS_DEVICE } from "@/shared/lib/platform";
+import { IS_MAC, THIS_DEVICE } from "@/shared/lib/platform";
 import { ProviderLogo } from "./icons";
 import { ProviderConnection } from "./provider";
 import styles from "./styles.module.css";
@@ -25,7 +25,9 @@ export const GROUPS = [
   {
     kind: "local" as const,
     title: "Local Providers",
-    description: "Connect to a model server you run.",
+    description: IS_MAC
+      ? "Use Apple Intelligence or connect to a model server you run."
+      : "Connect to a model server you run.",
     empty: "No local providers",
   },
   {
@@ -103,7 +105,9 @@ function remainingProviders(
   keys: KeyRow[],
 ) {
   return offeredProviders(kind).filter(
-    (entry) => !isListedProvider(entry.id, agent, keys),
+    (entry) =>
+      (!("macOnly" in entry) || IS_MAC) &&
+      !isListedProvider(entry.id, agent, keys),
   );
 }
 

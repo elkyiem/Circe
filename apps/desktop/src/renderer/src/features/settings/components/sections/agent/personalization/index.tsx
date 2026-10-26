@@ -14,7 +14,7 @@ export function PersonalizationSection() {
         <Settings.HeaderText>
           <Settings.Title>Personalization</Settings.Title>
           <Settings.Description>
-            Give Assistant context about you and how you like replies.
+            Give your fish context about you and how you like replies.
           </Settings.Description>
         </Settings.HeaderText>
       </Settings.Header>
@@ -141,7 +141,7 @@ export function PersonalizationForm({
       <GuidanceField
         id="agent-profile"
         title="About You"
-        description="Share your interests, work, or context you want Assistant to know."
+        description="Share your interests, work, or context you want your fish to know."
         placeholder="Your role, interests, and other context"
         value={profile}
         onValueChange={(text) => {

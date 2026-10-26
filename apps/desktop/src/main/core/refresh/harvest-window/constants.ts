@@ -1,4 +1,6 @@
 export const PARTITION = "persist:pond-scrapers";
+/** Isolated from the shared and per-account jars so a public read can never ride or pollute a signed-in session. */
+export const PUBLIC_PARTITION = "persist:pond-watch-public";
 export const NAV_TIMEOUT_MS = 25_000;
 export const HARVEST_TIMEOUT_MS = 20_000;
 

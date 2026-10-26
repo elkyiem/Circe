@@ -2,7 +2,6 @@ const SETTLE_MS = 64;
 const PANE_PROPERTIES = new Set([
   "--window-left-width",
   "--window-right-width",
-  "--window-right-inset",
 ]);
 
 function isAnimatingPane(node: Element): boolean {

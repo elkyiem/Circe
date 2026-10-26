@@ -1,13 +1,8 @@
-import {
-  IconBarsFilter,
-  IconImageSparkle,
-  IconPlus,
-  IconTextToImage,
-} from "@pond/icons";
+import { IconBarsFilter, IconImageSparkle, IconTextToImage } from "@pond/icons";
 import type { IconComponent } from "@pond/icons/types";
 import { FIELD_META } from "@pond/schema/filters/meta";
 import type { FieldId, Predicate } from "@pond/schema/filters/types";
-import { Menu } from "@pond/ui";
+import { Menu, Tooltip } from "@pond/ui";
 import { Fragment, type ReactNode, useState } from "react";
 import { libraryHeader } from "@/features/library/state/library-header";
 import { fieldIcon } from "@/features/search/query";
@@ -55,7 +50,6 @@ interface AddFilterProps {
   rows: Predicate[];
   onChange: (rows: Predicate[]) => void;
   applied: readonly FilterChipId[];
-  compact?: boolean;
 }
 
 export function AddFilter({
@@ -63,7 +57,6 @@ export function AddFilter({
   rows,
   onChange,
   applied,
-  compact,
 }: AddFilterProps) {
   const { query: search, onValueChange, reset } = useMenuFilterQuery();
   const [open, setOpen] = useState(false);
@@ -188,23 +181,13 @@ export function AddFilter({
           reset();
         }}
       >
-        <Menu.Trigger
-          size="sm"
-          variant="ghost"
-          icon={compact}
-          aria-label={compact ? "Add Another Filter" : "Add Filter"}
-        >
-          {compact ? (
-            <IconPlus />
-          ) : (
-            <>
-              <IconBarsFilter />
-              Filter
-            </>
-          )}
-        </Menu.Trigger>
+        <Tooltip label="Add Filter" side="bottom">
+          <Menu.Trigger icon size="sm" variant="ghost" aria-label="Add Filter">
+            <IconBarsFilter />
+          </Menu.Trigger>
+        </Tooltip>
         <Menu.Portal>
-          <Menu.Positioner side="bottom" align="start" sideOffset={6}>
+          <Menu.Positioner side="bottom" align="end" sideOffset={8}>
             <FilterPopup className={styles.popup}>
               <Menu.Input aria-label="Add Filter" placeholder="Filter…" />
               <Menu.FilterList className={styles.content}>

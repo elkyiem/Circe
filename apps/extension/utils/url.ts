@@ -20,6 +20,24 @@ export function cookieDomainsForSource(source: Source): string[] {
       return ["reddit.com"];
     case "threads":
       return ["threads.net", "threads.com", "instagram.com"];
+    case "github":
+      return ["github.com"];
+    case "substack":
+      return ["substack.com"];
+    case "tumblr":
+      return ["tumblr.com"];
+    case "savee":
+      return ["savee.com", "savee.it"];
+    case "behance":
+      return ["behance.net"];
+    case "vimeo":
+      return ["vimeo.com"];
+    case "dribbble":
+      return ["dribbble.com"];
+    case "unsplash":
+      return ["unsplash.com"];
+    case "bluesky":
+      return [];
     case "web":
     case "local":
       return [];

@@ -178,28 +178,15 @@ it("restores each chat's draft, visible attachments, and the unstarted composer"
   }
 });
 
-it("renames and deletes chats while preserving another chat's draft", async () => {
+it("deletes chats while preserving another chat's draft", async () => {
   let chats = [
     { id: "managed", title: "Original" },
     { id: "other", title: "Other" },
   ];
-  let fail = true;
   vi.stubGlobal("pond", {
-    query: async (
-      name: string,
-      params?: { chatId?: string; title?: string },
-    ) => {
+    query: async (name: string, params?: { chatId?: string }) => {
       if (name === "agent.chats") return chats;
       if (name === "agent.messages") return [];
-      if (name === "agent.renameChat") {
-        if (fail) return { ok: false, error: "Rename failed" };
-        chats = chats.map((chat) =>
-          chat.id === params?.chatId
-            ? { ...chat, title: params.title || chat.title }
-            : chat,
-        );
-        return { ok: true };
-      }
       if (name === "agent.deleteChat") {
         chats = chats.filter((chat) => chat.id !== params?.chatId);
         return { ok: true };
@@ -219,12 +206,6 @@ it("renames and deletes chats while preserving another chat's draft", async () =
       await assistant.openChat("other");
       assistant.setDraft("Keep my draft");
     });
-    await expect(assistant.renameChat("managed", "Renamed")).rejects.toThrow(
-      "Rename failed",
-    );
-    fail = false;
-    await act(async () => assistant.renameChat("managed", "Renamed"));
-    expect(harness.host.textContent).toContain("Renamed");
     await act(async () => assistant.deleteChat("managed"));
     expect(harness.host.textContent).toContain("Keep my draft");
     expect(harness.host.textContent).toContain('"chatId":"other"');

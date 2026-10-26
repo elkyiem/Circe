@@ -35,7 +35,7 @@ export function collectInfoRows(save: Save): PaneRow[] {
   if (list) {
     out.push({
       id: "list",
-      label: "List",
+      label: "Saved To",
       value: list,
     });
   }

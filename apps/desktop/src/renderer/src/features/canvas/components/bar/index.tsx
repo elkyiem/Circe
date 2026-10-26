@@ -61,6 +61,7 @@ function Action({ label, shortcut, pressed, onClick, children }: ActionProps) {
         icon
         size="xs"
         variant="ghost"
+        rounding="full"
         aria-label={label}
         aria-pressed={pressed}
         data-pressed={pressed || undefined}
@@ -82,7 +83,13 @@ function BarMenu({ label, buildItems, children }: BarMenuProps) {
   return (
     <SpecMenu align="center" buildItems={buildItems}>
       <Tooltip label={label} side="top">
-        <Menu.Trigger icon size="xs" variant="ghost" aria-label={label}>
+        <Menu.Trigger
+          icon
+          size="xs"
+          variant="ghost"
+          rounding="full"
+          aria-label={label}
+        >
           {children}
         </Menu.Trigger>
       </Tooltip>

@@ -9,7 +9,7 @@ function isSavePath(pathname: string): boolean {
 }
 
 function isLibraryListPath(pathname: string): boolean {
-  if (isSavePath(pathname) || pathname === "/assistant") return false;
+  if (isSavePath(pathname) || pathname.startsWith("/fish/")) return false;
   if (pathname.startsWith("/sources")) {
     return false;
   }

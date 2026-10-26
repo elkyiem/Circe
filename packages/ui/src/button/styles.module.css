@@ -39,7 +39,9 @@
   line-height: 1;
   text-wrap: nowrap;
   user-select: none;
-  transition: all var(--ds-duration-medium) var(--ds-easing-standard);
+  transition:
+    all var(--ds-duration-medium) var(--ds-easing-standard),
+    scale var(--ds-duration-bounce) var(--ds-easing-bounce);
 
   &:where([data-width="full"]) {
     width: 100%;
@@ -57,7 +59,10 @@
   }
 
   &:active {
-    scale: 0.98;
+    scale: 0.96;
+    transition:
+      all var(--ds-duration-medium) var(--ds-easing-standard),
+      scale var(--ds-duration-fast) var(--ds-easing-decelerate);
   }
 
   &:where([data-size="xs"]) {
@@ -123,6 +128,10 @@
 
     &:where([data-width="auto"]) {
       width: var(--button-height);
+    }
+
+    &:where([data-width="full"]) {
+      height: auto;
     }
   }
 

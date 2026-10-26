@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useState } from "react";
 import { GeneratedRasterViewer } from "@/features/saves/components/viewers/generated-raster-viewer";
 import { ViewerChrome } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { ViewerFallback } from "@/features/saves/components/viewers/viewer-fallback";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import type { ViewerNavigation } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import {
   type StoredFileViewerKind,
@@ -10,12 +10,7 @@ import {
 } from "@/features/saves/lib/media/file-viewer";
 import { buildPondUrl } from "@/features/saves/lib/media/url";
 import type { Save, SaveFile } from "@/features/saves/types";
-import {
-  FileActions,
-  FileBar,
-  FileToolbarEnd,
-  navigationControls,
-} from "./file-bar";
+import { FileActions, FileBar, navigationControls } from "./file-bar";
 import { GenericFileCard } from "./file-card";
 import styles from "./styles.module.css";
 import type { ViewerProps } from "./types";
@@ -59,6 +54,12 @@ const LivePhotoViewer = lazy(() =>
 const SafeWebViewer = lazy(() =>
   import("@/features/saves/components/viewers/safe-web-viewer").then(
     (module) => ({ default: module.SafeWebViewer }),
+  ),
+);
+
+const ArticleViewer = lazy(() =>
+  import("@/features/saves/components/viewers/article-viewer").then(
+    (module) => ({ default: module.ArticleViewer }),
   ),
 );
 
@@ -126,6 +127,7 @@ export function StoredFileContent({
     return <LivePhotoFileViewer {...props} url={url} />;
   if (kind === "archive") return <ArchiveViewer {...props} url={url} />;
   if (kind === "safe-web") return <SafeWebFileViewer {...props} url={url} />;
+  if (kind === "article") return <ArticleFileViewer {...props} url={url} />;
   return <GenericFileViewer {...props} />;
 }
 
@@ -179,8 +181,9 @@ function ModelFileViewer(props: ViewerProps & { url: string }) {
         url={props.url}
         path={props.file.path}
         onUnavailable={onUnavailable}
-        toolbarStart={<ViewerResultCount saveId={props.save.id} />}
-        toolbarEnd={<FileToolbarEnd {...props} />}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
+        toolbarNavigation={navigationControls(props.navigation)}
       />
     </div>
   );
@@ -195,8 +198,8 @@ function EpubFileViewer(props: ViewerProps & { url: string }) {
       <EpubViewer
         url={props.url}
         onUnavailable={onUnavailable}
-        toolbarStart={<ViewerResultCount saveId={props.save.id} />}
-        toolbarEnd={<FileActions {...props} />}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
         toolbarNavigation={navigationControls(props.navigation)}
       />
     </div>
@@ -214,8 +217,9 @@ function ArchiveViewer(props: ViewerProps & { url: string }) {
         path={props.file.path}
         size={props.file.size}
         onUnavailable={onUnavailable}
-        toolbarStart={<ViewerResultCount saveId={props.save.id} />}
-        toolbarEnd={<FileToolbarEnd {...props} />}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
+        toolbarNavigation={navigationControls(props.navigation)}
       />
     </div>
   );
@@ -230,8 +234,9 @@ function LivePhotoFileViewer(props: ViewerProps & { url: string }) {
       <LivePhotoViewer
         url={props.url}
         onUnavailable={onUnavailable}
-        toolbarStart={<ViewerResultCount saveId={props.save.id} />}
-        toolbarEnd={<FileToolbarEnd {...props} />}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
+        toolbarNavigation={navigationControls(props.navigation)}
       />
     </div>
   );
@@ -248,8 +253,37 @@ function SafeWebFileViewer(props: ViewerProps & { url: string }) {
         path={props.file.path}
         size={props.file.size}
         onUnavailable={onUnavailable}
-        toolbarStart={<ViewerResultCount saveId={props.save.id} />}
-        toolbarEnd={<FileToolbarEnd {...props} />}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
+        toolbarNavigation={navigationControls(props.navigation)}
+      />
+    </div>
+  );
+}
+
+function ArticleFileViewer(props: ViewerProps & { url: string }) {
+  const [unavailable, setUnavailable] = useState(false);
+  const onUnavailable = useCallback(() => setUnavailable(true), []);
+  if (unavailable) {
+    return (
+      <ViewerFallback
+        {...props}
+        reason="preview"
+        active={props.active}
+        slideNavigation={props.navigation}
+      />
+    );
+  }
+  return (
+    <div className={styles.preview}>
+      <ArticleViewer
+        url={props.url}
+        source={props.save.source}
+        fallbackUrl={props.save.url}
+        onUnavailable={onUnavailable}
+        toolbarStart={<ViewerSaveNav saveId={props.save.id} />}
+        toolbarActions={<FileActions {...props} />}
+        toolbarNavigation={navigationControls(props.navigation)}
       />
     </div>
   );

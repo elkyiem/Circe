@@ -17,6 +17,10 @@ const AvatarResponseSchema = z.object({
   avatar: z.string().min(1).optional().catch(undefined),
 });
 
+const SubstackProfileSchema = z.object({
+  photo_url: z.string().url().nullable().optional().catch(null),
+});
+
 const FETCH_TIMEOUT_MS = 10_000;
 const HTML_SCAN_BYTES = 300_000;
 
@@ -34,7 +38,9 @@ interface AvatarSubject {
 }
 
 function isGenericOgImage(url: string): boolean {
-  return /opengraph-image|default_open_graph|rweb\/ssr\/default/i.test(url);
+  return /opengraph-image|default_open_graph|rweb\/ssr\/default|profile(?:\/|%2F)assets/i.test(
+    url,
+  );
 }
 
 function needsCheck(row: AvatarSubject): boolean {
@@ -70,6 +76,24 @@ function profilePageUrl(
       return `https://www.pinterest.com/${h}/`;
     case "cosmos":
       return `https://www.cosmos.so/${h}`;
+    case "github":
+      return `https://github.com/${h}`;
+    case "substack":
+      return `https://substack.com/@${h}`;
+    case "tumblr":
+      return `https://www.tumblr.com/${h}`;
+    case "savee":
+      return `https://savee.com/${h}/`;
+    case "behance":
+      return `https://www.behance.net/${h}`;
+    case "vimeo":
+      return `https://vimeo.com/${h}`;
+    case "dribbble":
+      return `https://dribbble.com/${h}`;
+    case "unsplash":
+      return `https://unsplash.com/@${h}`;
+    case "bluesky":
+      return `https://bsky.app/profile/${h}`;
     default:
       return null;
   }
@@ -142,6 +166,24 @@ async function arenaAvatar(
   }
 }
 
+/** Substack's og:image is a generated name card; the public profile API carries the photo. */
+async function substackAvatar(handle: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://substack.com/api/v1/user/${encodeURIComponent(handle)}/public_profile`,
+      {
+        headers: { "user-agent": BROWSER_UA, accept: "application/json" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      },
+    );
+    if (!res.ok) return null;
+    const body = SubstackProfileSchema.safeParse(await res.json());
+    return body.success ? (body.data.photo_url ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Pinterest's og:image is a site-wide card; the avatar lives in the page's embedded state JSON, first occurrence owned by the profile. */
 async function pinterestAvatar(user: string): Promise<string | null> {
   try {
@@ -205,6 +247,7 @@ async function resolveAvatarUrl(
     return null;
   }
   if (source === "reddit") return redditAvatar(handle, partition);
+  if (source === "substack") return substackAvatar(handle);
   if (source === "pinterest") {
     const owner = handle.split("/")[0];
     return owner ? pinterestAvatar(owner) : null;

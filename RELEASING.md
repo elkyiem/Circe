@@ -1,6 +1,6 @@
 # Releasing Pond
 
-Pond ships via **GitHub Releases**: signed and notarized macOS `.dmg` and `.zip` files (arm64 + x64) with `latest-mac.yml` for auto-update, and a Windows x64 NSIS installer with `latest.yml` for auto-update. The extension zips are attached to the release too. Pond's Browser Extension dialog downloads the zip matching its own version, so every release must carry `pond-extension-X.Y.Z-chrome.zip` and `pond-extension-X.Y.Z-firefox.zip`.
+Pond ships via **GitHub Releases**: signed and notarized macOS `.dmg` and `.zip` files (arm64 + x64) with `latest-mac.yml` for auto-update, and a Windows x64 NSIS installer with `latest.yml` for auto-update. The extension zips are attached to the release too, and the `stores` job submits them to the Chrome Web Store and Firefox Add-ons from there, so every release must carry `pond-extension-X.Y.Z-chrome.zip`, `pond-extension-X.Y.Z-firefox.zip`, and `pond-extension-X.Y.Z-sources.zip`.
 
 ## Version bump
 
@@ -118,25 +118,6 @@ brew install --cask raphaelsalaja/pond/pond
 The release workflow updates the version and checksums on `main` after both
 macOS artifacts are available.
 
-## Nightly
-
-[`.github/workflows/nightly.yml`](.github/workflows/nightly.yml) publishes a signed, notarized arm64 build of `main` every night as a GitHub prerelease. A scheduled run skips when `main` hasn't changed since the last nightly. Run it from the Actions tab to build now.
-
-The workflow runs the same checks as `macos`, then stamps a version such as `1.0.2-nightly.20261018.42` into `apps/desktop/package.json` without committing it. The version is the next patch, the UTC date, and the run number. [`electron-builder.nightly.yml`](apps/desktop/electron-builder.nightly.yml) extends the stable config and only changes the update feed, so a nightly is the same Pond app with the same data and Library.
-
-**Settings → Preferences → Update Channel** picks the feed:
-
-- **Stable** reads `latest-mac.yml` from `releases/latest`, which never points at a prerelease.
-- **Nightly** reads `nightly-mac.yml` from the newest nightly prerelease.
-
-Until you pick one, the channel follows the installed build, so a nightly DMG from GitHub keeps getting nightlies.
-
-Downgrades are off. Switching back to Stable keeps the current nightly until a newer stable release ships. The next stable patch always sorts after the nightlies built for it.
-
-Nightlies never touch `latest` or the Homebrew cask. The workflow keeps the last 7 and deletes older nightly releases and tags.
-
-Artifacts: `Pond-<version>-arm64.dmg`, `Pond-<version>-arm64.zip`, and `nightly-mac.yml`.
-
 ## Local packaging (without publish)
 
 ```bash
@@ -169,10 +150,11 @@ The `stores` job reads these repository secrets:
 | Secret | Store |
 | --- | --- |
 | `CHROME_EXTENSION_ID` | Chrome Web Store item ID |
-| `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN` | Chrome Web Store API OAuth client |
+| `CHROME_PUBLISHER_ID` | Publisher ID from the Developer Dashboard settings |
+| `CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL`, `CHROME_SERVICE_ACCOUNT_PRIVATE_KEY` | `client_email` and `private_key` from the service account JSON key |
 | `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET` | AMO API key |
 
-Run `pnpm --filter @pond/extension exec wxt submit init` locally to create the Chrome OAuth refresh token. The Chrome Web Store assigns its own extension ID, set as `CHROME_WEB_STORE_ID` in [`packages/schema/src/native.ts`](packages/schema/src/native.ts). The native host allows both that ID and the pinned unpacked ID.
+Chrome uses the Chrome Web Store API v2 with a [service account](https://developer.chrome.com/docs/webstore/service-accounts): `pond-publisher` in the `pond-512810` Google Cloud project, linked under Developer Dashboard settings. To rotate it, create a new JSON key in Google Cloud and reset both service account secrets. The Chrome Web Store assigns its own extension ID, set as `CHROME_WEB_STORE_ID` in [`packages/schema/src/native.ts`](packages/schema/src/native.ts). The native host allows both that ID and the pinned unpacked ID.
 
 ## CLI publishing
 

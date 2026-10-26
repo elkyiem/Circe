@@ -1,5 +1,5 @@
 import { IconChatBubble, IconCheck, IconCopy } from "@pond/icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../button";
 import { ActionHint } from "../shared/action-hint";
 import { Tooltip } from "../tooltip";
@@ -7,12 +7,20 @@ import styles from "./styles.module.css";
 
 export function ActionBar({
   text,
+  onCopy,
   onQuote,
 }: {
   text?: string;
+  /** Writes the text through the host app; without it the browser clipboard is used. */
+  onCopy?: (text: string) => Promise<void>;
   onQuote?: () => void;
 } = {}) {
   const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
   return (
     <Tooltip.Provider>
       <div className={styles.actions}>
@@ -22,11 +30,15 @@ export function ActionBar({
             size="xs"
             variant="text"
             aria-label="Copy"
+            disabled={!text}
             onClick={() => {
               if (!text) return;
-              void navigator.clipboard.writeText(text).then(() => {
-                setCopied(true);
-              });
+              const write =
+                onCopy ?? ((value) => navigator.clipboard.writeText(value));
+              void write(text).then(
+                () => setCopied(true),
+                () => setCopied(false),
+              );
             }}
           >
             {copied ? <IconCheck /> : <IconCopy />}

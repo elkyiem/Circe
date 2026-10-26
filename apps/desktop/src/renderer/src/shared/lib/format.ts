@@ -55,6 +55,12 @@ export function formatTimestampLine(
   return `${tsTime.format(d)} · ${tsDate.format(d)}`;
 }
 
+export function formatDate(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "";
+  const d = new Date(value);
+  return Number.isFinite(d.getTime()) ? tsDate.format(d) : "";
+}
+
 export function formatAbsolute(
   value: string | number | null | undefined,
 ): string {

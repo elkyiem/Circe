@@ -3,6 +3,7 @@ import {
   createWindowsUserSidResolver,
   nativeSocketPath,
   parseWindowsUserSid,
+  safariSocketPath,
   WINDOWS_SID_LOOKUP_TIMEOUT_MS,
   windowsNativePipePath,
 } from "./paths";
@@ -92,5 +93,19 @@ describe("nativeSocketPath", () => {
     await expect(nativeSocketPath("darwin")).resolves.toMatch(
       /Library[\\/]Application Support[\\/]Pond[\\/]native\.sock$/,
     );
+  });
+});
+
+describe("safariSocketPath", () => {
+  it("binds inside the App Group container the Safari extension shares", () => {
+    expect(safariSocketPath("/Users/koi")).toBe(
+      "/Users/koi/Library/Group Containers/7VFLYD5292.so.pond/native.sock",
+    );
+  });
+
+  it("fits a Unix socket address for a typical home folder", () => {
+    expect(
+      safariSocketPath("/Users/someone-with-a-long-name").length,
+    ).toBeLessThan(104);
   });
 });

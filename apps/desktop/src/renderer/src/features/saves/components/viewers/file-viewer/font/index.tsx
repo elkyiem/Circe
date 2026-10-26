@@ -11,7 +11,7 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { ChromePortal } from "@/features/saves/components/viewers/media-viewer/chrome";
 import { ViewerFallback } from "@/features/saves/components/viewers/viewer-fallback";
-import { ViewerResultCount } from "@/features/saves/components/viewers/viewer-result-count";
+import { ViewerSaveNav } from "@/features/saves/components/viewers/viewer-save-nav";
 import { ViewerToolbarGroups } from "@/features/saves/components/viewers/viewer-toolbar-groups";
 import { InlineNameEditor } from "@/shared/components/inline-name-editor";
 import { formatBytes } from "@/shared/lib/format";
@@ -94,44 +94,46 @@ export function FontViewer(props: ViewerProps & { url: string }) {
       <ChromePortal slot="top">
         <ViewerHud.Bar
           label="Font"
-          start={<ViewerResultCount saveId={props.save.id} />}
+          start={<ViewerSaveNav saveId={props.save.id} />}
           center={
-            <>
-              <Input.Root
-                size="sm"
-                variant="secondary"
-                className={styles.field}
-              >
-                <Input.Field
-                  value={specimen}
-                  aria-label="Font specimen text"
-                  onChange={(event) => setSpecimen(event.target.value)}
-                />
-              </Input.Root>
-              <div className={styles.size}>
-                <ViewerHud.Scale>{size}px</ViewerHud.Scale>
-                <Slider.Root
-                  min={24}
-                  max={144}
-                  step={1}
-                  value={size}
-                  onValueChange={(next) => {
-                    const value = Array.isArray(next) ? (next[0] ?? 68) : next;
-                    setSize(value);
-                  }}
-                >
-                  <Slider.Control>
-                    <Slider.Track>
-                      <Slider.Indicator />
-                      <Slider.Thumb aria-label="Font preview size" />
-                    </Slider.Track>
-                  </Slider.Control>
-                </Slider.Root>
-              </div>
-            </>
-          }
-          end={
             <ViewerToolbarGroups
+              controls={
+                <>
+                  <Input.Root
+                    size="sm"
+                    variant="secondary"
+                    className={styles.field}
+                  >
+                    <Input.Field
+                      value={specimen}
+                      aria-label="Font specimen text"
+                      onChange={(event) => setSpecimen(event.target.value)}
+                    />
+                  </Input.Root>
+                  <div className={styles.size}>
+                    <ViewerHud.Scale>{size}px</ViewerHud.Scale>
+                    <Slider.Root
+                      min={24}
+                      max={144}
+                      step={1}
+                      value={size}
+                      onValueChange={(next) => {
+                        const value = Array.isArray(next)
+                          ? (next[0] ?? 68)
+                          : next;
+                        setSize(value);
+                      }}
+                    >
+                      <Slider.Control>
+                        <Slider.Track>
+                          <Slider.Indicator />
+                          <Slider.Thumb aria-label="Font preview size" />
+                        </Slider.Track>
+                      </Slider.Control>
+                    </Slider.Root>
+                  </div>
+                </>
+              }
               actions={<FileActions {...props} />}
               view={
                 <>
@@ -161,9 +163,9 @@ export function FontViewer(props: ViewerProps & { url: string }) {
                   </ViewerHud.Tool>
                 </>
               }
-              navigation={navigationControls(props.navigation)}
             />
           }
+          end={navigationControls(props.navigation)}
         />
       </ChromePortal>
       <div className={styles.scroll}>
