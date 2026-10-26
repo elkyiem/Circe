@@ -18,10 +18,15 @@ Node service or an always-on Linux deployment.
 
 A separate loopback Hono listener serves the browser build and `/web` routes.
 The browser has an explicit query allowlist independent of Agent discovery.
-Existing validated query handlers own reads and folder mutations. Native file
-paths, credentials, destructive Library transitions and arbitrary transactions
-are excluded. Unsupported actions report a visible capability error. Browser
-appearance and navigation preferences are stored on the visiting device.
+Existing validated query handlers own domain operations. The exhaustive query
+and bridge classifications require a deliberate decision for every desktop
+addition; classification alone does not mean a workflow has been verified.
+Native paths, credential reads, destructive Library transitions and arbitrary
+transactions are excluded. A bounded Save-edit endpoint checks original values
+before committing through the executor and journal. Undo/Redo submit the observed
+host-global history revision and reject a different history head. Device
+presentation preferences overlay host preferences without replacing provider,
+processing or storage settings.
 
 One Electron host owns all Library mutations and task settlement. Ingest fixtures
 supply ordinary structured Capture Seeds to `enqueue`; the existing reconciler,
@@ -34,21 +39,46 @@ The host creates a random access key in the isolated sandbox with mode `0600`.
 It is never bundled, logged or placed in a URL. The visitor supplies it through a
 password field or a local file picker. Login creates an opaque, expiring,
 HttpOnly, SameSite=Strict cookie; HTTPS origins also set Secure. Sessions are
-memory-only and are invalidated by host restart. Logout revokes the session.
+memory-only and are invalidated by host restart. Logout revokes the session and immediately closes its event subscriptions.
+Sessions are bound to the origin and active Library. Writes also send the Library
+identity and revalidate it inside the mutation scope.
 Failed login attempts are limited by socket address.
 
 Queries, media and SSE use the same cookie and configured exact origin. Mutations
 require the Origin header; foreign origins and mismatching Host headers are
-rejected. There is no wildcard CORS. SSE sends SyncActions and connection
-heartbeats, removes subscriptions on disconnect, and reloads the pool after a
-reconnection gap. Native event sources remain native.
+rejected. There is no wildcard CORS. SSE sends SyncActions, connection heartbeats
+and an explicit set of session, Source sync, preferences, transfer and Agent
+notifications. Subscriptions are removed on disconnect; reconnecting after a gap
+reloads the pool. The Agent endpoint wraps the existing AI SDK stream and stops
+the exact chat/request on cancellation. Provider clients and Codex subscription
+authentication remain on the host.
 
 Media routes resolve only indexed files belonging to the requested Save, check
 real path containment (including symlinks), and reuse Pond's media handler and
 thumbnail selection. MIME types, HEAD, Content-Length, 206/416 responses and
 single bounded/open/suffix byte ranges are retained. Browser responses are
 private/no-store, carry nosniff and a sandbox CSP, and never expose host paths.
-Archive replay and arbitrary `_meta`/`_replay`/video-cache hosts are not exposed.
+Frame extraction and compatible previews reuse host FFmpeg processing. Preview
+URLs are bound to an indexed original and active Library, with authenticated
+range delivery. Arbitrary `_meta`, `_replay` and video-cache paths remain blocked.
+Archive replay is still deferred until its separate-origin isolation is proven.
+
+Visiting-device files are streamed to bounded, Library-bound staging using opaque
+tickets. Existing importers own persistence and duplicate handling; replaying one
+staged file import preserves its Save. Existing export operations produce
+host-owned downloadable artifacts. ZIP is a transport envelope around the Pond
+package, not a new Library format. Extraction rejects traversal and symlinks and
+bounds expanded bytes. Conversion exports finish on the host and become
+session-authenticated downloads. Clipboard and sharing act on the visiting device.
+
+Canvas autosaves compare a hash of the content read by the client, inside the
+mutation scope. Concurrent renames do not overwrite content, and a stale board
+cannot replace another window's changes. Canvas capture/export is still pending.
+
+Source connection opens an isolated, sandboxed host window with no preload or
+Node access. Only cookies entered in that window reach the existing session
+importer. It does not inspect or copy Chrome profiles and does not redirect the
+installed Pond native host. No live Account has completed this flow yet.
 
 ## Isolation and private access
 
@@ -59,11 +89,14 @@ home/Library, logs and native socket. Upstream sandbox guards suppress protocol
 registration, native-host installation, shortcuts and auto-updates. Keep the
 normal Pond app installed and its Library closed to this development host.
 
-The listener binds `127.0.0.1:4789` by default. For later private Tailscale access,
-terminate HTTPS through a private reverse proxy and set `IRIS_WEB_ORIGIN` to its
-exact HTTPS origin while preserving that Host header. Operations, media and SSE
-must share that origin. Do not publicly deploy this development host. Remote
-Tailscale access has not yet been verified.
+The listener binds `127.0.0.1:4789` by default. `IRIS_WEB_ORIGIN` and the optional
+comma-separated `IRIS_WEB_ORIGINS` explicitly name accepted origins. A reverse
+proxy must preserve Host; each request's Origin must match that Host's configured
+origin. HTTPS sessions use Secure cookies. Arbitrary forwarded headers are not
+trusted. The development host is privately reachable through Tailscale Serve on
+HTTPS port 9443. Same-machine tailnet HTTPS authentication and restart checks
+passed; another device has not been verified. Existing Serve routes were preserved.
+Never use Funnel or publicly deploy this development host.
 
 ## Upstream and later runtime replacement
 

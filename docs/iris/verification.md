@@ -76,3 +76,50 @@ native worker path were preserved; no live account credentials were imported.
 Raw local command logs are retained in ignored `*.log` files under
 `.local/verification/`. Host test state and generated private credentials are
 under ignored `.artifacts/iris-web-sandbox/`; neither belongs in commits.
+
+## Expanded parity slice — 2026-10-26
+
+This record supersedes the earlier kickoff-only limitations where explicitly
+stated. Full feature parity is still in progress.
+
+- `pnpm check`: all 25 tasks passed. Desktop: 599 files passed, 2 skipped;
+  4,108 tests passed, 5 skipped. Other package checks, including theme, passed.
+- `pnpm build`: all 11 tasks and five performance budgets passed. Browser
+  production build and all 14 typecheck tasks passed separately.
+- Focused transport/security/serialization/history/Agent/native tests: 68 passed,
+  1 platform skip across 11 files before the additional reload/preference tests.
+  Deep-link and preference regression check: 11 passed across 2 files.
+- The native socket cleanup race is fixed. The theme contrast test now runs its
+  identical assertions per preset; default timeouts and assertion coverage were
+  preserved. A parallel build/check run again timed out in filter persistence;
+  its isolated retry and subsequent full graph without a concurrent build passed.
+- HTTP workflow smoke passed Save edits and conflicts, stale Undo rejection,
+  tags, Saved Views, Canvas rename/content retention and stale autosave rejection,
+  upload retry identity, real file import, Pond package Capture/media retention,
+  same-Library reimport/dedup, CSV, conversion ZIP, attachment registration,
+  decoded/sampled video frames, cross-Save thumbnail rejection and authenticated
+  compatible preview byte ranges.
+- Private Tailscale Serve HTTPS on port 9443 returned the real app and passed
+  authenticated restart/persistence checks from this machine. Existing Serve
+  configuration was compared before/after and preserved. No Funnel/public
+  deployment was enabled. Another device has not been checked.
+- Shared Chrome signed in through its native file chooser without exposing the
+  access key. The actual assistant composer used **Codex Default** through the
+  authorized ChatGPT subscription, searched the fixture Library, streamed a
+  response and cited the correct Save. Opening the citation loaded that Save's
+  original `media-1.png`. Folder assignment, removal and saved-item reload passed
+  in shared Chrome. Screenshots are ignored local artifacts under
+  `.artifacts/web-verification/shared-chrome-{agent,citation}.png`.
+- Browser startup testing caught an allowlist mismatch for preferences. Model
+  selection testing caught a stale preference publication. Deep-link reload
+  testing caught a discarded HTML response body. All were fixed and the latter
+  two gained focused regression coverage. HTTP-only checks did not catch them.
+
+The isolated Source sign-in helper is implemented, but no user has completed a
+live sign-in. Normal Chrome being signed in to X does not authorize automatic
+cookie extraction into the sandbox. Live Source sync is therefore pending.
+The available device tool reported a local device-support installation failure
+and no Android SDK; physical mobile coverage is not claimed. Archive replay,
+Canvas export, host administration, full viewer/format coverage, enrichment
+execution ownership, and the remaining Agent review/cancellation/device matrix
+remain open in the parity ledger. These are not hidden behind a full-parity claim.
