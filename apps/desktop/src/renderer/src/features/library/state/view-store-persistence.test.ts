@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Load the dependency graph during test setup, as static imports normally do.
+// Each case still resets modules and reloads the store against fresh storage.
+import "./view-store";
 
 describe("filter persistence", () => {
   beforeEach(() => {
