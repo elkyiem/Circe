@@ -258,3 +258,28 @@ The final `pnpm check` passed all 25 tasks: desktop 603 test files passed,
 2 skipped; 4,127 tests passed, 5 skipped. `pnpm build` passed all 11 tasks and
 five performance budgets. The separate production browser build and focused
 viewer tests also passed.
+
+## New Note and editor persistence — 2026-10-26
+
+The real New Note menu exposed a transport regression: the browser upload/manual
+adapter dropped `mediaType`, so Pond rejected an untitled empty text Save as
+empty input. The adapter now reuses the native manual-input schema and
+normalization, replacing only filesystem paths and Source identity with
+host-resolved upload tickets. Three focused tests verify empty Notes, media
+metadata, upload identity and rejection of host paths or expired tickets.
+
+The finite browser created Notes through New, edited their titles and Unicode
+bodies in Pond's actual Lexical editor, independently checked committed Save
+fields over HTTP and reloaded the Save at both 1280×900 and 390×844. The mobile
+flow opens the existing sidebar to reach New and closes it to edit. Early harness
+runs needed to await creation, open that sidebar and explicitly navigate to All
+instead of invoking the Continue startup route. No product navigation behavior
+was changed to satisfy those harness corrections.
+
+Evidence: `editing-results.json`, `note-edited-<width>.png` and
+`note-reloaded-<width>.png`. These Notes have not yet received a separate host
+restart acceptance run; the fixture manifest and `--editing --after-restart`
+command are prepared for the next shared-runtime restart. Rich formatting,
+conflicting concurrent document edits and the full bulk-edit UI matrix remain
+pending. `pnpm check` passed all 25 tasks: desktop 604 files passed, 2 skipped;
+4,130 tests passed, 5 skipped. The root build passed all 11 tasks and five budgets.

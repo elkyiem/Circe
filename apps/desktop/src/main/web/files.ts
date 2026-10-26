@@ -29,7 +29,7 @@ import {
   exportSavesToDirectory,
   exportSavesToEaglePackage,
 } from "../core/export-saves";
-import { createManualSave, type ManualSaveInput } from "../core/manual-import";
+import { createManualSave } from "../core/manual-import";
 import { importMymindExport } from "../core/mymind-import";
 import { readSave } from "../core/pipeline/workers/apply";
 import { exportPondPackage, importPondPackage } from "../core/pond-package";
@@ -43,6 +43,7 @@ import { unzipWebDirectory, zipWebDirectory } from "./archives";
 import { renderWebCanvas } from "./canvas-render";
 import { WebRequestError } from "./errors";
 import { importUploadedFiles } from "./import-files";
+import { prepareWebManualSave } from "./manual-save-input";
 import { indexedMediaPath } from "./media";
 import { createWebUploads } from "./uploads";
 
@@ -374,23 +375,9 @@ export function createWebFiles(root: string) {
           );
         }
       } else if (name === "saves.createManual") {
-        const input = z
-          .object({
-            filePaths: z.array(Token).default([]),
-            title: z.string().nullable().optional(),
-            url: z.string().nullable().optional(),
-            note: z.string().nullable().optional(),
-            tags: z.array(z.string()).default([]),
-          })
-          .parse(params);
-        const staged = await Promise.all(
-          input.filePaths.map((token) => uploads.get(token, expected)),
+        const manual = await prepareWebManualSave(params, (token) =>
+          uploads.get(token, expected),
         );
-        const manual: ManualSaveInput = {
-          ...input,
-          filePaths: staged.map((file) => file.path),
-        };
-        if (staged[0]) manual.sourceId = `web-upload:${staged[0].id}`;
         result = await createManualSave(manual);
       } else {
         const input = WebFileImportSchema.parse(params);

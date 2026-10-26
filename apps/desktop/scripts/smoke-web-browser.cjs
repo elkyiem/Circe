@@ -188,6 +188,24 @@ app
       await waitFor(
         'document.querySelector("#fixture-kind") && document.querySelector("[data-library-search]")',
       );
+      if (process.argv.includes("--editing")) {
+        const { verifyBrowserEditing } = require("./web-editing-cases.cjs");
+        await verifyBrowserEditing({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          afterRestart: process.argv.includes("--after-restart"),
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
       if (process.argv.includes("--viewers")) {
         const { verifyBrowserViewers } = require("./web-viewer-cases.cjs");
         const registered = JSON.parse(

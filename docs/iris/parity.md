@@ -9,6 +9,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Pond renderer, components, design system | Browser | Shared production entrypoint; no copied application or replacement UI kit |
 | Library, pagination, keyword search | Host + browser | Real Library and existing virtualized components; finite browser search passed |
 | Title/notes/rating and bulk edits | Host | Bounded transaction schema; HTTP edit, stale edit rejection, grouped history and stale Undo rejection passed; broader UI matrix pending |
+| New Note and text editor | Browser + host | Real New Note menu, title/body editing and reload passed at 1280- and 390-pixel widths; manual-input transport now retains the explicit text type; richer editing and Note-specific host-restart checks pending |
 | Folders, tags, groups, rules, Saved Views | Host | Existing domain operations exposed; HTTP folder/tag/view CRUD passed; shared Chrome folder assignment/removal/reload passed |
 | Canvas CRUD, autosave and export | Host + browser | HTTP CRUD, rename retention and stale content rejection passed; dedicated host render job exports PNG/PDF with actual Board tiles; shared Chrome PNG download passed; broader board-tool and cross-client matrix pending |
 | Image/video viewing and seeking | Host media + browser | Actual shared viewers and original media; authenticated HEAD, 206/416 and byte ranges verified |

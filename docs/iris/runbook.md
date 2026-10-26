@@ -111,8 +111,11 @@ pnpm --filter @pond/desktop exec node scripts/smoke-web-package.mjs
 # Add purpose-built files to the disposable Library, then verify each viewer:
 pnpm --filter @pond/desktop exec node scripts/prepare-web-viewers.mjs
 env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --viewers
+# New Note, real editor, persistence and reload at both widths:
+env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --editing
 # After restarting the same disposable host:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs --after-restart
+env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --editing --after-restart
 # Live model use; requires the explicitly authorized, connected subscription:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-agent.mjs
 IRIS_WEB_ORIGIN=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop exec node scripts/smoke-web.mjs --after-restart
