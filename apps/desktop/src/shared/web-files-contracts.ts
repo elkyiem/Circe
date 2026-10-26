@@ -3,6 +3,7 @@ import { z } from "zod";
 export const WebFileQuerySchema = z
   .object({
     name: z.enum([
+      "library.identity.pickIcon",
       "saves.importFiles",
       "saves.reviewImportDuplicates",
       "saves.createManual",

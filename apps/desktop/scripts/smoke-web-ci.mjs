@@ -55,10 +55,12 @@ try {
   }
   await run(process.execPath, ["scripts/smoke-web.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-parity.mjs"]);
+  await run(process.execPath, ["scripts/smoke-web-identity.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-imports.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-package.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-canvas.mjs"]);
   await run(electron, ["scripts/smoke-web-browser.cjs"]);
+  await run(electron, ["scripts/smoke-web-browser.cjs", "--identity"]);
 } finally {
   clearTimeout(deadline);
   host.kill("SIGTERM");

@@ -108,6 +108,8 @@ pnpm --filter @pond/desktop exec node scripts/smoke-web-parity.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-canvas.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-package.mjs
+pnpm --filter @pond/desktop exec node scripts/smoke-web-identity.mjs
+env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --identity
 # Add purpose-built files to the disposable Library, then verify each viewer:
 pnpm --filter @pond/desktop exec node scripts/prepare-web-viewers.mjs
 env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --viewers
@@ -138,6 +140,13 @@ sandbox manifest. The finite viewer check covers desktop and mobile widths and
 writes per-viewer screenshots and `viewer-results.json` under the evidence
 directory. HEIC/Office preview and 3D rendering depend on the host platform and
 graphics environment; the recorded acceptance run used macOS and Chromium.
+
+The identity smoke prepares a purpose-built logo, verifies upload/normalization,
+portable metadata, validation, reset and the public default favicon, and restores
+the prior Library logo. Run it before the finite `--identity` browser check,
+which uses that fixture with Chromium's real file chooser protocol and verifies
+the shared Settings UI, custom tab icon, reload and reset. It restores the prior
+logo too. These checks are also part of the isolated CI driver.
 
 To connect a Source, use **Sources → New Source**. Sign-in opens on the host in an
 isolated window; being signed in to Twitter in normal Chrome does not connect

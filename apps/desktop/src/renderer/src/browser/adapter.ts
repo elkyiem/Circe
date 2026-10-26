@@ -15,6 +15,7 @@ import type {
   WireSyncStatusUpdate,
 } from "@shared/wire";
 import { z } from "zod";
+import defaultAppIcon from "@/generated/app-icon-previews/aqua.png";
 import type { PondApi, StorageGuardStatusWire } from "../../../preload";
 import { createBrowserCanvases } from "./canvases";
 import { BROWSER_BRIDGE_ACCESS } from "./capabilities";
@@ -148,6 +149,14 @@ export async function installBrowserAdapter(libraryId: string) {
         "query",
         JSON.stringify({ name, params: args[0] ?? {} }),
       );
+    }
+    if (name === "library.info" || name === "library.identity.update") {
+      const identity = z
+        .object({ icon: z.string().nullable() })
+        .safeParse(result);
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (identity.success && favicon instanceof HTMLLinkElement)
+        favicon.href = identity.data.icon ?? defaultAppIcon;
     }
     /** SAFETY: the name is checked against the shared allowlist; host handlers validate inputs and retain QueryResults. Local prefs use PrefsSchema. */
     return result as QueryResult<typeof name>;

@@ -283,3 +283,39 @@ command are prepared for the next shared-runtime restart. Rich formatting,
 conflicting concurrent document edits and the full bulk-edit UI matrix remain
 pending. `pnpm check` passed all 25 tasks: desktop 604 files passed, 2 skipped;
 4,130 tests passed, 5 skipped. The root build passed all 11 tasks and five budgets.
+
+## Library logo and browser tab icon — 2026-10-26
+
+The owner reported a generic browser-tab icon and “Couldn't choose the logo.”
+The browser document had no favicon, and both logo operations remained classified
+as native-only. The browser now opens its own single-file picker and uploads an
+opaque ticket. Main uses the same native image normalization as desktop;
+the existing identity owner stores the 256×256 PNG in portable metadata.
+Identity writes retain the current session, origin and Library fences. The
+browser starts with Pond's upstream default app icon and follows the custom
+Library logo after authenticated reads or updates; Reset restores the default.
+
+- Focused checks: 22 tests across five files passed, including actual browser
+  picker/change/cancel events and host authentication/origin/Library checks.
+- The real isolated-host HTTP smoke verified PNG dimensions, stored metadata,
+  reset/restoration, rejection of invalid images, host paths and oversized files,
+  and the declared favicon's MIME type and image bytes.
+- The finite Chromium browser used the real file chooser protocol and shared
+  Settings UI to upload, display, reload and reset the logo. The custom favicon
+  matched the stored logo after upload and reload. Original identity was restored.
+  Evidence: `library-logo-changed.png`, `library-logo-reloaded.png` and
+  `library-logo-reset.png`. Both identity checks now run in the isolated CI driver.
+- Shared Chrome reached Settings, but its native access-key chooser left Open
+  disabled. It was cancelled; no browser permission was changed. Complete logo
+  UI acceptance therefore used the finite Chromium check above. The owner's
+  remote Windows logo-picker result remains distinct from that automated proof.
+- `pnpm check`: all 25 tasks passed; desktop 605 test files passed, 2 skipped;
+  4,134 tests passed, 5 skipped. Root build: all 11 tasks and five budgets passed;
+  the separate browser production build passed.
+
+The necessary isolated-host restart also completed the pending Note restart
+check: both previously edited Notes reopened with identical titles and bodies
+at desktop and mobile widths (`WEB_EDITING_RESTART_PASSED`). Separately, the
+owner confirmed remote Windows access through Tailscale after explicitly
+authorizing private Taildrop delivery of the login file. No key contents were
+printed, embedded in a URL or committed.

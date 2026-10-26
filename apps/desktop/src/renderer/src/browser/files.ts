@@ -15,6 +15,7 @@ interface FileTransport {
   headers(): Record<string, string>;
 }
 const DEVICE_QUERIES = new Set<string>([
+  "library.identity.pickIcon",
   "saves.pickImportPaths",
   "saves.importFiles",
   "saves.reviewImportDuplicates",
@@ -77,11 +78,16 @@ export function downloadInBrowser(url: string, filename: string) {
   anchor.remove();
 }
 
-function pickDeviceFiles(directory = false, multiple = true): Promise<File[]> {
+function pickDeviceFiles(
+  directory = false,
+  multiple = true,
+  accept?: string,
+): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = multiple;
+    if (accept) input.accept = accept;
     input.setAttribute(
       "aria-label",
       directory
@@ -222,6 +228,17 @@ export function createBrowserFiles(transport: FileTransport) {
       name: QueryName,
       params: Record<string, Json>,
     ): Promise<WebValue> {
+      if (name === "library.identity.pickIcon") {
+        const [file] = await pickDeviceFiles(
+          false,
+          false,
+          ".png,.jpg,.jpeg,.webp,.gif,.tiff,.bmp",
+        );
+        if (!file) return { ok: false, reason: "cancelled" };
+        if (file.size > 8 * 1024 * 1024)
+          throw new Error("Choose a logo smaller than 8 MB.");
+        return importSelected(name, { paths: [pathForFile(file)] });
+      }
       if (
         [
           "video.sampleFrames",

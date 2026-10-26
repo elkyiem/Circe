@@ -9,7 +9,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Pond renderer, components, design system | Browser | Shared production entrypoint; no copied application or replacement UI kit |
 | Library, pagination, keyword search | Host + browser | Real Library and existing virtualized components; finite browser search passed |
 | Title/notes/rating and bulk edits | Host | Bounded transaction schema; HTTP edit, stale edit rejection, grouped history and stale Undo rejection passed; broader UI matrix pending |
-| New Note and text editor | Browser + host | Real New Note menu, title/body editing and reload passed at 1280- and 390-pixel widths; manual-input transport now retains the explicit text type; richer editing and Note-specific host-restart checks pending |
+| New Note and text editor | Browser + host | Real New Note menu, title/body editing, reload and host restart passed at 1280- and 390-pixel widths; manual-input transport retains the explicit text type; richer editing and concurrent document checks pending |
 | Folders, tags, groups, rules, Saved Views | Host | Existing domain operations exposed; HTTP folder/tag/view CRUD passed; shared Chrome folder assignment/removal/reload passed |
 | Canvas CRUD, autosave and export | Host + browser | HTTP CRUD, rename retention and stale content rejection passed; dedicated host render job exports PNG/PDF with actual Board tiles; shared Chrome PNG download passed; broader board-tool and cross-client matrix pending |
 | Image/video viewing and seeking | Host media + browser | Actual shared viewers and original media; authenticated HEAD, 206/416 and byte ranges verified |
@@ -29,12 +29,13 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Assistant review, stop and recovery | Host + browser | Live Chrome Stop, persisted review after host restart, Apply and exact-value Undo passed; empty reviews and nullable-note conflict defects fixed; broader question/provider/device matrix pending |
 | Authentication, origins and session lifecycle | Host | Exact Host/Origin checks, Library binding, Secure HTTPS cookie, login limits, immediate stream revocation and logout tests passed |
 | Deep links and reload | Browser + host | Folder/tag scope encoded in browser history; Chrome folder and Save reload, app Back/Forward and browser Back passed; finite desktop/mobile smoke includes folder reload; Saved View/filter-history matrix pending |
-| Private Tailscale HTTPS | Host | Serve on port 9443; same-machine authenticated HTTPS/restart check passed; existing Serve routes preserved; second-device test pending |
+| Private Tailscale HTTPS | Host | Serve on port 9443; same-machine authenticated HTTPS/restart check passed; owner confirmed access from remote Windows after private key-file delivery; existing Serve routes preserved |
 | Mobile browser composition | Browser | Earlier Chromium 390×844 milestone passed; expanded workflow matrix and physical phone remain pending |
 | Archive replay | Needs isolated browser equivalent | Electron webview retained for desktop; browser replay is not enabled until separate-origin authentication and hostile-content isolation are proven |
 | Combine Images | Browser + host compositor | Shared dialog and original options; HTTP create/export/path denial, Chrome create and 390-pixel download workflow passed; broader format/drop/device matrix pending |
 | Detached preview windows | Needs browser equivalent | Existing main Save viewer is available; detached-window composition pending |
 | Fonts, OS integrations and Library administration | Needs explicit host helper/equivalent | Generic path/dialog operations remain blocked; lifecycle, backups, extension pairing and settings coverage remain pending |
+| Library logo and browser tab icon | Browser + host | Visiting-device file picker uses the native PNG normalizer and portable Library metadata; upload, cancel, invalid/oversized files, origin/Library fences, reset and reload verified; tab icon follows the active Library logo |
 | Enrichment and semantic/visual search | Browser + host persistence | Existing inference code retained; default browser enrichment off; single execution owner and closed-tab processing are not yet implemented or claimed |
 | Electron removal / Linux service | Deferred runtime project | Requires concrete collector, process and lifecycle replacements |
 

@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { app, BrowserWindow, dialog, nativeImage, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import { z } from "zod";
 import type { QueryResult } from "../../../shared/query-contracts";
 import { createPondBundle } from "../../core/ensure-default-library";
 import { verifyLibraryBackup } from "../../core/library-backup";
 import { updateLibraryIdentity } from "../../core/library-identity";
+import { readLibraryLogo } from "../../core/library-logo";
 import { relocateLibrary } from "../../core/library-ops";
 import {
   listRecentLibraries,
@@ -47,16 +48,7 @@ async function pickLibraryIcon() {
   if (result.canceled || !path) {
     return { ok: false as const, reason: "cancelled" as const };
   }
-  const image = nativeImage.createFromPath(path);
-  if (image.isEmpty()) {
-    return { ok: false as const, reason: "invalid_image" as const };
-  }
-  return {
-    ok: true as const,
-    icon: image
-      .resize({ width: 256, height: 256, quality: "best" })
-      .toDataURL(),
-  };
+  return readLibraryLogo(path);
 }
 
 export const libraryLocationOpenQueries = {

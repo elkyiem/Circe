@@ -99,6 +99,15 @@ Node access. Only cookies entered in that window reach the existing session
 importer. It does not inspect or copy Chrome profiles and does not redirect the
 installed Pond native host. No live Account has completed this flow yet.
 
+The browser Library-logo picker uploads one visiting-device image using the same
+Library-bound tickets as file import. Main applies the native desktop logo
+normalizer and returns Pond's existing 256-pixel PNG data URI. The existing
+identity mutation writes portable Library metadata within the mutation scope.
+No host path picker, arbitrary file read or Library lifecycle operation is
+exposed. The browser document declares the upstream default app icon before
+sign-in; authenticated Library reads and logo updates set the tab icon to the
+custom Library logo. Reset restores the default.
+
 ## Isolation and private access
 
 The launcher requires `POND_SANDBOX`, defaults to the checkout's ignored
@@ -114,7 +123,8 @@ proxy must preserve Host; each request's Origin must match that Host's configure
 origin. HTTPS sessions use Secure cookies. Arbitrary forwarded headers are not
 trusted. The development host is privately reachable through Tailscale Serve on
 HTTPS port 9443. Same-machine tailnet HTTPS authentication and restart checks
-passed; another device has not been verified. Existing Serve routes were preserved.
+passed; the owner also confirmed access from remote Windows after private
+Taildrop delivery of the access-key file. Existing Serve routes were preserved.
 Never use Funnel or publicly deploy this development host.
 
 ## Upstream and later runtime replacement

@@ -29,6 +29,7 @@ import {
   exportSavesToDirectory,
   exportSavesToEaglePackage,
 } from "../core/export-saves";
+import { readLibraryLogo } from "../core/library-logo";
 import { createManualSave } from "../core/manual-import";
 import { importMymindExport } from "../core/mymind-import";
 import { readSave } from "../core/pipeline/workers/apply";
@@ -112,7 +113,16 @@ export function createWebFiles(root: string) {
             Extract<z.infer<typeof WebFileQuerySchema>["name"], QueryName>
           >
         | Awaited<ReturnType<typeof finish>>;
-      if (name === "canvases.render") {
+      if (name === "library.identity.pickIcon") {
+        const { paths } = z
+          .object({ paths: z.array(Token).length(1) })
+          .strict()
+          .parse(params);
+        const file = await uploads.get(paths[0] ?? "", expected);
+        if (file.size > 8 * 1024 * 1024)
+          throw new WebRequestError("Choose a logo smaller than 8 MB.", 422);
+        result = readLibraryLogo(file.path);
+      } else if (name === "canvases.render") {
         const input = WebCanvasRenderSchema.parse(params);
         const image = await renderWebCanvas(input, expected);
         const directory = await workDirectory();

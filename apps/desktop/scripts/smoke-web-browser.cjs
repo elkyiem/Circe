@@ -188,6 +188,22 @@ app
       await waitFor(
         'document.querySelector("#fixture-kind") && document.querySelector("[data-library-search]")',
       );
+      if (process.argv.includes("--identity")) {
+        const { verifyBrowserIdentity } = require("./web-identity-cases.cjs");
+        await verifyBrowserIdentity({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
       if (process.argv.includes("--editing")) {
         const { verifyBrowserEditing } = require("./web-editing-cases.cjs");
         await verifyBrowserEditing({

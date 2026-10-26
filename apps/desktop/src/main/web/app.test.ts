@@ -61,6 +61,43 @@ async function host(assets = "/nonexistent") {
 }
 
 describe("browser host boundary", () => {
+  it("requires the current authenticated Library and exact origin for logo operations", async () => {
+    const test = await host();
+    const seen: string[] = [];
+    test.config.files = async (input, library) => {
+      seen.push(`${library}:${input.name}`);
+      return Response.json({
+        ok: true,
+        icon: "data:image/png;base64,aWNvbg==",
+      });
+    };
+    const body = JSON.stringify({
+      name: "library.identity.pickIcon",
+      params: { paths: ["iris-upload:11111111-1111-4111-8111-111111111111"] },
+    });
+    expect(
+      (await test.request("/web/files", { method: "POST", body })).status,
+    ).toBe(401);
+    const cookie = await test.login();
+    for (const [origin, library, status] of [
+      ["https://attacker.test", "test-library", 403],
+      [test.config.origin, "other-library", 409],
+      [test.config.origin, "test-library", 200],
+    ] as const) {
+      const response = await test.request("/web/files", {
+        method: "POST",
+        body,
+        headers: {
+          cookie,
+          origin,
+          "x-iris-library": library,
+          "content-type": "application/json",
+        },
+      });
+      expect(response.status).toBe(status);
+    }
+    expect(seen).toEqual(["test-library:library.identity.pickIcon"]);
+  });
   it("serves the application document for deep links and preserves missing API/asset errors", async () => {
     const directory = await mkdtemp(join(tmpdir(), "iris-web-routes-"));
     cleanups.push(() => rm(directory, { recursive: true, force: true }));
