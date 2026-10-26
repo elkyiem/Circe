@@ -40,6 +40,29 @@ function tool(name: string, execute = vi.fn()) {
   return { name, description: name, schema: z.looseObject({}), execute };
 }
 
+it("reserves the final tool-loop step for an answer instead of ending with no reply", async () => {
+  const answer = "I could not verify that detail from the available results.";
+  const model = new MockLanguageModelV4({
+    doStream: async (options) => ({
+      stream: simulateReadableStream({
+        chunks:
+          options.toolChoice?.type === "none"
+            ? textChunks(answer)
+            : toolCallChunks(crypto.randomUUID(), "lookup", {}),
+      }),
+    }),
+  });
+  const execute = vi.fn(async () => ({ found: false }));
+  const reply = await complete({
+    ...request(model),
+    messages: [{ role: "user", content: "Find a detail in the Library" }],
+    tools: [tool("lookup", execute)],
+  });
+  expect(reply).toBe(answer);
+  expect(execute).toHaveBeenCalledTimes(15);
+  expect(model.doStreamCalls).toHaveLength(16);
+});
+
 const filmSources: AssistantSource[] = Array.from(
   { length: 8 },
   (_, index) => ({

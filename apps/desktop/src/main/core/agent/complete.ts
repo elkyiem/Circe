@@ -407,9 +407,22 @@ export async function completeWithTools(
         ? undefined
         : controls.reasoning,
     providerOptions: nativeFastOptions(input.provider, controls.fast),
-    prepareStep: ({ messages: stepMessages }) => ({
-      messages: budgetMessages(stepMessages, inputBudget, fixedTokens, encode),
-    }),
+    prepareStep: ({ messages: stepMessages, stepNumber }) => {
+      const nextMessages = budgetMessages(
+        stepMessages,
+        inputBudget,
+        fixedTokens,
+        encode,
+      );
+      // Reserve the final step for an answer, including an honest account of missing evidence.
+      return stepNumber >= 15
+        ? {
+            messages: nextMessages,
+            toolChoice: "none" as const,
+            activeTools: [],
+          }
+        : { messages: nextMessages };
+    },
   });
   let assembled = "";
   let writing = false;
