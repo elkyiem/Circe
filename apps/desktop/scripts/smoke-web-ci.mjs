@@ -56,6 +56,8 @@ try {
   await run(process.execPath, ["scripts/smoke-web.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-parity.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-identity.mjs"]);
+  await run(electron, ["scripts/smoke-web-browser.cjs", "--extension-setup"]);
+  await run(process.execPath, ["scripts/smoke-web-extension.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-imports.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-package.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-canvas.mjs"]);

@@ -13,6 +13,7 @@ import {
   useConnectCompleted,
   useConnectedAccount,
   useConnectedBefore,
+  useConnectMode,
   useConnectProblem,
   useConnectSource,
   useConnectWaiting,
@@ -29,6 +30,7 @@ export function ConnectWaitSection() {
   const completed = useConnectCompleted();
   const problem = useConnectProblem();
   const account = useConnectedAccount();
+  const mode = useConnectMode();
   useConnectArrival();
   if (!source) return null;
   const label = getSourceDef(source).label;
@@ -77,10 +79,18 @@ export function ConnectWaitSection() {
               New saves keep arriving in your library.
             </>
           ) : step === "unavailable" ? (
-            "Pond couldn't open the sign-in page. Try again."
+            isBrowserRuntime() && mode === "extension" ? (
+              "Pair the Iris extension using Connection in its panel, then try again. No Source session has been connected."
+            ) : (
+              "Pond couldn't open the sign-in page. Try again."
+            )
           ) : step === "signed_out" ? (
             isBrowserRuntime() ? (
-              "Sign-in was not completed in the isolated host window. Open it again to connect."
+              mode === "extension" ? (
+                "Sign in in the browser where the paired Iris extension is installed. Iris will finish the connection here."
+              ) : (
+                "Sign-in was not completed in the isolated host window. Open it again to connect."
+              )
             ) : (
               <>
                 Pond's extension found a browser profile signed out of {label}.
@@ -91,7 +101,9 @@ export function ConnectWaitSection() {
           ) : (
             <>
               {isBrowserRuntime()
-                ? `Sign in to ${label} in the isolated window on the host computer.`
+                ? mode === "extension"
+                  ? `The Iris extension is connecting ${label} from your browser. Sign in there if needed.`
+                  : `Sign in to ${label} in the isolated window on the host computer.`
                 : `Sign in to ${label} in your browser.`}
               <br />
               Pond will finish the connection here.
@@ -159,11 +171,13 @@ function ConnectPromises({
 
 function ExtensionNote() {
   const [open, setOpen] = useState(false);
+  const mode = useConnectMode();
   if (isBrowserRuntime())
     return (
       <p className={styles.note}>
-        Sign-in needs access to the host computer. Iris keeps the Account
-        session there; it does not read another browser’s cookies.
+        {mode === "extension"
+          ? "Only the paired extension shares the requested Source session with the Iris host. Captures are saved to that host’s Library."
+          : "Sign-in needs access to the host computer. Iris keeps the Account session there; it does not read another browser’s cookies."}
       </p>
     );
   return (

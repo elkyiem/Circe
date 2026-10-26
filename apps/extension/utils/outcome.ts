@@ -15,6 +15,26 @@ export type CaptureOutcome =
   | { status: "offline"; id: string };
 
 const NATIVE_ERRORS = new Map([
+  [
+    "iris_pairing_required",
+    "Pair the Iris extension in Connection before saving.",
+  ],
+  [
+    "iris_auth_required",
+    "Reconnect the Iris extension to authorize this Library.",
+  ],
+  [
+    "iris_library_changed",
+    "The host opened another Library. Pair the Iris extension again.",
+  ],
+  [
+    "iris_invalid_response",
+    "The Iris host returned an unreadable reply. Update Iris and try again.",
+  ],
+  [
+    "too_large",
+    "This capture exceeds the 8 MB extension limit. Save a smaller region.",
+  ],
   ["unsupported_url", "Pond can't save this page. Try a screenshot instead."],
   [
     "capture_unavailable",
@@ -30,7 +50,8 @@ export function outcomeFromResponse(
   response: NativeResponse,
 ): CaptureOutcome {
   if (!response.ok) {
-    if (response.error === "offline") return { status: "offline", id };
+    if (response.error === "offline" || response.error === "iris_offline")
+      return { status: "offline", id };
     return {
       status: "failed",
       id,

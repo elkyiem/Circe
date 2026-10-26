@@ -28,6 +28,7 @@ jobs:
       - run: pnpm check
       - run: pnpm build
       - run: pnpm --filter @pond/desktop build:web
+      - run: pnpm --filter @pond/extension build:iris
       - name: Isolated host and browser workflows
         run: |
           SANDBOX="$(dirname "$(cd apps/desktop && node -p "require('electron')")")/chrome-sandbox"

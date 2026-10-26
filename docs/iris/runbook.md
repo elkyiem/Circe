@@ -148,8 +148,57 @@ which uses that fixture with Chromium's real file chooser protocol and verifies
 the shared Settings UI, custom tab icon, reload and reset. It restores the prior
 logo too. These checks are also part of the isolated CI driver.
 
-To connect a Source, use **Sources → New Source**. Sign-in opens on the host in an
-isolated window; being signed in to Twitter in normal Chrome does not connect
-this collector. Complete sign-in there and then choose import scope. Do not copy
-normal Chrome cookies or repoint the installed extension/native host. Live Source
-coverage remains pending until that explicit test connection is completed.
+## Connect the browser extension to Iris
+
+```sh
+pnpm --filter @pond/extension build:iris
+```
+
+In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load
+unpacked**, and select
+`/Users/elkyiem/Documents/GitHub/iris-web/apps/extension/.output-iris/chrome-mv3`.
+This build is named Iris and has a separate ID from Pond. Do not change the
+installed Pond native-host manifests. Chrome's extension manager must be opened
+by the owner because the collaborative browser URL policy blocks that protocol.
+
+Open the Iris extension panel → **Connection**. Enter
+`https://elkyiem.tailffeb5b.ts.net:9443` and choose the host's `web-access-key`
+file. On the Mac its full path is
+`/Users/elkyiem/Documents/GitHub/iris-web/.artifacts/iris-web-sandbox/web-access-key`.
+Use Cmd-Shift-G in the file picker to reach the hidden directory. **Connect Iris**
+authorizes this extension for this host and Library. The bootstrap key is cleared
+after pairing; a separate, revocable credential stays in the extension.
+
+Refresh Iris and any already-open X tab after loading the extension. In Iris,
+choose **Sources → New Source → Twitter**. The paired extension uses the X
+session in its own Chrome profile; if signed out, it reuses an existing Source
+tab or opens one in that browser. Then choose the import scope and start it.
+Nothing syncs from a new Account until its import scope is confirmed. A remote
+Iris page can also request connection from the paired browser on the Mac; its
+worker checks the host every 30 seconds, subject to the existing retry pacing.
+
+Ordinary bookmarks/likes on supported pages use the existing hooks and capture
+queue. Scheduled collection remains host-owned, so Chrome need not stay open for
+the host to sync an already-connected Account. **Disconnect Iris** revokes the
+extension credential; it does not remove Source Accounts already connected on
+the host. Disconnect those separately in Sources. An unreachable host must be
+reachable again for the panel to revoke its credential. Re-pair after changing
+the host address or active Library. Never paste credentials into logs or chat.
+
+Without a paired extension, New Source explains that pairing is required; it
+does not automatically open a separate host window. The desktop path remains
+unchanged. Do not manually extract browser cookies or repoint the installed Pond
+native host. Remote Firefox pairing and live Source coverage remain pending.
+
+Finite transport/queue/restart verification, without a live Source session:
+
+```sh
+pnpm --filter @pond/desktop exec node scripts/smoke-web-extension.mjs
+# Stop and restart only the isolated host, then:
+pnpm --filter @pond/desktop exec node scripts/smoke-web-extension.mjs --after-restart
+```
+
+The fixture creates a separate temporary extension credential and a generated
+image through the existing capture queue. The restart check verifies the Save
+and credential survived, then revokes only that test credential. Its private
+state file stays in the ignored sandbox with mode 0600 until cleanup.

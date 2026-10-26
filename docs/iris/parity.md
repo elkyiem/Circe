@@ -22,7 +22,8 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Clipboard and share | Visiting device | Browser implementations with download alternatives; permissions and cross-browser matrix pending |
 | Queue/Downloads controls and progress | Host | Pause/resume HTTP check; existing durable queue and governor; selected status events forwarded; recovery/load matrix pending |
 | Twitter quote/image/video fixtures | Host | Existing queue renders Pond light/dark cards and original media; parent/quote/author/file identities verified; fixtures do not prove live X sync |
-| Accounts, Watches and collectors | Electron host | Original collectors retained; host sign-in helper implemented, using the existing session importer; no live Account connected or live sync verified |
+| Accounts, Watches and collectors | Electron host + paired browser extension | Existing Source session importer and collectors retained; new extension transport, explicit Source request, capture queue and restart checked over HTTP; owner must load/pair the Chrome build before live connection/sync verification |
+| Browser extension connection | Browser extension + host | Separate Iris Chromium build, scoped pairing, credential persistence/expiry/revocation, origin checks, native fallback and explicit transport failures tested; actual Chrome pairing/capture and remote-device extension matrix pending |
 | Assistant streaming, chat persistence and citations | Electron host + browser | Authorized ChatGPT subscription via Codex; live HTTP search/persisted citation passed; actual shared Chrome composer, streamed completion and citation to the correct image passed |
 | Assistant model preferences | Host | Browser stale-preference defect fixed with regression test; Codex Default selection survives reload |
 | Assistant attachments and chat export | Browser + host | Uploaded attachment registration retains names and hides host paths; Markdown download adapter implemented; provider vision and full browser flow pending |
@@ -34,7 +35,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Archive replay | Needs isolated browser equivalent | Electron webview retained for desktop; browser replay is not enabled until separate-origin authentication and hostile-content isolation are proven |
 | Combine Images | Browser + host compositor | Shared dialog and original options; HTTP create/export/path denial, Chrome create and 390-pixel download workflow passed; broader format/drop/device matrix pending |
 | Detached preview windows | Needs browser equivalent | Existing main Save viewer is available; detached-window composition pending |
-| Fonts, OS integrations and Library administration | Needs explicit host helper/equivalent | Generic path/dialog operations remain blocked; lifecycle, backups, extension pairing and settings coverage remain pending |
+| Fonts, OS integrations and Library administration | Needs explicit host helper/equivalent | Generic path/dialog operations remain blocked; lifecycle, backups and settings coverage remain pending; extension pairing is tracked separately |
 | Library logo and browser tab icon | Browser + host | Visiting-device file picker uses the native PNG normalizer and portable Library metadata; upload, cancel, invalid/oversized files, origin/Library fences, reset and reload verified; tab icon follows the active Library logo |
 | Enrichment and semantic/visual search | Browser + host persistence | Existing inference code retained; default browser enrichment off; single execution owner and closed-tab processing are not yet implemented or claimed |
 | Electron removal / Linux service | Deferred runtime project | Requires concrete collector, process and lifecycle replacements |

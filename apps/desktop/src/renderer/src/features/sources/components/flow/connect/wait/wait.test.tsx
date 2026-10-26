@@ -95,6 +95,41 @@ it("marks the wait screen connected when a new account arrives", async () => {
   });
 });
 
+it.each([true, false])(
+  "explains the browser extension connection (paired: %s) without requesting the isolated host window",
+  async (paired) => {
+    const previousRuntime = document.documentElement.dataset.runtime;
+    document.documentElement.dataset.runtime = "browser";
+    vi.stubGlobal("pond", {
+      ...window.pond,
+      connectSource: async () => ({ ok: paired, mode: "extension" }),
+    });
+    try {
+      await act(async () => {
+        connectFlow.start("twitter", ["acc-twitter"]);
+        root.render(
+          <QueryClientProvider client={new QueryClient()}>
+            <ConnectWaitSection />
+          </QueryClientProvider>,
+        );
+      });
+      expect(host.textContent).toContain(
+        paired
+          ? "The Iris extension is connecting Twitter from your browser."
+          : "Pair the Iris extension using Connection in its panel, then try again.",
+      );
+      expect(host.textContent).toContain(
+        "Only the paired extension shares the requested Source session",
+      );
+      expect(host.textContent).not.toContain("isolated window");
+    } finally {
+      if (previousRuntime === undefined)
+        delete document.documentElement.dataset.runtime;
+      else document.documentElement.dataset.runtime = previousRuntime;
+    }
+  },
+);
+
 it("marks the wait screen connected when an existing account is reimported", async () => {
   let imported:
     | ((payload: { source: string; accountId: string }) => void)

@@ -254,7 +254,15 @@ export async function installBrowserAdapter(libraryId: string) {
     pipelineCancelSaves: (ids) =>
       command("pipelineCancelSaves", { ids: [...ids] }),
     pipelineCancelAll: () => command("pipelineCancelAll"),
-    connectSource: (source) => command("connectSource", { source }),
+    connectSource: async (source) => {
+      const result = await command("connectSource", { source });
+      if (result.ok && result.mode === "extension")
+        window.postMessage(
+          { type: "iris-connect-source", source },
+          window.location.origin,
+        );
+      return result;
+    },
     clearPendingSession: (source) => command("clearPendingSession", { source }),
     sourceStatus: (source) => command("sourceStatus", { source }),
     syncRunNow: (accountId, opts) =>

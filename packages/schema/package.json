@@ -23,6 +23,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./browser-extension": "./src/browser-extension.ts",
+    "./extension-connection": "./src/extension-connection.ts",
     "./color": "./src/color.ts",
     "./content-safety": "./src/content-safety.ts",
     "./db": "./src/db.ts",

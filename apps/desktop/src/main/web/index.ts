@@ -14,6 +14,8 @@ import { webAgentStream } from "./agent";
 import { createWebApp, type WebHost } from "./app";
 import { webAccessKey } from "./auth";
 import { runWebCommand, WebCommandSchema } from "./commands";
+import { openExtensionAuth } from "./extension-auth";
+import { createExtensionBridge } from "./extension-bridge";
 import { createWebFiles } from "./files";
 import { enqueueFixture, fixtureAsset } from "./fixtures";
 import { serveWebMedia } from "./media";
@@ -48,11 +50,19 @@ export async function startWebHost() {
     join(electronApp.getPath("userData"), "web-files"),
   );
   const video = createWebVideo();
+  const key = await webAccessKey(sandbox);
+  const extension = createExtensionBridge(
+    await openExtensionAuth({
+      path: join(sandbox, "extension-connections.json"),
+      key,
+    }),
+  );
   if (fixtures) await setVideoDownloadPrefs({ autoDownload: true }, "twitter");
   const config: WebHost = {
     origin,
     origins,
-    key: await webAccessKey(sandbox),
+    key,
+    extension: extension.host,
     assets: resolveMainOut("../browser"),
     libraryId,
     query: async (request) => {
@@ -80,7 +90,12 @@ export async function startWebHost() {
     mutate: applyWebTransactions,
     command: async (input) =>
       new Response(
-        stringifyWebValue(await runWebCommand(WebCommandSchema.parse(input))),
+        stringifyWebValue(
+          await runWebCommand(
+            WebCommandSchema.parse(input),
+            extension.connectSource,
+          ),
+        ),
         { headers: { "content-type": "application/json" } },
       ),
     agent: webAgentStream,

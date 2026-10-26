@@ -1,4 +1,4 @@
-import { SOURCES } from "@pond/schema/db";
+import { SOURCES, type Source as SourceId } from "@pond/schema/db";
 import { z } from "zod";
 import {
   isAllPaused,
@@ -29,10 +29,7 @@ import {
 } from "../core/sync";
 import { getWatch, getWatchSync } from "../core/sync/watches";
 import { watchNow } from "../core/watch/run";
-import {
-  clearPendingSessionSource,
-  setPendingSessionSource,
-} from "../pending-session";
+import { clearPendingSessionSource } from "../pending-session";
 import {
   closeWebSourceConnection,
   openWebSourceConnection,
@@ -78,7 +75,13 @@ export const WebCommandSchema = z.discriminatedUnion("name", [
   z.object({ name: z.literal("archiveBackfillStart") }),
 ]);
 
-export async function runWebCommand(input: z.infer<typeof WebCommandSchema>) {
+export async function runWebCommand(
+  input: z.infer<typeof WebCommandSchema>,
+  connectSource: (source: SourceId) => Promise<{
+    ok: boolean;
+    mode: "external" | "extension";
+  }> = openWebSourceConnection,
+) {
   switch (input.name) {
     case "pipelinePause":
       return { ok: true, paused: await setReconcilerPaused(input.paused) };
@@ -87,8 +90,7 @@ export async function runWebCommand(input: z.infer<typeof WebCommandSchema>) {
     case "pipelineCancelAll":
       return { ok: true, cancelled: await cancelAllIngest() };
     case "connectSource":
-      setPendingSessionSource(input.source);
-      return openWebSourceConnection(input.source);
+      return connectSource(input.source);
     case "sourceStatus":
       return { ok: true, connected: await isSourceConnected(input.source) };
     case "clearPendingSession":

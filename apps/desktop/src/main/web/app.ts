@@ -23,11 +23,13 @@ import { WebVideoRequestSchema } from "../../shared/web-video-contracts";
 import type { WireSyncAction } from "../../shared/wire";
 import { createWebSessions } from "./auth";
 import { WebRequestError } from "./errors";
+import { createExtensionApi, type ExtensionHost } from "./extension-api";
 
 const COOKIE = "iris_session";
 const Login = z.object({ key: z.string().max(256) }).strict();
 
 export interface WebHost {
+  extension?: ExtensionHost;
   origin: string;
   origins?: string[];
   key: string;
@@ -84,6 +86,14 @@ export interface WebHost {
 
 export function createWebApp(host: WebHost) {
   const app = new Hono();
+  if (host.extension)
+    app.route(
+      "/extension",
+      createExtensionApi(host.extension, () => [
+        host.origin,
+        ...(host.origins ?? []),
+      ]),
+    );
   const sessions = createWebSessions(host.key);
   const failures = new Map<string, { count: number; until: number }>();
   const requestOrigin = (hostHeader: string | undefined) =>
@@ -185,6 +195,13 @@ export function createWebApp(host: WebHost) {
   app.delete("/web/session", (c) => {
     sessions.revoke(getCookie(c, COOKIE));
     deleteCookie(c, COOKIE, { path: "/" });
+    return c.json({ ok: true });
+  });
+  app.get("/web/extensions", (c) =>
+    c.json({ connections: host.extension?.auth.list(host.libraryId()) ?? [] }),
+  );
+  app.delete("/web/extensions", async (c) => {
+    await host.extension?.auth.revokeAll(host.libraryId());
     return c.json({ ok: true });
   });
   app.get("/web/capabilities", (c) => c.json({ queries: WEB_QUERY_ACCESS }));

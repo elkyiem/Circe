@@ -41,6 +41,7 @@ import {
 } from "@/utils/messaging";
 import { useLibrary } from "@/utils/use-library";
 import { useActiveTab, useShortcuts } from "../hooks";
+import { ConnectionPanel } from "./connection";
 import { ShortcutsPanel } from "./shortcuts";
 import styles from "./styles.module.css";
 
@@ -165,9 +166,25 @@ async function openPondSettings() {
   if (await sendMessage("openPond", "settings/extension")) window.close();
 }
 
-function MoreRows({ onShortcuts }: { onShortcuts: () => void }) {
+function MoreRows({
+  onShortcuts,
+  onConnection,
+}: {
+  onShortcuts: () => void;
+  onConnection(): void;
+}) {
   return (
     <div className={styles.group}>
+      <Button
+        variant="ghost"
+        width="full"
+        className={styles.row}
+        onClick={onConnection}
+      >
+        <IconGear3 size={16} />
+        <span className={styles.label}>Connection</span>
+        <IconChevronRight size={12} className={styles.trailing} />
+      </Button>
       <Button
         variant="ghost"
         width="full"
@@ -204,17 +221,27 @@ function MoreRows({ onShortcuts }: { onShortcuts: () => void }) {
 
 export function App() {
   const library = useLibrary();
-  const [view, setView] = useState<"commands" | "shortcuts" | "returned">(
-    "commands",
-  );
+  const [view, setView] = useState<
+    "commands" | "shortcuts" | "connection" | "returned"
+  >("commands");
 
   if (view === "shortcuts")
     return <ShortcutsPanel onBack={() => setView("returned")} />;
+  if (view === "connection")
+    return (
+      <ConnectionPanel
+        onBack={() => {
+          setView("returned");
+          void library.refresh();
+        }}
+      />
+    );
   return (
     <Commands
       {...library}
       returned={view === "returned"}
       onShortcuts={() => setView("shortcuts")}
+      onConnection={() => setView("connection")}
     />
   );
 }
@@ -222,9 +249,16 @@ export function App() {
 interface CommandsProps extends ReturnType<typeof useLibrary> {
   returned: boolean;
   onShortcuts: () => void;
+  onConnection(): void;
 }
 
-function Commands({ result, refresh, returned, onShortcuts }: CommandsProps) {
+function Commands({
+  result,
+  refresh,
+  returned,
+  onShortcuts,
+  onConnection,
+}: CommandsProps) {
   const tab = useActiveTab();
   const shortcuts = useShortcuts();
   const [error, setError] = useState<string | null>(null);
@@ -245,23 +279,30 @@ function Commands({ result, refresh, returned, onShortcuts }: CommandsProps) {
     return (
       <Shell returned={returned}>
         <Empty.Root className={styles.center}>
-          <Empty.Title>Pond isn't running</Empty.Title>
+          <Empty.Title>
+            {result.message ? "Iris needs attention" : "Pond isn't running"}
+          </Empty.Title>
           <Empty.Description>
-            Open Pond on your computer to save from the browser.
+            {result.message ??
+              "Open Pond on your computer, or choose Connection to pair with Iris."}
           </Empty.Description>
           <Empty.Action className={styles.actions}>
             <Button
               variant="secondary"
-              onClick={() => void sendMessage("openPond", undefined)}
+              onClick={() =>
+                result.iris
+                  ? onConnection()
+                  : void sendMessage("openPond", undefined)
+              }
             >
-              Open Pond
+              {result.iris ? "Connect Iris" : "Open Pond"}
             </Button>
             <Button variant="primary" onClick={() => void refresh()}>
               Try Again
             </Button>
           </Empty.Action>
         </Empty.Root>
-        <MoreRows onShortcuts={onShortcuts} />
+        <MoreRows onShortcuts={onShortcuts} onConnection={onConnection} />
       </Shell>
     );
   }
@@ -328,7 +369,7 @@ function Commands({ result, refresh, returned, onShortcuts }: CommandsProps) {
           })}
         </nav>
       ))}
-      <MoreRows onShortcuts={onShortcuts} />
+      <MoreRows onShortcuts={onShortcuts} onConnection={onConnection} />
     </Shell>
   );
 }

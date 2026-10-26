@@ -21,6 +21,23 @@ Open Pond once so it can register the native host. On macOS this writes a manife
 
 Session connect happens in the background when Pond is waiting and you open that site signed in.
 
+## Iris web host
+
+`pnpm --filter @pond/extension build:iris` produces a separate Chromium build at
+`apps/extension/.output-iris/chrome-mv3`, named Iris with its own ID. Load it
+unpacked, then open **Connection** in its panel. Pair with the private Iris URL
+and host access-key file. Refresh already-open Source and Iris tabs once after
+installation. **New Source** in Iris can then use the session in this browser;
+captures and site save/like hooks go to the paired host's existing queue.
+
+The bootstrap key is not retained. A separate credential in extension-origin
+IndexedDB is scoped to the exact host and Library, expires after 90 days and is
+revoked by **Disconnect Iris**. Failed remote requests never fall through to the
+local desktop Library. The normal, unpaired build keeps native messaging.
+Disconnecting the extension leaves existing host Source Accounts intact.
+Remote pairing is currently Chromium-only; Firefox keeps its native path.
+See the [Iris runbook](../../docs/iris/runbook.md) for setup and verification.
+
 ## Supported sources
 
 See [`docs/supported-sources.md`](../../docs/supported-sources.md) for the full list.

@@ -216,6 +216,21 @@ app
         app.exit(0);
         return;
       }
+      if (process.argv.includes("--extension-setup")) {
+        const { verifyExtensionSetup } = require("./web-extension-cases.cjs");
+        await verifyExtensionSetup({
+          win,
+          origin,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
       if (process.argv.includes("--editing")) {
         const { verifyBrowserEditing } = require("./web-editing-cases.cjs");
         await verifyBrowserEditing({
@@ -260,12 +275,47 @@ app
         app.exit(0);
         return;
       }
-      await run("document.querySelector('[data-library-search]').focus()");
-      await win.webContents.insertText("Iris fixture: image");
-      await waitFor(
-        `document.querySelector('[data-save-id="${image.id}"]') && !document.querySelector('[data-save-id="${video.id}"]')`,
-      );
-      await snapshot("search-results");
+      const searchTerm = `irissmoke${Date.now().toString(36)}`;
+      const searchTitle = `${image.title} ${searchTerm}`;
+      const setSearchTitle = async (before, title) => {
+        const response = await fetch(`${origin}/web/transactions`, {
+          method: "POST",
+          headers: {
+            cookie: cookieHeader,
+            origin,
+            "content-type": "application/json",
+            "x-iris-library": libraryId,
+          },
+          body: JSON.stringify({
+            transactions: [
+              {
+                kind: "update",
+                model: "save",
+                id: image.id,
+                before: { title: before },
+                patch: { title },
+              },
+            ],
+          }),
+        });
+        assert.equal(
+          response.status,
+          200,
+          "Update only this fixture's unchanged title.",
+        );
+      };
+      // Enrichment can legitimately make the video's caption match ordinary image keywords.
+      await setSearchTitle(image.title, searchTitle);
+      try {
+        await run("document.querySelector('[data-library-search]').focus()");
+        await win.webContents.insertText(searchTerm);
+        await waitFor(
+          `document.querySelector('[data-save-id="${image.id}"]') && !document.querySelector('[data-save-id="${video.id}"]')`,
+        );
+        await snapshot("search-results");
+      } finally {
+        await setSearchTitle(searchTitle, image.title);
+      }
       await click('[aria-label="Clear Search"]');
       await waitFor('document.querySelectorAll("[data-save-id]").length >= 3');
       if (process.argv.includes("--disconnect")) {

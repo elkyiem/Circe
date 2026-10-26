@@ -1,4 +1,5 @@
 import type { CaptureWebDraft } from "@pond/schema/capture";
+import type { Source } from "@pond/schema/source-ids";
 import { defineExtensionMessaging } from "@webext-core/messaging";
 import type { CaptureOutcome } from "./outcome";
 import type { ProbeResult } from "./probe";
@@ -85,6 +86,10 @@ export interface Gesture {
 export type ToolResult = { ok: true } | { ok: false; message: string };
 
 interface PondProtocol {
+  irisConnection(): { origin: string; name: string; expiresAt: number } | null;
+  irisPair(input: { origin: string; key: string; name: string }): ToolResult;
+  irisDisconnect(): ToolResult;
+  irisConnectSource(input: { source: Source }): ToolResult;
   capture(payload: PondCapturePayload): CaptureOutcome;
   runTool(input: { tabId: number; tool: CaptureTool }): ToolResult;
   overlayResult(result: OverlayResult): void;

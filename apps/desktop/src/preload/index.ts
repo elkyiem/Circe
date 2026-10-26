@@ -299,7 +299,9 @@ const api = {
     return ipcRenderer.invoke(IPC.pipelineCancelAll);
   },
 
-  connectSource(source: string): Promise<{ ok: boolean; mode: "external" }> {
+  connectSource(
+    source: string,
+  ): Promise<{ ok: boolean; mode: "external" | "extension" }> {
     return ipcRenderer.invoke(IPC.sourceConnect, source);
   },
 

@@ -1,7 +1,10 @@
+import { IRIS_EXTENSION_ID } from "@pond/schema/extension-connection";
 import { z } from "zod";
+import { readConnection } from "@/utils/connection-store";
 import { onMessage } from "@/utils/messaging";
 import { ensureSettings, getSettings, watchSettings } from "@/utils/settings";
 import { saveFromSite } from "./capture";
+import { registerConnectionMessages } from "./connection";
 import { probeLibrary } from "./library";
 import { createMenus, handleCommand, handleMenuClick } from "./menus";
 import { clearBadge, flashBadge } from "./overlay";
@@ -16,6 +19,7 @@ const pondPathSchema = z
   .optional();
 
 export default defineBackground(() => {
+  registerConnectionMessages();
   browser.runtime.onInstalled.addListener(async () => {
     await ensureSettings();
     clearBadge();
@@ -64,6 +68,13 @@ export default defineBackground(() => {
   onMessage("openPond", async ({ data }) => {
     const path = pondPathSchema.safeParse(data);
     if (!path.success) return false;
+    const connection = await readConnection();
+    if (connection) {
+      const target = (path.data ?? "").replace(/^item\//, "save/");
+      await browser.tabs.create({ url: `${connection.origin}/${target}` });
+      return true;
+    }
+    if (browser.runtime.id === IRIS_EXTENSION_ID) return false;
     const [tab] = await browser.tabs.query({
       active: true,
       currentWindow: true,

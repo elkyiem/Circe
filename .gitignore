@@ -37,6 +37,7 @@ Thumbs.db
 # extension build artefacts
 apps/extension/dist
 apps/extension/.output
+apps/extension/.output-iris
 apps/extension/.wxt
 apps/raycast/raycast-env.d.ts
 # vercel

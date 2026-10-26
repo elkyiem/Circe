@@ -94,10 +94,40 @@ Combine Images opens the same lazy-loaded component in a browser dialog. Create
 uses the existing host compositor; Export returns an authenticated download.
 The browser never supplies an output path on the host.
 
-Source connection opens an isolated, sandboxed host window with no preload or
-Node access. Only cookies entered in that window reach the existing session
-importer. It does not inspect or copy Chrome profiles and does not redirect the
-installed Pond native host. No live Account has completed this flow yet.
+The extension can pair with an exact Iris address and Library. Its existing
+capture tools, Source hooks, cookie API and session scheduler then use a narrow
+HTTP adapter instead of native messaging. A separate unpacked Iris build has its
+own extension ID, leaving the installed Pond extension and native host intact.
+An unpaired standard Pond build retains native messaging. A paired request never
+falls through to another local Library after a network or authorization failure.
+
+The access-key file bootstraps pairing over HTTPS (or host loopback HTTP). The
+extension stores only the resulting connection credential in extension-origin
+IndexedDB; the host persists its digest with mode 0600. Credentials expire after
+90 days and bind the extension origin, exact host origin and Library. Separate
+browsers have separate credentials. Disconnect revokes that browser's credential;
+authenticated `/web/extensions` DELETE revokes the current Library's extension
+credentials. Extension credentials cannot authorize renderer, media, file or
+arbitrary query routes. Pairing is rate limited, CORS permits pinned Chromium
+extension IDs, and messages retain the existing native schemas and 8 MB limit.
+An exhaustive access classification makes new upstream native operations require
+an explicit remote-access decision before the host can compile.
+
+After **New Source**, the browser notifies the extension through a credential-free
+page message. The background checks the sender against the paired Iris origin
+and checks that the host is waiting for that Source. Only then does the existing
+cookie API send that Source's session to the original importer. A host poll also
+supports connecting from a different device. Session imports without an explicit,
+current Library-bound request are rejected. No Chrome profile files are read.
+Captures reuse the durable capture queue, Library transfer owner and original
+processing pipeline. Host filesystem paths are removed from extension replies.
+
+When no extension is paired, the browser reports that pairing is required;
+it no longer automatically opens a separate host sign-in window. The original
+desktop sign-in path is unchanged. Loading and pairing the Chromium extension and live
+Source verification still require the owner; the HTTP and restart fixtures do
+not prove live X sync. Firefox's native path remains available; remote Firefox
+pairing is deferred until its per-install extension-origin behavior is verified.
 
 The browser Library-logo picker uploads one visiting-device image using the same
 Library-bound tickets as file import. Main applies the native desktop logo

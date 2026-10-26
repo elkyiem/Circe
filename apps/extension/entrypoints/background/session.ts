@@ -4,6 +4,8 @@ import {
 } from "@pond/schema/session";
 import { SOURCES, type Source } from "@pond/schema/source-ids";
 import { z } from "zod";
+import { readConnection } from "@/utils/connection-store";
+import type { ToolResult } from "@/utils/messaging";
 import { nativeCall } from "@/utils/native";
 import { createSingleFlightTrigger } from "@/utils/single-flight";
 import type { PushSessionResult } from "@/utils/types";
@@ -16,6 +18,36 @@ const SESSION_ALARM = "pond-session";
 const SCHEDULER_STORAGE_KEY = "sessionPushScheduler";
 
 const pendingSessionSchema = z.object({ source: z.enum(SOURCES) });
+
+/** Explicitly requested by the paired Iris page; cookie access remains in the extension. */
+export async function connectBrowserSource(
+  source: Source,
+): Promise<ToolResult> {
+  const pending = await fetchPendingSource();
+  if (pending.kind !== "pending" || pending.source !== source)
+    return {
+      ok: false,
+      message: "Start connecting this Source in Iris first.",
+    };
+  const result = await pushSession(source);
+  if (result.ok && result.data.connected) return { ok: true };
+  const domain = cookieDomainsForSource(source)[0];
+  if (!domain)
+    return { ok: false, message: "This Source doesn't use a browser session." };
+  const tabs = await browser.tabs.query({
+    url: cookieDomainsForSource(source).flatMap((host) => [
+      `https://${host}/*`,
+      `https://*.${host}/*`,
+    ]),
+  });
+  const existing = tabs[0];
+  if (existing?.id !== undefined) {
+    await browser.tabs.update(existing.id, { active: true });
+    if (existing.windowId !== undefined)
+      await browser.windows.update(existing.windowId, { focused: true });
+  } else await browser.tabs.create({ url: `https://${domain}/` });
+  return { ok: true };
+}
 const schedulerStateSchema = z.object({
   nextProbeAt: z.number().catch(0),
   failures: z.number().int().nonnegative().catch(0),
@@ -152,9 +184,10 @@ function scheduleSessionAlarm(pending: boolean): void {
 }
 
 async function markSchedulerIdle(): Promise<void> {
+  const connection = await readConnection();
   await writeSchedulerState({
     ...DEFAULT_SCHEDULER_STATE,
-    nextProbeAt: Date.now() + IDLE_PROBE_MS,
+    nextProbeAt: Date.now() + (connection ? ACTIVE_PROBE_MS : IDLE_PROBE_MS),
   });
   scheduleSessionAlarm(false);
 }
@@ -247,4 +280,12 @@ export function startSessionConnect(onConnected: () => void): void {
     .then((state) => scheduleSessionAlarm(state.pending))
     .catch(() => scheduleSessionAlarm(false))
     .finally(() => maybeAutoPush(true));
+  // A paired host can start a connection while this worker is asleep.
+  void readConnection().then((connection) => {
+    if (connection)
+      browser.alarms.create("iris-session", { periodInMinutes: 0.5 });
+  });
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "iris-session") void maybeAutoPush();
+  });
 }

@@ -1,5 +1,66 @@
 # Kickoff verification record
 
+## Iris extension transport — 2026-10-26
+
+This slice started from local `web` commit `6309ddef`, with a clean working
+tree. The pre-change `pnpm check` passed all 25 tasks (4,134 desktop tests).
+The audited upstream commit remains
+`0e9dc817e17baafe60d9151a7fc49be5dc3e0861`; no newer baseline was adopted.
+
+- Final `pnpm check`: 25 tasks passed; desktop 607 files passed, 2 skipped;
+  4,145 tests passed, 5 skipped. Extension transport tests run with the existing
+  extension suite. Focused host cases cover credential hashing, 0600 storage,
+  restart, expiry, rotation, independent browsers, revocation, exact origins,
+  preflight, Library binding, rate limits, forbidden operations and request size.
+- `pnpm build`: 11 tasks and all five performance budgets passed. The browser
+  build and separate `build:iris` Chromium artifact passed. No dependency was
+  added. The Iris build has a separate ID and cannot call the installed Pond
+  native host while unpaired; the normal unpaired Pond build retains native
+  messaging. Paired network/auth/storage failures cannot fall through to it.
+- `smoke-web-extension.mjs`: `WEB_EXTENSION_PASSED` against the real isolated
+  host. A generated PNG went through the original durable capture queue into
+  the disposable Library. Replies omitted host paths, unsolicited Source-session
+  import was rejected, and New Source selected the extension connection mode.
+  This passed over both loopback HTTP and the private Tailscale HTTPS address.
+- After an actual isolated-host stop/restart,
+  `smoke-web-extension.mjs --after-restart` reported
+  `WEB_EXTENSION_RESTART_PASSED`: both the capture and extension credential
+  persisted. It then revoked its own credential, verified rejection, and removed
+  its private 0600 test-state file. No live Source cookies were used.
+- CI builds the Iris artifact and includes the first HTTP extension smoke in its
+  isolated driver. The complete CI driver was not launched locally because this
+  chat uses the single shared host. Restart evidence above is from the explicit
+  local stop/restart, not the CI script.
+- The finite browser regression passed at 1280×900 and 390×844: real keyword
+  search, organization, image viewing, video seeking and reload. A prior run's
+  search assertion assumed the video could never match the word “image”; its
+  generated caption now contains that word. The driver now assigns a unique
+  temporary title term to the image fixture and restores it in `finally`, keeping
+  both the positive and negative search checks. No search implementation or
+  assertion was weakened. This verifies the ordinary browser application, not
+  the uninstalled Chrome extension.
+- `--extension-setup` reported `WEB_EXTENSION_SETUP_BROWSER_PASSED`: the actual
+  Sources menu and Twitter choice show pairing instructions at both widths when
+  unpaired, without creating an Account or opening the separate host sign-in
+  flow. The desktop's existing native connection path is unchanged.
+
+Actual Chrome loading/pairing and live X connection/capture are **pending**.
+Computer use rejected opening `chrome://extensions/`: its URL policy allows only
+HTTP/HTTPS and explicitly forbids alternate automation to bypass that denial.
+The owner authorized installation, but that did not remove the tool restriction.
+The built folder and private file-picker pairing instructions were supplied for
+manual loading. No Source Account is connected in the isolated profile, and no
+live sync is claimed. Remote Firefox pairing also remains deferred; its native
+path is preserved. This record supersedes earlier architecture statements that
+only the isolated host sign-in window exists.
+
+Logs: `.local/verification/extension-{baseline-check,check,build,iris-build,
+browser-build,http,restart}.log`. Generated files and credential state remain in
+ignored directories. The extension transport is reviewable local work on `web`;
+it is not promoted to `dev` while actual browser acceptance remains pending.
+
+## Original kickoff baseline
+
 Environment: macOS arm64, Node 24.14.1, pnpm 11.27.0. The shell initially selected
 Node 26 with no pnpm; the existing Node 24 installation was selected explicitly.
 Dependencies installed with the frozen lockfile. No baseline upgrade was made.

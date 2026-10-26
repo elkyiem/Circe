@@ -23,6 +23,7 @@ interface ConnectFlowState {
   completed: boolean;
   problem: ConnectProblem | null;
   account: ConnectedAccount | null;
+  mode: "external" | "extension";
 }
 
 const store = new Store<ConnectFlowState>({
@@ -32,6 +33,7 @@ const store = new Store<ConnectFlowState>({
   completed: false,
   problem: null,
   account: null,
+  mode: "external",
 });
 
 export const connectFlow = {
@@ -43,6 +45,7 @@ export const connectFlow = {
       completed: false,
       problem: null,
       account: null,
+      mode: "external",
     }));
     void requestConnection(source);
   },
@@ -97,9 +100,15 @@ export function useConnectProblem(): ConnectProblem | null {
   return useSelector(store, (s) => s.problem);
 }
 
+export function useConnectMode() {
+  return useSelector(store, (s) => s.mode);
+}
+
 async function requestConnection(source: Source): Promise<void> {
   try {
     const result = await window.pond.connectSource(source);
+    if (store.state.waiting === source)
+      store.setState((s) => ({ ...s, mode: result.mode }));
     if (!result.ok) markProblem(source, "unavailable");
   } catch {
     markProblem(source, "unavailable");

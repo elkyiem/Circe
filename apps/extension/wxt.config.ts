@@ -1,8 +1,10 @@
 import { resolve } from "node:path";
+import { IRIS_EXTENSION_KEY } from "@pond/schema/extension-connection";
 import { EXTENSION_KEY, FIREFOX_EXTENSION_ID } from "@pond/schema/native";
 import { defineConfig } from "wxt";
 
 const STORE_BUILD = process.env.POND_STORE_BUILD === "1";
+const IRIS_BUILD = process.env.IRIS_EXTENSION === "1";
 
 const ICONS = {
   16: "icons/16.png",
@@ -17,6 +19,7 @@ const FONT_RESOURCE = {
 };
 
 export default defineConfig({
+  outDir: IRIS_BUILD ? ".output-iris" : ".output",
   modules: ["@wxt-dev/module-react"],
   /** Pin to 3001 with strictPort so dev never collides with the website's Next server. */
   dev: {
@@ -57,7 +60,7 @@ export default defineConfig({
     excludeSources: ["packages/icons/brand/**"],
   },
   manifest: ({ browser }) => ({
-    name: "Pond",
+    name: IRIS_BUILD ? "Iris" : "Pond",
     version: "1.6.3",
     ...(browser === "firefox"
       ? {
@@ -78,12 +81,12 @@ export default defineConfig({
         }
       : STORE_BUILD
         ? {}
-        : { key: EXTENSION_KEY }),
+        : { key: IRIS_BUILD ? IRIS_EXTENSION_KEY : EXTENSION_KEY }),
     description:
       "Save pages, screenshots, images, and your bookmarks from X, Instagram, Pinterest, and more into your local Pond library.",
     icons: ICONS,
     action: {
-      default_title: "Pond",
+      default_title: IRIS_BUILD ? "Iris" : "Pond",
       default_icon: ICONS,
     },
     commands: {
