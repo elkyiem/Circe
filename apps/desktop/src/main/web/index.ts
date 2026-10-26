@@ -1,31 +1,111 @@
+import { join } from "node:path";
 import { serve } from "@hono/node-server";
+import { app as electronApp } from "electron";
+import { IPC } from "../../shared/constants";
 import { stringifyWebValue } from "../../shared/web-serialization";
 import { registerSyncActionListener } from "../core/executor";
 import { setVideoDownloadPrefs } from "../core/prefs";
+import { canRedo, canUndo, redo, undo, undoRevision } from "../core/undo";
 import { toWireSyncAction } from "../ipc/wire";
+import { subscribeBroadcast } from "../lib/broadcast";
 import { resolveMainOut } from "../lib/resolve-preload";
 import { libraryId } from "../paths";
+import { webAgentStream } from "./agent";
 import { createWebApp, type WebHost } from "./app";
 import { webAccessKey } from "./auth";
+import { runWebCommand, WebCommandSchema } from "./commands";
+import { createWebFiles } from "./files";
 import { enqueueFixture, fixtureAsset } from "./fixtures";
 import { serveWebMedia } from "./media";
+import { applyWebTransactions } from "./mutations";
 import { runWebQuery } from "./queries";
+import { createWebVideo } from "./video";
 
 export async function startWebHost() {
   const sandbox = process.env.POND_SANDBOX;
   if (!sandbox) throw new Error("The Iris web host requires POND_SANDBOX.");
   const port = Number(process.env.IRIS_WEB_PORT ?? 4789);
   const origin = process.env.IRIS_WEB_ORIGIN ?? `http://127.0.0.1:${port}`;
+  const origins = (process.env.IRIS_WEB_ORIGINS ?? "")
+    .split(",")
+    .filter(Boolean);
+  for (const value of [origin, ...origins]) {
+    const parsed = new URL(value);
+    if (
+      parsed.origin !== value ||
+      (parsed.protocol !== "https:" &&
+        !(
+          parsed.protocol === "http:" &&
+          ["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname)
+        ))
+    )
+      throw new Error(
+        "Iris origins must be exact HTTPS origins or loopback HTTP origins.",
+      );
+  }
   const fixtures = process.env.IRIS_WEB_FIXTURES === "1";
+  const files = createWebFiles(
+    join(electronApp.getPath("userData"), "web-files"),
+  );
+  const video = createWebVideo();
   if (fixtures) await setVideoDownloadPrefs({ autoDownload: true }, "twitter");
   const config: WebHost = {
     origin,
+    origins,
     key: await webAccessKey(sandbox),
     assets: resolveMainOut("../browser"),
     libraryId,
-    query: async (request) =>
-      new Response(stringifyWebValue(await runWebQuery(request)), {
-        headers: { "content-type": "application/json" },
+    query: async (request) => {
+      const reply = await runWebQuery(request);
+      const headers = new Headers({ "content-type": "application/json" });
+      if (reply.revision !== undefined)
+        headers.set("x-iris-history", String(reply.revision));
+      return new Response(stringifyWebValue(reply.value), {
+        headers,
+      });
+    },
+    history: async (action) => {
+      const ok = action
+        ? await (action.kind === "undo"
+            ? undo(action.revision)
+            : redo(action.revision))
+        : undefined;
+      return {
+        ok,
+        revision: undoRevision(),
+        canUndo: canUndo(),
+        canRedo: canRedo(),
+      };
+    },
+    mutate: applyWebTransactions,
+    command: async (input) =>
+      new Response(
+        stringifyWebValue(await runWebCommand(WebCommandSchema.parse(input))),
+        { headers: { "content-type": "application/json" } },
+      ),
+    agent: webAgentStream,
+    upload: async (request, filename, expected) =>
+      Response.json(await files.upload(request, filename, expected)),
+    files: files.query,
+    download: files.download,
+    video: video.query,
+    preview: video.media,
+    subscribeStatus: (listener) =>
+      subscribeBroadcast((channel, payload) => {
+        const names = new Map<string, string>([
+          [IPC.prefsChanged, "prefs"],
+          [IPC.sessionImported, "session-imported"],
+          [IPC.sessionImportFailed, "session-failed"],
+          [IPC.syncStatus, "source-sync"],
+          [IPC.storageStatus, "storage"],
+          [IPC.updateNotice, "update"],
+          [IPC.eagleImportProgress, "import-progress"],
+          [IPC.agentFilter, "agent-filter"],
+          [IPC.agentCite, "agent-cite"],
+          [IPC.agentOverlay, "agent-overlay"],
+        ]);
+        const name = names.get(channel);
+        if (name) listener({ name, data: stringifyWebValue(payload) });
       }),
     media: serveWebMedia,
     subscribe: (listener) =>

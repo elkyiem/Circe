@@ -20,6 +20,7 @@ import {
 import { sourceFlow } from "@/features/sources/state/source-flow";
 import { syncMonitor } from "@/features/sources/state/sync-monitor";
 import { BrowserExtensionDialog } from "@/shared/components/browser-extension-dialog";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { findArrivedAccount } from "./arrival";
 import styles from "./styles.module.css";
 
@@ -78,14 +79,20 @@ export function ConnectWaitSection() {
           ) : step === "unavailable" ? (
             "Pond couldn't open the sign-in page. Try again."
           ) : step === "signed_out" ? (
-            <>
-              Pond's extension found a browser profile signed out of {label}.
-              <br />
-              Sign in there, or add the extension to the profile you use.
-            </>
+            isBrowserRuntime() ? (
+              "Sign-in was not completed in the isolated host window. Open it again to connect."
+            ) : (
+              <>
+                Pond's extension found a browser profile signed out of {label}.
+                <br />
+                Sign in there, or add the extension to the profile you use.
+              </>
+            )
           ) : (
             <>
-              Sign in to {label} in your browser.
+              {isBrowserRuntime()
+                ? `Sign in to ${label} in the isolated window on the host computer.`
+                : `Sign in to ${label} in your browser.`}
               <br />
               Pond will finish the connection here.
             </>
@@ -114,7 +121,11 @@ function ConnectPromises({
         <ul className={styles.checklist}>
           <li>
             <IconCircleCheckFill size={12} className={styles.check} />
-            <span>Keep your session on this device</span>
+            <span>
+              {isBrowserRuntime()
+                ? "Keep your session on the host computer"
+                : "Keep your session on this device"}
+            </span>
           </li>
           <li>
             <IconCircleCheckFill size={12} className={styles.check} />
@@ -148,6 +159,13 @@ function ConnectPromises({
 
 function ExtensionNote() {
   const [open, setOpen] = useState(false);
+  if (isBrowserRuntime())
+    return (
+      <p className={styles.note}>
+        Sign-in needs access to the host computer. Iris keeps the Account
+        session there; it does not read another browser’s cookies.
+      </p>
+    );
   return (
     <p className={styles.note}>
       Pond gets your session through its browser extension. Install it in the

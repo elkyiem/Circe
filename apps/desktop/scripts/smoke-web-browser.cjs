@@ -63,12 +63,52 @@ app
       else setTimeout(check, 100);
     }; check();
   })`);
-    const click = (selector) =>
-      run(`document.querySelector(${JSON.stringify(selector)}).click()`);
-    const openSave = (id) =>
-      run(
-        `document.querySelector('[data-save-id="${id}"] [role="option"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`,
-      );
+    const click = async (selector, clickCount = 1) => {
+      app.focus({ steal: true });
+      win.focus();
+      const point = await run(`new Promise((resolve,reject) => {
+        let previous = ''; let stable = 0; const started = Date.now();
+        const check = () => {
+          const target = document.querySelector(${JSON.stringify(selector)});
+          if (target) {
+            target.scrollIntoView({block:'nearest',inline:'nearest'});
+            const rect = target.getBoundingClientRect();
+            const point = {x:Math.round(rect.x+rect.width/2),y:Math.round(rect.y+rect.height/2)};
+            const hit = document.elementFromPoint(point.x,point.y);
+            const current = JSON.stringify(point);
+            stable = current === previous ? stable+1 : 0; previous = current;
+            if (rect.width && rect.height && hit && target.contains(hit) && stable >= 3) {resolve(point);return;}
+          }
+          if (Date.now()-started>10000) {reject(new Error('Control is not clickable: ' + ${JSON.stringify(selector)}));return;}
+          requestAnimationFrame(check);
+        }; check();
+      })`);
+      win.webContents.sendInputEvent({ type: "mouseMove", ...point });
+      win.webContents.sendInputEvent({
+        type: "mouseDown",
+        button: "left",
+        clickCount,
+        ...point,
+      });
+      win.webContents.sendInputEvent({
+        type: "mouseUp",
+        button: "left",
+        clickCount,
+        ...point,
+      });
+    };
+    const openSave = async (id) => {
+      const selector = `[data-save-id="${id}"] [role="option"]`;
+      await click(selector);
+      await click(selector, 2);
+    };
+    const closePopover = async () => {
+      if (
+        await run("Boolean(document.querySelector('[data-type=\"popover\"]'))")
+      )
+        await click('[aria-label="Add Folder"]');
+      await waitFor("!document.querySelector('[data-type=\"popover\"]')");
+    };
     try {
       await win.loadURL(origin);
       await waitFor('document.querySelector("#host-key-file")');
@@ -87,6 +127,7 @@ app
         body: JSON.stringify({ key }),
       });
       assert.equal(login.status, 200);
+      const { libraryId } = await login.json();
       const cookieHeader = login.headers.get("set-cookie").split(";")[0];
       const cookie = cookieHeader.split("=")[1];
       const query = async (name, params = {}) => {
@@ -96,6 +137,7 @@ app
             cookie: cookieHeader,
             origin,
             "content-type": "application/json",
+            "x-iris-library": libraryId,
           },
           body: JSON.stringify({ name, params }),
         });
@@ -216,6 +258,7 @@ app
         `document.querySelector('[data-type="popover"] [aria-label="${folderName}"]')`,
       );
       await click(`[data-type="popover"] [aria-label="${folderName}"]`);
+      await closePopover();
       await waitFor(
         `document.querySelector('[aria-label="Remove folder ${folderName}"]')`,
       );
@@ -234,6 +277,7 @@ app
         `document.querySelector('[data-type="popover"] [aria-label="${folderName}"]')`,
       );
       await click(`[data-type="popover"] [aria-label="${folderName}"]`);
+      await closePopover();
       await waitFor(
         `document.querySelector('[aria-label="Remove folder ${folderName}"]')`,
       );
@@ -271,18 +315,27 @@ app
         ),
       );
       await snapshot("video-seeking");
-      await win.reload();
+      assert.equal(
+        new URL(win.webContents.getURL()).pathname,
+        `/save/${video.id}`,
+      );
+      const reloaded = new Promise((resolve) =>
+        win.webContents.once("did-finish-load", resolve),
+      );
+      win.reload();
+      await reloaded;
       await waitFor(
         'Array.from(document.querySelectorAll("video")).some(video => video.readyState >= 1)',
       );
       await snapshot("reload-viewer");
       win.setSize(390, 844);
+      await waitFor("window.innerWidth === 390");
       if (
         await run(
-          `Boolean(document.querySelector('[aria-label="Close Details"]'))`,
+          `document.querySelector('[data-slot="right"]').hasAttribute("data-open")`,
         )
       )
-        await click('[aria-label="Close Details"]');
+        await click('[aria-label="Toggle Details"]');
       if (
         await run(
           `document.querySelector('[data-slot="window"]').hasAttribute("data-left-open")`,
@@ -297,7 +350,7 @@ app
       await run(
         `for (const key of Object.keys(localStorage)) if (key.startsWith('pond:lastPath:')) localStorage.removeItem(key)`,
       );
-      await win.reload();
+      await win.loadURL(origin);
       await waitFor(
         'document.body.innerText.includes("Search your library") && document.querySelector("#fixture-kind")',
       );

@@ -20,24 +20,45 @@ export async function webAccessKey(sandbox: string): Promise<string> {
 }
 
 export function createWebSessions(key: string, now: () => number = Date.now) {
-  const sessions = new Map<string, number>();
+  const sessions = new Map<
+    string,
+    { expiry: number; scope: string; listeners: Set<() => void> }
+  >();
   const digest = (value: string) => createHash("sha256").update(value).digest();
+  function revoke(id: string | undefined) {
+    const session = sessions.get(id ?? "");
+    sessions.delete(id ?? "");
+    for (const listener of session?.listeners ?? []) listener();
+  }
   return {
-    login(presented: string): string | null {
+    login(presented: string, scope = ""): string | null {
       if (!timingSafeEqual(digest(key), digest(presented))) return null;
-      for (const [id, expiry] of sessions)
-        if (expiry <= now()) sessions.delete(id);
-      if (sessions.size >= 100)
-        sessions.delete(sessions.keys().next().value ?? "");
+      for (const [id, session] of sessions)
+        if (session.expiry <= now()) revoke(id);
+      if (sessions.size >= 100) revoke(sessions.keys().next().value);
       const id = randomBytes(32).toString("base64url");
-      sessions.set(id, now() + 12 * 60 * 60_000);
+      sessions.set(id, {
+        expiry: now() + 12 * 60 * 60_000,
+        scope,
+        listeners: new Set(),
+      });
       return id;
     },
-    valid(id: string | undefined): boolean {
-      return (sessions.get(id ?? "") ?? 0) > now();
+    valid(id: string | undefined, scope = ""): boolean {
+      const session = sessions.get(id ?? "");
+      if (!session || session.expiry <= now() || session.scope !== scope) {
+        revoke(id);
+        return false;
+      }
+      return true;
     },
-    revoke(id: string | undefined): void {
-      sessions.delete(id ?? "");
+    onRevoke(id: string | undefined, listener: () => void) {
+      const session = sessions.get(id ?? "");
+      session?.listeners.add(listener);
+      return () => {
+        session?.listeners.delete(listener);
+      };
     },
+    revoke,
   };
 }

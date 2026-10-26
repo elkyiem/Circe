@@ -4,28 +4,34 @@ import { isPathInside } from "../lib/path-identity";
 import { saveDir, saveFile } from "../paths";
 import { servePondMedia } from "../protocol";
 
+export async function indexedMediaPath(
+  saveId: string,
+  filename: string,
+): Promise<string | null> {
+  if (!/^[A-Za-z0-9_-]+$/.test(saveId)) return null;
+  const save = await readSave(saveId);
+  if (!save?.files?.some((file) => file.path === filename)) return null;
+  try {
+    const [root, target] = await Promise.all([
+      realpath(saveDir(saveId)),
+      realpath(saveFile(saveId, filename)),
+    ]);
+    return isPathInside(root, target) ? target : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Only indexed media of this Save is reachable; metadata and host paths are excluded. */
 export async function serveWebMedia(
   request: Request,
   saveId: string,
   filename: string,
 ): Promise<Response> {
-  if (!/^[A-Za-z0-9_-]+$/.test(saveId))
-    return new Response(null, { status: 404 });
-  const save = await readSave(saveId);
-  if (
-    !save ||
-    save.deletedAt ||
-    !save.files?.some((file) => file.path === filename)
-  ) {
+  if (!(await indexedMediaPath(saveId, filename))) {
     return new Response(null, { status: 404 });
   }
   try {
-    const [root, target] = await Promise.all([
-      realpath(saveDir(saveId)),
-      realpath(saveFile(saveId, filename)),
-    ]);
-    if (!isPathInside(root, target)) return new Response(null, { status: 403 });
     const url = new URL(request.url);
     const response = await servePondMedia(
       new Request(

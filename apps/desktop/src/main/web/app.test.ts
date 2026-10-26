@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { afterEach, describe, expect, it } from "vitest";
 import type { WireSyncAction } from "../../shared/wire";
@@ -10,13 +13,13 @@ afterEach(async () => {
   for (const close of cleanups.splice(0)) await close();
 });
 
-async function host() {
+async function host(assets = "/nonexistent") {
   const listeners = new Set<(event: WireSyncAction) => void>();
   const calls: string[] = [];
   const config: WebHost = {
     origin: "",
     key: "test-only-access-key",
-    assets: "/nonexistent",
+    assets,
     libraryId: () => "test-library",
     query: async ({ name }) => {
       calls.push(name);
@@ -42,7 +45,10 @@ async function host() {
       }),
   );
   const request = (path: string, init: RequestInit = {}) =>
-    fetch(`${config.origin}${path}`, init);
+    fetch(`${config.origin}${path}`, {
+      ...init,
+      headers: { "x-iris-library": config.libraryId(), ...init.headers },
+    });
   const login = async () => {
     const response = await request("/web/session", {
       method: "POST",
@@ -55,6 +61,33 @@ async function host() {
 }
 
 describe("browser host boundary", () => {
+  it("serves the application document for deep links and preserves missing API/asset errors", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "iris-web-routes-"));
+    cleanups.push(() => rm(directory, { recursive: true, force: true }));
+    await writeFile(
+      join(directory, "browser.html"),
+      "<!doctype html><title>Iris route fixture</title>",
+    );
+    const test = await host(directory);
+    for (const path of [
+      "/",
+      "/assistant",
+      "/save/fixture",
+      "/settings/agent-models",
+    ])
+      expect(await (await test.request(path)).text()).toBe(
+        "<!doctype html><title>Iris route fixture</title>",
+      );
+    expect((await test.request("/assets/missing.js")).status).toBe(404);
+    expect((await test.request("/web/missing")).status).toBe(401);
+    expect(
+      (
+        await test.request("/web/missing", {
+          headers: { cookie: await test.login() },
+        })
+      ).status,
+    ).toBe(404);
+  });
   it("requires authentication for queries, media and events", async () => {
     const test = await host();
     for (const path of [
@@ -109,7 +142,7 @@ describe("browser host boundary", () => {
     const cookie = await test.login();
     for (const name of [
       "settings.ingestToken",
-      "agent.saveKey",
+      "agent.readKey",
       "saves.createManual",
       "library.switchTo",
       "saves.filePath",
@@ -144,6 +177,86 @@ describe("browser host boundary", () => {
       (await test.request("/web/media/save/image.png", { headers: { cookie } }))
         .status,
     ).toBe(401);
+  });
+  it("accepts only configured private origins and keeps their sessions separate", async () => {
+    const test = await host();
+    const remoteOrigin = "https://iris.owner.ts.net:9443";
+    test.config.origins = [remoteOrigin];
+    const response = await test.app.request(
+      `${remoteOrigin}/web/session`,
+      {
+        method: "POST",
+        headers: {
+          host: "iris.owner.ts.net:9443",
+          origin: remoteOrigin,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ key: test.config.key }),
+      },
+      { incoming: { socket: { remoteAddress: "127.0.0.1" } } },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("Secure");
+    const cookie = response.headers.get("set-cookie")?.split(";")[0] ?? "";
+    expect(
+      (
+        await test.app.request(`${remoteOrigin}/web/session`, {
+          headers: { host: "iris.owner.ts.net:9443", cookie },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await test.request("/web/session", { headers: { cookie } })).status,
+    ).toBe(401);
+    expect(
+      (
+        await test.app.request("/web/session", {
+          method: "POST",
+          headers: {
+            host: "iris.owner.ts.net:9443",
+            origin: test.config.origin,
+          },
+        })
+      ).status,
+    ).toBe(403);
+  });
+  it("revokes an idle event stream immediately on logout", async () => {
+    const test = await host();
+    const cookie = await test.login();
+    const controller = new AbortController();
+    const stream = await test.request("/web/events", {
+      headers: { cookie },
+      signal: controller.signal,
+    });
+    const reader = stream.body?.getReader();
+    await reader?.read();
+    expect(test.listeners.size).toBe(1);
+    await test.request("/web/session", {
+      method: "DELETE",
+      headers: { cookie, origin: test.config.origin },
+    });
+    expect(test.listeners.size).toBe(0);
+    controller.abort();
+    await reader?.cancel().catch(() => {});
+  });
+  it("rejects writes for a stale Library before invoking a handler", async () => {
+    const test = await host();
+    const cookie = await test.login();
+    const response = await test.request("/web/query", {
+      method: "POST",
+      headers: {
+        cookie,
+        origin: test.config.origin,
+        "content-type": "application/json",
+        "x-iris-library": "another-library",
+      },
+      body: JSON.stringify({
+        name: "folders.create",
+        params: { name: "wrong target" },
+      }),
+    });
+    expect(response.status).toBe(409);
+    expect(test.calls).toEqual([]);
   });
   it("opens an authenticated event stream and cleans up on disconnect", async () => {
     const test = await host();

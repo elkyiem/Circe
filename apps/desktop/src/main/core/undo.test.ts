@@ -2,6 +2,27 @@ import type { Transaction } from "@pond/schema/tx";
 import { expect, it } from "vitest";
 import { createUndoHistory } from "./undo";
 
+it("does not undo another window's edit after history changed", async () => {
+  const committed: Transaction[][] = [];
+  const history = createUndoHistory(async (transactions) => {
+    committed.push(transactions);
+  });
+  const transaction: Transaction = {
+    kind: "update",
+    model: "save",
+    id: "a",
+    patch: { rating: 5 },
+    before: { rating: 1 },
+  };
+  history.record([transaction]);
+  const firstWindow = history.revision();
+  history.record([{ ...transaction, id: "b" }]);
+  expect(await history.undo(firstWindow)).toBe(false);
+  expect(committed).toEqual([]);
+  expect(await history.undo(history.revision())).toBe(true);
+  expect(committed[0]?.[0]?.id).toBe("b");
+});
+
 it("undoes and redoes an entire rating batch in one command", async () => {
   const ratings = new Map([
     ["a", 5],

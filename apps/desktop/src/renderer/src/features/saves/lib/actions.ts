@@ -16,6 +16,7 @@ import {
 import { pool } from "@/features/saves/state/pool";
 import type { Save, SaveFile } from "@/features/saves/types";
 import { mergeUniqueTags, tagClipboard } from "@/features/tags";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 
 const OkSchema = z
@@ -180,7 +181,9 @@ export async function copyFilePath(
   await writeClipboardText(result.path);
   notify({
     id: "copy-path",
-    title: "Path copied to clipboard",
+    title: isBrowserRuntime()
+      ? "Media link copied"
+      : "Path copied to clipboard",
   });
 }
 
@@ -195,8 +198,9 @@ async function copyFile(
   );
   if (!result.ok) return;
   const file = save.files[fileIndex];
-  const title =
-    file && deriveTypeKind(file, save) === "video"
+  const title = isBrowserRuntime()
+    ? "Download requested"
+    : file && deriveTypeKind(file, save) === "video"
       ? "Video copied to clipboard"
       : "File copied to clipboard";
   notify({ id: "copy-media", title });

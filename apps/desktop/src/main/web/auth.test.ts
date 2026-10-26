@@ -15,4 +15,17 @@ describe("web sessions", () => {
     now = 12 * 60 * 60_000;
     expect(sessions.valid(second)).toBe(false);
   });
+  it("binds sessions to a Library and origin and immediately notifies revoked streams", () => {
+    const sessions = createWebSessions("host-key");
+    const id =
+      sessions.login("host-key", "https://owner.test\0library-a") ?? "";
+    let revoked = 0;
+    sessions.onRevoke(id, () => {
+      revoked++;
+    });
+    expect(sessions.valid(id, "https://owner.test\0library-a")).toBe(true);
+    expect(sessions.valid(id, "https://owner.test\0library-b")).toBe(false);
+    expect(revoked).toBe(1);
+    expect(sessions.valid(id, "https://owner.test\0library-a")).toBe(false);
+  });
 });

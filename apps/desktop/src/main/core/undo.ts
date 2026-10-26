@@ -1,6 +1,6 @@
 import { inverse, type Transaction } from "@pond/schema/tx";
 import log from "electron-log/main.js";
-import { executeBatch } from "./executor";
+import { executeBatch, withMutationScope } from "./executor";
 
 const MAX_HISTORY = 200;
 export function createUndoHistory(
@@ -9,6 +9,7 @@ export function createUndoHistory(
   const undoStack: Transaction[][] = [];
   const redoStack: Transaction[][] = [];
   let epoch = 0;
+  let revision = 0;
   let commandTail = Promise.resolve();
   function serialize<T>(operation: () => Promise<T>): Promise<T> {
     const result = commandTail.then(operation);
@@ -24,14 +25,18 @@ export function createUndoHistory(
       undoStack.push(structuredClone(transactions));
       if (undoStack.length > MAX_HISTORY) undoStack.shift();
       redoStack.length = 0;
+      revision++;
     },
     clear(): void {
       epoch++;
       undoStack.length = 0;
       redoStack.length = 0;
+      revision++;
     },
-    undo(): Promise<boolean> {
+    undo(expectedRevision?: number): Promise<boolean> {
       return serialize(async () => {
+        if (expectedRevision !== undefined && expectedRevision !== revision)
+          return false;
         const started = epoch;
         const transactions = undoStack.pop();
         if (!transactions) return false;
@@ -45,7 +50,10 @@ export function createUndoHistory(
               };
             }),
           );
-          if (epoch === started) redoStack.push(transactions);
+          if (epoch === started) {
+            redoStack.push(transactions);
+            revision++;
+          }
           return true;
         } catch (error) {
           log.warn("[pond undo] failed", error);
@@ -54,8 +62,10 @@ export function createUndoHistory(
         }
       });
     },
-    redo(): Promise<boolean> {
+    redo(expectedRevision?: number): Promise<boolean> {
       return serialize(async () => {
+        if (expectedRevision !== undefined && expectedRevision !== revision)
+          return false;
         const started = epoch;
         const transactions = redoStack.pop();
         if (!transactions) return false;
@@ -66,7 +76,10 @@ export function createUndoHistory(
               meta: { ...item.meta, actorReason: "redo" },
             })),
           );
-          if (epoch === started) undoStack.push(transactions);
+          if (epoch === started) {
+            undoStack.push(transactions);
+            revision++;
+          }
           return true;
         } catch (error) {
           log.warn("[pond redo] failed", error);
@@ -81,6 +94,9 @@ export function createUndoHistory(
     canRedo(): boolean {
       return redoStack.length > 0;
     },
+    revision(): number {
+      return revision;
+    },
   };
 }
 const history = createUndoHistory(async (transactions) => {
@@ -92,9 +108,12 @@ export function recordForUndo(transaction: Transaction): void {
 export function recordBatchForUndo(transactions: Transaction[]): void {
   history.record(transactions);
 }
-export const undo = history.undo;
-export const redo = history.redo;
+export const undo = (expectedRevision?: number) =>
+  withMutationScope(() => history.undo(expectedRevision));
+export const redo = (expectedRevision?: number) =>
+  withMutationScope(() => history.redo(expectedRevision));
 export const canUndo = history.canUndo;
 export const canRedo = history.canRedo;
+export const undoRevision = history.revision;
 
 export const clearUndoHistory = history.clear;

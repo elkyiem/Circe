@@ -11,6 +11,7 @@ import {
 import type { MenuItemSpec } from "@pond/ui";
 import { isThumbnailKind } from "@shared/save-file-names";
 import {
+  copyableImageIndex,
   copyBase64,
   copyFilePath,
   copyName,
@@ -26,6 +27,7 @@ import {
   copyTagsForSelection,
   copyUrlsForSelection,
 } from "@/features/saves/lib/selection";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { shortcutGlyphs } from "@/shared/lib/shortcuts";
 import { notify } from "@/shared/lib/toast";
 import { glyph, notifyCopy, submenuHidden } from "./shared";
@@ -97,7 +99,11 @@ export function buildCopyItems({
     },
     {
       id: "copy-primary",
-      label: copyLabel,
+      label:
+        isBrowserRuntime() &&
+        (batch || copyableImageIndex(save, fileIndex) === null)
+          ? "Download Files"
+          : copyLabel,
       icon: glyph(IconCopy),
       hidden: !hasFiles,
       shortcut: shortcutGlyphs("save.copy-image"),
@@ -107,7 +113,7 @@ export function buildCopyItems({
       },
     },
     {
-      label: "Copy File Path",
+      label: isBrowserRuntime() ? "Copy Media Link" : "Copy File Path",
       icon: glyph(IconPath),
       hidden: !hasFiles,
       onClick: () => {

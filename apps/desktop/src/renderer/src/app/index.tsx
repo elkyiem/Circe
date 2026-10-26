@@ -3,6 +3,7 @@ import type { ShellHint } from "@shared/shell-hint";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  createBrowserHistory,
   createMemoryHistory,
   createRouter,
   RouterProvider,
@@ -13,6 +14,7 @@ import { ConversionDialogHost } from "@/features/library/components/conversion-d
 import { FolderPickerHost } from "@/features/library/components/folder-picker";
 import { RenameDialogHost } from "@/features/library/components/rename-dialog/host";
 import { UpdateDialog } from "@/features/settings/components/update-dialog";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { usePrefs } from "@/shared/state/prefs";
 import type { PondApi } from "../../../preload";
 import { ExtensionCaptureToast } from "../features/captures/effects/extension-capture-toast";
@@ -80,6 +82,8 @@ function readStored(key: string): string | null {
 }
 
 function initialPath(): string {
+  if (isBrowserRuntime() && location.pathname !== "/")
+    return `${location.pathname}${location.search}${location.hash}`;
   const startup = readStored(STARTUP_PAGE_KEY) ?? "continue";
   if (startup === "settings") return "/settings/general";
   const startupRoute = STARTUP_ROUTES.get(startup);
@@ -90,9 +94,14 @@ function initialPath(): string {
 }
 
 function buildRouter(entry: string) {
+  const history = isBrowserRuntime()
+    ? createBrowserHistory()
+    : createMemoryHistory({ initialEntries: [entry] });
+  if (isBrowserRuntime() && location.pathname === "/" && entry !== "/")
+    history.replace(entry);
   return createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: [entry] }),
+    history,
     defaultPreload: "intent",
     defaultErrorComponent: ({ error, reset }) => (
       <ErrorScreen error={error} reset={reset} />

@@ -14,10 +14,16 @@ const login = await fetch(`${origin}/web/session`, {
 });
 assert.equal(login.status, 200);
 const cookie = login.headers.get("set-cookie").split(";")[0];
+const { libraryId } = await login.json();
 const call = async (path, body) => {
   const response = await fetch(`${origin}/web/${path}`, {
     method: "POST",
-    headers: { cookie, origin, "content-type": "application/json" },
+    headers: {
+      cookie,
+      origin,
+      "content-type": "application/json",
+      "x-iris-library": libraryId,
+    },
     body: JSON.stringify(body),
   });
   assert.equal(

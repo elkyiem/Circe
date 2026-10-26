@@ -1,5 +1,9 @@
 import { SHORTCUT_PLATFORM } from "@shared/shortcuts";
 
+export function isBrowserRuntime(): boolean {
+  return globalThis.document?.documentElement.dataset.runtime === "browser";
+}
+
 /** navigator.platform is stable for the process lifetime; resolve the reveal label once. */
 export const REVEAL_LABEL: string = (() => {
   if (!globalThis.navigator) return "Reveal in Finder";

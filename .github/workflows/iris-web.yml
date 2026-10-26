@@ -1,0 +1,36 @@
+name: Iris web
+
+on:
+  push:
+    branches: [web, dev]
+  pull_request:
+    branches: [web, dev]
+
+concurrency:
+  group: iris-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+      - run: pnpm --filter @pond/desktop build:web
+      - name: Isolated host and browser workflows
+        run: |
+          SANDBOX="$(dirname "$(cd apps/desktop && node -p "require('electron')")")/chrome-sandbox"
+          sudo chown root:root "$SANDBOX"
+          sudo chmod 4755 "$SANDBOX"
+          xvfb-run -a node apps/desktop/scripts/smoke-web-ci.mjs

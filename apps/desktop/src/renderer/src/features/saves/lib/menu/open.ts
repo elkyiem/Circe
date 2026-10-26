@@ -26,7 +26,7 @@ import {
 } from "@/features/saves/lib/selection";
 import { openReferenceWindow } from "@/features/saves/lib/viewer-actions";
 import { getAppRouter } from "@/shared/lib/app-router";
-import { REVEAL_LABEL } from "@/shared/lib/platform";
+import { isBrowserRuntime, REVEAL_LABEL } from "@/shared/lib/platform";
 import { shortcutGlyphs } from "@/shared/lib/shortcuts";
 import { glyph } from "./shared";
 import type { SaveMenuContext } from "./types";
@@ -94,7 +94,9 @@ export function buildOpenItems({
       },
     },
     {
-      label: "Open with Default App",
+      label: isBrowserRuntime()
+        ? "Download to This Device"
+        : "Open with Default App",
       icon: glyph(IconArrowUpRight),
       hidden: !hasFiles,
       shortcut: shortcutGlyphs("save.open"),
@@ -107,12 +109,12 @@ export function buildOpenItems({
       type: "submenu",
       label: "Open With",
       icon: glyph(IconApplications),
-      hidden: openWithItems.length === 0,
+      hidden: isBrowserRuntime() || openWithItems.length === 0,
       items: openWithItems,
     },
     { type: "separator" },
     {
-      label: REVEAL_LABEL,
+      label: isBrowserRuntime() ? "Show Save" : REVEAL_LABEL,
       icon: glyph(IconFolderOpen),
       keywords: "finder explorer",
       hidden: !hasFiles,

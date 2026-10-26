@@ -3,6 +3,7 @@ import { Button, Empty } from "@pond/ui";
 import { useState } from "react";
 import { sourceNewMenu } from "@/features/sources/state/source-new-menu";
 import { BrowserExtensionDialog } from "@/shared/components/browser-extension-dialog";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 
 export function SourcesEmpty() {
   const [extensionOpen, setExtensionOpen] = useState(false);
@@ -14,16 +15,20 @@ export function SourcesEmpty() {
       <Empty.Title>No sources yet</Empty.Title>
       <Empty.Description>
         Connect an account or watch a public one to keep Pond in sync.
-        Connecting an account needs the Pond browser extension.
+        {isBrowserRuntime()
+          ? " Connecting an account opens an isolated sign-in window on the host computer."
+          : " Connecting an account needs the Pond browser extension."}
       </Empty.Description>
       <Empty.Action>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setExtensionOpen(true)}
-        >
-          Get Extension
-        </Button>
+        {!isBrowserRuntime() && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setExtensionOpen(true)}
+          >
+            Get Extension
+          </Button>
+        )}
         <Button
           variant="primary"
           size="sm"

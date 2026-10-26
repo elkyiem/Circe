@@ -24,6 +24,9 @@ export interface LocalAttachmentPicker {
 }
 
 export interface LocalAttachmentService {
+  registerLocalAttachments: (
+    paths: readonly string[],
+  ) => ReturnType<LocalAttachmentService["pickLocalAttachments"]>;
   pickLocalAttachments: () => Promise<
     | { ok: true; files: AssistantFileAttachment[] }
     | { ok: false; files: []; error: string }
@@ -45,7 +48,12 @@ export function createLocalAttachmentService(
     const picked = await picker.pickFiles();
     if (picked.canceled || picked.filePaths.length === 0)
       return { ok: true, files: [] };
-    if (picked.filePaths.length > ASSISTANT_FILE_ATTACH_CAP) {
+    return registerLocalAttachments(picked.filePaths);
+  }
+  async function registerLocalAttachments(
+    paths: readonly string[],
+  ): ReturnType<LocalAttachmentService["pickLocalAttachments"]> {
+    if (paths.length > ASSISTANT_FILE_ATTACH_CAP) {
       return {
         ok: false,
         files: [],
@@ -55,7 +63,7 @@ export function createLocalAttachmentService(
 
     const files: AssistantFileAttachment[] = [];
     let totalSize = 0;
-    for (const path of picked.filePaths) {
+    for (const path of paths) {
       const details = await stat(path);
       if (!details.isFile() || details.size === 0)
         return {
@@ -127,7 +135,11 @@ export function createLocalAttachmentService(
     return loaded;
   }
 
-  return { pickLocalAttachments, loadLocalAttachments };
+  return {
+    pickLocalAttachments,
+    registerLocalAttachments,
+    loadLocalAttachments,
+  };
 }
 
 const localAttachmentService = createLocalAttachmentService({
@@ -139,5 +151,8 @@ const localAttachmentService = createLocalAttachmentService({
     }),
 });
 
-export const { loadLocalAttachments, pickLocalAttachments } =
-  localAttachmentService;
+export const {
+  loadLocalAttachments,
+  pickLocalAttachments,
+  registerLocalAttachments,
+} = localAttachmentService;

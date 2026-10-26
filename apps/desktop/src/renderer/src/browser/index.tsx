@@ -41,17 +41,19 @@ function BrowserConnection() {
   }, []);
   useEffect(() => {
     if (!session) return;
-    installBrowserAdapter(session.libraryId);
-    // Agent is host-only for now; do not restore its native resting pane on reload.
-    localStorage.setItem("pond.rightOpen", "0");
-    localStorage.setItem("pond.agent", "0");
     if (matchMedia("(max-width: 700px)").matches)
       localStorage.setItem("pond.sidebar", "0");
-    void import("../main")
+    void installBrowserAdapter(session.libraryId)
+      .then(() => import("../main"))
       .then(() => setReady(true))
-      .catch(() =>
-        setError("The application could not start. Reload to retry."),
-      );
+      .catch((failure) => {
+        console.error("Iris browser startup failed", failure);
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "The application could not start. Reload to retry.",
+        );
+      });
   }, [session]);
   return (
     <section
@@ -197,7 +199,10 @@ function BrowserConnection() {
           )}
           <Button
             onClick={async () => {
-              await fetch("/web/session", { method: "DELETE" });
+              await fetch("/web/session", {
+                method: "DELETE",
+                headers: { "x-iris-library": session.libraryId },
+              });
               location.reload();
             }}
           >

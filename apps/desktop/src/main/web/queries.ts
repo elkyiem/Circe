@@ -1,20 +1,42 @@
-import { DEFAULT_PREFS } from "@pond/schema";
+import type { QueryResult } from "../../shared/query-contracts";
+import type { WebQueryName } from "../../shared/web-capabilities";
+import { WEB_QUERY_ACCESS } from "../../shared/web-capabilities";
 import { WebQueryRequestSchema } from "../../shared/web-contracts";
+import { withMutationScope } from "../core/executor";
+import { undoRevision } from "../core/undo";
 import { accountsQueries } from "../ipc/queries/accounts";
+import { agentQueries } from "../ipc/queries/agent";
+import { bulkQueries } from "../ipc/queries/bulk";
 import { canvasesQueries } from "../ipc/queries/canvases";
+import { conversionQueries } from "../ipc/queries/conversion";
 import { downloadsQueries } from "../ipc/queries/downloads";
 import { foldersQueries } from "../ipc/queries/folders";
 import { inspectQueries } from "../ipc/queries/inspect";
 import { libraryQueries } from "../ipc/queries/library";
+import { mediaUnderstandingQueries } from "../ipc/queries/media-understanding";
 import { queueQueries } from "../ipc/queries/queue";
 import { savedViewsQueries } from "../ipc/queries/saved-views";
 import { savesQueries } from "../ipc/queries/saves";
 import { settingsQueries } from "../ipc/queries/settings";
+import { sourcesQueries } from "../ipc/queries/sources";
+import { syncHistoryQueries } from "../ipc/queries/sync-history";
 import { tagGroupsQueries } from "../ipc/queries/tag-groups";
 import { tagsQueries } from "../ipc/queries/tags";
+import { transferJobsQueries } from "../ipc/queries/transfer-jobs";
 import { watchesQueries } from "../ipc/queries/watches";
+import { libraryId } from "../paths";
+import { updateWebCanvas } from "./canvases";
+import { WebRequestError } from "./errors";
 
 const handlers = {
+  ...inspectQueries,
+  ...transferJobsQueries,
+  ...syncHistoryQueries,
+  ...sourcesQueries,
+  ...mediaUnderstandingQueries,
+  ...conversionQueries,
+  ...bulkQueries,
+  ...agentQueries,
   "saves.mediaTiming": inspectQueries["saves.mediaTiming"],
   ...accountsQueries,
   ...canvasesQueries,
@@ -28,14 +50,29 @@ const handlers = {
   ...tagGroupsQueries,
   ...tagsQueries,
   ...watchesQueries,
-  // Browser preferences belong to the visiting device; never return host configuration.
-  "settings.getPrefs": () => ({ ...DEFAULT_PREFS, setup: { version: 1 } }),
   "updates.currentNotice": () => null,
 };
 
 export async function runWebQuery(
   request: ReturnType<typeof WebQueryRequestSchema.parse>,
-) {
-  const { name, params } = WebQueryRequestSchema.parse(request);
-  return handlers[name](params);
+): Promise<{ value: QueryResult<WebQueryName>; revision: number | undefined }> {
+  const {
+    name,
+    params,
+    libraryId: expectedLibrary,
+  } = WebQueryRequestSchema.parse(request);
+  if (WEB_QUERY_ACCESS[name] === "write") {
+    return withMutationScope(async () => {
+      if (expectedLibrary !== libraryId())
+        throw new WebRequestError(
+          "The active Library changed. Reload before editing.",
+        );
+      const value =
+        name === "canvases.update"
+          ? updateWebCanvas(params ?? {})
+          : await handlers[name](params);
+      return { value, revision: undoRevision() };
+    });
+  }
+  return { value: await handlers[name](params), revision: undefined };
 }

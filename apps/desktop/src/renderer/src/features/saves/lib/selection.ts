@@ -13,6 +13,7 @@ import { pool } from "@/features/saves/state/pool";
 import { selection } from "@/features/saves/state/selection";
 import type { Save } from "@/features/saves/types";
 import { mergeUniqueTags, tagClipboard } from "@/features/tags";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 
 const OkSchema = z
@@ -266,8 +267,9 @@ export async function copyFilesForSelection(
   if (!result.ok) return;
   notify({
     id: "copy-media",
-    title:
-      files.length === 1
+    title: isBrowserRuntime()
+      ? "Download requested"
+      : files.length === 1
         ? "File copied to clipboard"
         : "Files copied to clipboard",
   });

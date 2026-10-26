@@ -1,10 +1,28 @@
-import { DEFAULT_PREFS, PrefsSchema } from "@pond/schema";
+import { PrefsSchema } from "@pond/schema";
+import type { Query } from "@pond/schema/filters/types";
+import { agentStreamRequest } from "@shared/assistant";
 import type { QueryClient, QueryResult } from "@shared/query-contracts";
+import type { EagleImportProgress } from "@shared/saves-import-contracts";
+import type { UpdateNotice } from "@shared/update-notice";
 import { WebQueryNameSchema } from "@shared/web-contracts";
+import { WebHistorySchema } from "@shared/web-mutations";
 import { parseWebValue, type WebValue } from "@shared/web-serialization";
-import type { WireSyncAction } from "@shared/wire";
+import type {
+  WireJson,
+  WireSessionImported,
+  WireSessionImportFailed,
+  WireSyncAction,
+  WireSyncStatusUpdate,
+} from "@shared/wire";
 import { z } from "zod";
-import type { PondApi } from "../../../preload";
+import type { PondApi, StorageGuardStatusWire } from "../../../preload";
+import { createBrowserCanvases } from "./canvases";
+import { BROWSER_BRIDGE_ACCESS } from "./capabilities";
+import { createBrowserFiles } from "./files";
+import { createBrowserPreferences } from "./preferences";
+
+let boundLibraryId = "";
+let historyRevision = 0;
 
 export async function webRequest(path: string, body?: string, method = "POST") {
   const response = await fetch(
@@ -13,10 +31,12 @@ export async function webRequest(path: string, body?: string, method = "POST") {
       ? {}
       : {
           method,
-          headers: { "content-type": "application/json" },
+          headers: webHeaders(),
           body,
         },
   );
+  const revision = response.headers.get("x-iris-history");
+  if (revision !== null) historyRevision = Number(revision);
   const result = parseWebValue(await response.text());
   if (!response.ok) {
     const failure = z.object({ error: z.string() }).safeParse(result);
@@ -42,23 +62,63 @@ function unsupported(): never {
 /** Native menu and window events have no producers on the visiting device. */
 const noNativeEvents = () => () => {};
 
-export function installBrowserAdapter(libraryId: string) {
+function unavailable(name: keyof PondApi) {
+  return () => {
+    const message =
+      BROWSER_BRIDGE_ACCESS[name] === "host-only"
+        ? "This action needs a host helper. Open Pond on the host to use it."
+        : "This browser cannot perform that action.";
+    window.dispatchEvent(new CustomEvent("iris-error", { detail: message }));
+    throw new Error(message);
+  };
+}
+
+export async function installBrowserAdapter(libraryId: string) {
+  boundLibraryId = libraryId;
+  const hostPrefs = PrefsSchema.parse(
+    await webRequest("query", JSON.stringify({ name: "settings.getPrefs" })),
+  );
+  const initialHistory = WebHistorySchema.parse(await webRequest("history"));
+  historyRevision = initialHistory.revision;
   const key = `iris:device-prefs:${libraryId}`;
-  const readPrefs = () =>
-    PrefsSchema.parse(
-      JSON.parse(
-        localStorage.getItem(key) ??
-          JSON.stringify({ ...DEFAULT_PREFS, setup: { version: 1 } }),
-      ),
-    );
-  const prefsListeners = new Set<Parameters<PondApi["onPrefsChanged"]>[0]>();
+  const preferences = createBrowserPreferences({
+    initial: hostPrefs,
+    readDevice: () => localStorage.getItem(key),
+    writeDevice: (value) => localStorage.setItem(key, value),
+    saveHost: async (patch) =>
+      z
+        .object({ prefs: PrefsSchema })
+        .parse(
+          await webRequest(
+            "query",
+            JSON.stringify({ name: "settings.setPrefs", params: patch }),
+          ),
+        ).prefs,
+  });
   const syncListeners = new Set<(event: WireSyncAction) => void>();
+  const files = createBrowserFiles({
+    request: webRequest,
+    headers: webHeaders,
+  });
+  const canvases = createBrowserCanvases(webRequest);
   const query: QueryClient = async (name, ...args) => {
     let result:
       | WebValue
       | QueryResult<"settings.getPrefs">
       | QueryResult<"settings.setPrefs"> = null;
-    if (name === "settings.getPrefs") result = readPrefs();
+    if (files.handles(name))
+      result = await files.query(
+        name,
+        z
+          .record(z.string(), z.json())
+          .parse(JSON.parse(JSON.stringify(args[0] ?? {}))),
+      );
+    else if (canvases.handles(name))
+      result = await canvases.query(
+        name,
+        z.record(z.string(), z.json()).parse(args[0] ?? {}),
+      );
+    else if (name === "settings.getPrefs") result = preferences.read();
     else if (name === "library.recent") {
       const info = z
         .object({
@@ -77,35 +137,10 @@ export function installBrowserAdapter(libraryId: string) {
         { ...info, active: true, available: true, lastOpened: Date.now() },
       ];
     } else if (name === "settings.setPrefs") {
-      const current = readPrefs();
       const patch = z
         .record(z.string(), z.record(z.string(), z.json()))
         .parse(args[0]);
-      const deviceSections = new Set([
-        "preferences",
-        "viewer",
-        "sidebar",
-        "folderViews",
-        "savedViewViews",
-        "tagPicker",
-        "allTags",
-        "sourcesView",
-        "saveRecents",
-        "search",
-        "shortcuts",
-      ]);
-      if (Object.keys(patch).some((section) => !deviceSections.has(section)))
-        return unsupported();
-      const next = Object.fromEntries(
-        Object.entries(current).map(([section, value]) => [
-          section,
-          { ...value, ...patch[section] },
-        ]),
-      );
-      const prefs = PrefsSchema.parse(next);
-      localStorage.setItem(key, JSON.stringify(prefs));
-      for (const listener of prefsListeners) listener(prefs);
-      result = { ok: true, prefs };
+      result = { ok: true, prefs: await preferences.write(patch) };
     } else {
       if (!WebQueryNameSchema.safeParse(name).success) return unsupported();
       result = await webRequest(
@@ -124,8 +159,7 @@ export function installBrowserAdapter(libraryId: string) {
       return () => syncListeners.delete(callback);
     },
     onPrefsChanged: (callback) => {
-      prefsListeners.add(callback);
-      return () => prefsListeners.delete(callback);
+      return preferences.subscribe(callback);
     },
     rendererReady: () => {},
     sendMenuRecents: () => {},
@@ -144,36 +178,119 @@ export function installBrowserAdapter(libraryId: string) {
       username: "",
       isPackaged: false,
     }),
-    openCombineImagesWindow: unsupported,
-    tx: unsupported,
-    batch: unsupported,
-    undo: unsupported,
-    redo: unsupported,
-    openPreviewWindow: unsupported,
-    configurePreviewWindow: unsupported,
-    navigatePreviewWindow: unsupported,
-    closePreviewWindow: unsupported,
-    pathForFile: unsupported,
-    revealSave: unsupported,
-    openSaveFile: unsupported,
-    refreshSave: unsupported,
-    refreshBackfillStart: unsupported,
-    refreshBackfillCancel: unsupported,
-    pipelinePause: unsupported,
-    pipelineCancelSaves: unsupported,
-    pipelineCancelAll: unsupported,
-    connectSource: unsupported,
-    clearPendingSession: unsupported,
-    sourceStatus: unsupported,
-    syncRunNow: unsupported,
-    syncStatus: unsupported,
-    syncRunAll: unsupported,
-    syncCancel: unsupported,
-    governorSetPaused: unsupported,
-    governorResumeSource: unsupported,
-    archiveBackfillStart: unsupported,
-    archiveSite: unsupported,
-    agentStream: unsupported,
+    openCombineImagesWindow: unavailable("openCombineImagesWindow"),
+    tx: async (transaction) => {
+      await webRequest(
+        "transactions",
+        JSON.stringify({ transactions: [transaction] }),
+      );
+    },
+    batch: async (transactions) => {
+      if (transactions.length)
+        await webRequest("transactions", JSON.stringify({ transactions }));
+    },
+    undo: async () => {
+      const state = WebHistorySchema.parse(
+        await webRequest(
+          "history",
+          JSON.stringify({ kind: "undo", revision: historyRevision }),
+        ),
+      );
+      historyRevision = state.revision;
+      return { ok: true, ...state };
+    },
+    redo: async () => {
+      const state = WebHistorySchema.parse(
+        await webRequest(
+          "history",
+          JSON.stringify({ kind: "redo", revision: historyRevision }),
+        ),
+      );
+      historyRevision = state.revision;
+      return { ok: true, ...state };
+    },
+    openPreviewWindow: unavailable("openPreviewWindow"),
+    configurePreviewWindow: unavailable("configurePreviewWindow"),
+    navigatePreviewWindow: unavailable("navigatePreviewWindow"),
+    closePreviewWindow: unavailable("closePreviewWindow"),
+    pathForFile: files.pathForFile,
+    revealSave: async (id) => {
+      location.assign(`/save/${encodeURIComponent(id)}`);
+      return { ok: true };
+    },
+    openSaveFile: async (id, fileIndex) => {
+      await files.query("saves.exportFile", {
+        id,
+        fileIndex: fileIndex ?? 0,
+      });
+      return { ok: true };
+    },
+    refreshSave: (id) => command("refreshSave", { id }),
+    refreshBackfillStart: (opts) => command("refreshBackfillStart", opts ?? {}),
+    refreshBackfillCancel: () => command("refreshBackfillCancel"),
+    pipelinePause: (paused) => command("pipelinePause", { paused }),
+    pipelineCancelSaves: (ids) =>
+      command("pipelineCancelSaves", { ids: [...ids] }),
+    pipelineCancelAll: () => command("pipelineCancelAll"),
+    connectSource: (source) => command("connectSource", { source }),
+    clearPendingSession: (source) => command("clearPendingSession", { source }),
+    sourceStatus: (source) => command("sourceStatus", { source }),
+    syncRunNow: (accountId, opts) =>
+      command("syncRunNow", { accountId, ...opts }),
+    syncStatus: (accountId) => command("syncStatus", { accountId }),
+    syncRunAll: (opts) => command("syncRunAll", opts ?? {}),
+    syncCancel: (accountId) => command("syncCancel", { accountId }),
+    governorSetPaused: (paused) => command("governorSetPaused", { paused }),
+    governorResumeSource: (source) =>
+      command("governorResumeSource", { source }),
+    archiveBackfillStart: () => command("archiveBackfillStart"),
+    archiveSite: (id) => command("archiveSite", { id }),
+    agentStream: (body, receive) => {
+      const input = agentStreamRequest.parse(body);
+      const controller = new AbortController();
+      void fetch("/web/agent", {
+        method: "POST",
+        headers: webHeaders(),
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok)
+            throw new Error(
+              "The host could not start this reply. Reconnect and try again.",
+            );
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("The host returned an empty reply.");
+          while (!controller.signal.aborted) {
+            const chunk = await reader.read();
+            if (chunk.done) {
+              receive({ type: "end" });
+              return;
+            }
+            receive({ type: "data", data: Array.from(chunk.value) });
+          }
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted)
+            receive({
+              type: "error",
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Could not read the reply.",
+            });
+        });
+      return () => {
+        controller.abort();
+        void webRequest(
+          "query",
+          JSON.stringify({
+            name: "agent.stop",
+            params: { chatId: input.chatId, requestId: input.requestId },
+          }),
+        ).catch(() => {});
+      };
+    },
     onPreviewNeighborRequested: noNativeEvents,
     onNavigate: noNativeEvents,
     onOpenFiles: noNativeEvents,
@@ -182,21 +299,35 @@ export function installBrowserAdapter(libraryId: string) {
     onMenuAction: noNativeEvents,
     onShortcutAction: noNativeEvents,
     onMenuOpenSave: noNativeEvents,
-    onEagleImportProgress: noNativeEvents,
-    onSessionImported: noNativeEvents,
-    onSessionImportFailed: noNativeEvents,
-    onSyncStatus: noNativeEvents,
-    onStorageStatus: noNativeEvents,
-    onUpdateNotice: noNativeEvents,
+    onEagleImportProgress: (callback) => onEvent("import-progress", callback),
+    onSessionImported: (callback) => onEvent("session-imported", callback),
+    onSessionImportFailed: (callback) => onEvent("session-failed", callback),
+    onSyncStatus: (callback) => onEvent("source-sync", callback),
+    onStorageStatus: (callback) => onEvent("storage", callback),
+    onUpdateNotice: (callback) => onEvent("update", callback),
     onArchiveNavigate: noNativeEvents,
     onAgentChunk: noNativeEvents,
-    onAgentFilter: noNativeEvents,
-    onAgentCite: noNativeEvents,
-    onAgentOverlay: noNativeEvents,
+    onAgentFilter: (callback) => onEvent("agent-filter", callback),
+    onAgentCite: (callback) => onEvent("agent-cite", callback),
+    onAgentOverlay: (callback) => onEvent("agent-overlay", callback),
   };
   window.pond = api;
   document.documentElement.dataset.runtime = "browser";
   const events = new EventSource("/web/events");
+  function onEvent<Name extends keyof BrowserHostEvents>(
+    name: Name,
+    callback: (value: BrowserHostEvents[Name]) => void,
+  ) {
+    const receive = (event: MessageEvent<string>) => {
+      /** SAFETY: the host forwards only the named, typed IPC broadcast for this event. */
+      callback(parseWebValue(event.data) as BrowserHostEvents[Name]);
+    };
+    events.addEventListener(name, receive);
+    return () => events.removeEventListener(name, receive);
+  }
+  events.addEventListener("prefs", (event) => {
+    preferences.receiveHost(PrefsSchema.parse(parseWebValue(event.data)));
+  });
   let connected = false;
   events.addEventListener("ready", () => {
     // Refresh the pool after a gap rather than silently losing host mutations.
@@ -231,4 +362,53 @@ export function installBrowserAdapter(libraryId: string) {
       .catch(() => {});
   };
   window.addEventListener("pagehide", () => events.close(), { once: true });
+}
+
+function webHeaders() {
+  return {
+    "content-type": "application/json",
+    "x-iris-library": boundLibraryId,
+  };
+}
+
+type CommandName =
+  | "refreshSave"
+  | "refreshBackfillStart"
+  | "refreshBackfillCancel"
+  | "pipelinePause"
+  | "pipelineCancelSaves"
+  | "pipelineCancelAll"
+  | "connectSource"
+  | "clearPendingSession"
+  | "sourceStatus"
+  | "syncRunNow"
+  | "syncStatus"
+  | "syncRunAll"
+  | "syncCancel"
+  | "governorSetPaused"
+  | "governorResumeSource"
+  | "archiveBackfillStart"
+  | "archiveSite";
+async function command<Name extends CommandName>(
+  name: Name,
+  params: { [key: string]: WireJson | undefined } = {},
+): Promise<Awaited<ReturnType<PondApi[Name]>>> {
+  const result = await webRequest(
+    "command",
+    JSON.stringify({ name, ...params }),
+  );
+  /** SAFETY: command names select the corresponding existing host operation; WebCommandSchema validates the request. */
+  return result as Awaited<ReturnType<PondApi[Name]>>;
+}
+
+interface BrowserHostEvents {
+  "import-progress": EagleImportProgress;
+  "session-imported": WireSessionImported;
+  "session-failed": WireSessionImportFailed;
+  "source-sync": WireSyncStatusUpdate;
+  storage: StorageGuardStatusWire;
+  update: UpdateNotice;
+  "agent-filter": Query;
+  "agent-cite": string[];
+  "agent-overlay": Parameters<Parameters<PondApi["onAgentOverlay"]>[0]>[0];
 }
