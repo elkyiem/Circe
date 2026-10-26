@@ -19,7 +19,19 @@ const profile = mkdtempSync(join(tmpdir(), "iris-browser-smoke-"));
 mkdirSync(evidence, { recursive: true });
 app.setPath("userData", profile);
 app.commandLine.appendSwitch("use-mock-keychain");
-process.once("exit", () => rmSync(profile, { recursive: true, force: true }));
+process.once("exit", () => {
+  try {
+    rmSync(profile, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    console.error("WEB_BROWSER_CLEANUP_FAILED", error.message);
+    process.exit(1);
+  }
+});
 const timer = setTimeout(
   () => {
     console.error("WEB_BROWSER_FAILED: timed out");

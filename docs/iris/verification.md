@@ -319,3 +319,10 @@ at desktop and mobile widths (`WEB_EDITING_RESTART_PASSED`). Separately, the
 owner confirmed remote Windows access through Tailscale after explicitly
 authorizing private Taildrop delivery of the login file. No key contents were
 printed, embedded in a URL or committed.
+
+The Note acceptance assertions passed before its temporary Chromium profile
+cleanup stalled two older finite processes in a native error dialog. Those
+test-only processes were stopped; the shared host remained running. Profile
+removal now retries transient filesystem failures and reports a failed cleanup
+with a nonzero exit instead of opening an uncaught-error dialog. The Note
+restart check was repeated and exited successfully with the profile removed.
