@@ -107,6 +107,7 @@ Additional finite checks against the running host:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-parity.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-canvas.mjs
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs
+pnpm --filter @pond/desktop exec node scripts/smoke-web-package.mjs
 # After restarting the same disposable host:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs --after-restart
 # Live model use; requires the explicitly authorized, connected subscription:
@@ -119,8 +120,10 @@ staged upload retry, package Capture/media retention, CSV and conversion downloa
 attachment registration, video frames, authenticated compatible preview ranges
 and image composition. The Canvas smoke renders actual Board tiles to PNG/PDF
 and confirms it does not change the saved Canvas.
-Package reimport into the same Library proves the existing dedup path; a fresh
-Library round trip remains a separate acceptance check. The live assistant check
+The package smoke exports the three fixtures over authenticated HTTP, imports
+into a new temporary Library, re-exports, deduplicates and reopens it in a second
+finite host process. It verifies Capture identity, original bytes, folder paths
+and organization names. The live assistant check
 uses only disposable fixture metadata and validates persisted sources and tool steps.
 
 To connect a Source, use **Sources → New Source**. Sign-in opens on the host in an

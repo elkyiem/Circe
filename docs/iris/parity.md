@@ -14,7 +14,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Image/video viewing and seeking | Host media + browser | Actual shared viewers and original media; authenticated HEAD, 206/416 and byte ranges verified |
 | Video frames and compatible previews | Host FFmpeg | HTTP decoded frame, sampled frames, cross-Save thumbnail rejection and Save-bound preview ranges passed; clipboard/frame UI matrix pending |
 | Visiting-device upload/import | Browser + host | Bounded uploads and Library-bound tickets; nested folder and same-name originals retained, request retry reuses Saves/folders, traversal denied; real Chrome picker and duplicate-review import passed; interruption matrix pending |
-| Pond packages, original files and CSV | Host + browser download | Real export/importers retained; ZIP envelope, Capture identity, selected file retention, same-Library dedup and artifact auth/ranges passed; fresh-Library round trip pending |
+| Pond packages, original files and CSV | Host + browser download | ZIP envelope, Capture identity, original bytes, same/fresh-Library dedup, folder paths, organization names, re-export and second-process restart passed; artifact auth/ranges and CSV verified |
 | Eagle/bookmarks/Mymind import | Host | Browser upload adapters implemented; format-specific browser fixtures still pending |
 | Conversion and compression | Host | Existing job owner retained; image conversion and downloadable ZIP passed over HTTP; full format/UI matrix pending |
 | Clipboard and share | Visiting device | Browser implementations with download alternatives; permissions and cross-browser matrix pending |

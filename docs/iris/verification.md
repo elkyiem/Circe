@@ -207,3 +207,22 @@ unrelated application routes, explicit scope, and invalid/ambiguous parameters.
 passed, 5 skipped. The production build passed all 11 tasks and five budgets;
 the browser build passed separately. Saved View and complete filter-history
 restoration remain a further navigation slice.
+
+## Fresh-Library package round trip — 2026-10-26
+
+`smoke-web-package.mjs` downloaded a real authenticated browser export containing
+the quote, image and video fixtures. A finite Electron process imported it into
+a new temporary Library, compared every Capture and indexed-file record, and
+hashed every original and derived file. Re-export retained each Save's folder
+paths and the organization names. Reimport skipped all three existing Saves;
+a second host process reopened the same temporary Library and verified stable
+destination IDs and file bytes again. Both temporary profiles and their packages
+were removed after the processes exited. No production data or credentials were
+copied. The initial test bundle needed to reside in the workspace cache for
+package resolution; this was a harness issue before import ran.
+
+Pond's existing package importer assigns destination Save/Folder IDs and remaps
+their references. Source IDs and structured Capture identities are retained.
+Iris preserves that upstream behavior; copying a complete Library and importing
+a package are different operations. This check does not claim every organization
+attribute or foreign import format has a browser acceptance test.
