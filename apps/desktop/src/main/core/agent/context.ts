@@ -284,12 +284,20 @@ export function libraryContext(
     {
       name: "proposeChanges",
       description:
-        "Prepare Library edits for explicit review. Never applies changes. Covers title, note, tags, folders, rating, trash, folder and tag CRUD, saved views, import URL, merge duplicates, export, sync, refresh, archive, copy URL, reveal, batch rename, and empty trash. Tags and folders replace the current list, so preserve entries the user has not asked to remove.",
+        "Prepare Library edits for explicit review. Never applies changes. Read each Save with readSave or searchLibrary before proposing its edits. Covers title, note, tags, folders, rating, trash, folder and tag CRUD, saved views, import URL, merge duplicates, export, sync, refresh, archive, copy URL, reveal, batch rename, and empty trash. Tags and folders replace the current list, so preserve entries the user has not asked to remove.",
       schema: assistantProposalInput,
       execute: async (args) => {
         input.signal.throwIfAborted();
         input.onActivity("preparing");
         const proposals = assistantProposalInput.parse(args).changes;
+        const unread = proposals.find(
+          (proposal) =>
+            proposal.field !== "action" && !sources.has(proposal.saveId),
+        );
+        if (unread)
+          throw new Error(
+            `Read Save ${unread.saveId} with readSave before proposing its edits. No review was prepared.`,
+          );
         const saveIds = [
           ...new Set(
             proposals
@@ -413,7 +421,9 @@ export function libraryContext(
         return {
           proposed: accepted.length,
           message:
-            "These changes are pending user review. Nothing has been applied.",
+            accepted.length > 0
+              ? "These changes are pending user review. Nothing has been applied."
+              : "No changes were prepared. Nothing is pending review or applied. Read the current Saves and check the requested values before trying again.",
         };
       },
     },

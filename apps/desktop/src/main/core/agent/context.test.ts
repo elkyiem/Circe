@@ -24,6 +24,44 @@ const dependencies = {
   }),
 };
 
+it("does not report a pending review when proposals have not read their Saves", async () => {
+  const readSave = vi.fn(async () => ({ error: "Save not found." }));
+  const context = libraryContext(
+    {
+      scope: {},
+      signal: new AbortController().signal,
+      onActivity: vi.fn(),
+      onSources: vi.fn(),
+    },
+    { ...dependencies, readSave },
+  );
+  const propose = context.tools.find((tool) => tool.name === "proposeChanges");
+  if (!propose) throw new Error("Missing proposeChanges tool");
+  const proposal = {
+    changes: [
+      {
+        saveId: "known",
+        field: "note",
+        after: "New note",
+        reason: "Requested edit",
+      },
+    ],
+  };
+  await expect(propose.execute(proposal)).rejects.toThrow(/Read.*before/);
+  expect(readSave).not.toHaveBeenCalled();
+  expect(context.changes()).toEqual([]);
+
+  await context.tools
+    .find((tool) => tool.name === "searchLibrary")
+    ?.execute({ query: "film" });
+  await expect(propose.execute(proposal)).resolves.toMatchObject({
+    proposed: 0,
+    message:
+      "No changes were prepared. Nothing is pending review or applied. Read the current Saves and check the requested values before trying again.",
+  });
+  expect(context.changes()).toEqual([]);
+});
+
 it("shows only verified result IDs and streams the same data it persists", async () => {
   const onResults = vi.fn();
   const onSteps = vi.fn();
