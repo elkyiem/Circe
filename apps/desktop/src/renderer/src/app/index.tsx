@@ -9,7 +9,14 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { MotionConfig } from "motion/react";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { ConversionDialogHost } from "@/features/library/components/conversion-dialog/host";
 import { FolderPickerHost } from "@/features/library/components/folder-picker";
 import { RenameDialogHost } from "@/features/library/components/rename-dialog/host";
@@ -17,11 +24,13 @@ import { UpdateDialog } from "@/features/settings/components/update-dialog";
 import { isBrowserRuntime } from "@/shared/lib/platform";
 import { usePrefs } from "@/shared/state/prefs";
 import type { PondApi } from "../../../preload";
+import { bindBrowserLibraryHistory } from "../browser/library-history";
 import { ExtensionCaptureToast } from "../features/captures/effects/extension-capture-toast";
 import { NotificationStatusBridge } from "../features/downloads/effects/notification-status-bridge";
 import { EnrichmentSweep } from "../features/enrichment/effects/enrichment-sweep";
 import { CommandMenuHost } from "../features/library/components/command-menu";
 import { useHydrateFolders } from "../features/library/state/folders";
+import { libraryChrome } from "../features/library/state/library-chrome";
 import { syncPrimaryFromPath } from "../features/saves/lib/save-nav";
 import { ThemeApplier } from "../features/settings/effects/theme-applier";
 import { UiSounds } from "../features/settings/effects/ui-sounds";
@@ -87,7 +96,10 @@ function readStored(key: string): string | null {
 }
 
 function initialPath(): string {
-  if (isBrowserRuntime() && location.pathname !== "/")
+  if (
+    isBrowserRuntime() &&
+    (location.pathname !== "/" || location.search || location.hash)
+  )
     return `${location.pathname}${location.search}${location.hash}`;
   const startup = readStored(STARTUP_PAGE_KEY) ?? "continue";
   if (startup === "settings") return "/settings/general";
@@ -121,11 +133,22 @@ function AppContent() {
     return next;
   });
 
+  useLayoutEffect(() => {
+    if (!isBrowserRuntime()) return;
+    return bindBrowserLibraryHistory(router.history, {
+      getNav: () => libraryChrome.getState().nav,
+      setNav: libraryChrome.setNav,
+    });
+  }, [router]);
+
   useEffect(() => {
     const unsub = router.subscribe("onResolved", () => {
       const loc = router.state.location;
       try {
-        localStorage.setItem(LAST_PATH_KEY, loc.pathname);
+        localStorage.setItem(
+          LAST_PATH_KEY,
+          isBrowserRuntime() ? `${loc.pathname}${loc.searchStr}` : loc.pathname,
+        );
       } catch {}
       syncPrimaryFromPath(loc.pathname);
       setAppRouter(router);

@@ -191,3 +191,19 @@ assignment. Folder trees and staged-file identities are reused on retry.
   The finite browser again showed the disconnection banner when the host stopped.
   An initial manually orchestrated attempt missed its 20-second stop window;
   stopping directly when the readiness signal arrived passed without test changes.
+
+## Browser scope restoration — 2026-10-26
+
+The active-folder reload gap is fixed. Shared Chrome verified folder reload,
+opening and reloading an imported Save, app Back/Forward and browser Back between
+All and the selected folder. The correct two contents and subfolders returned.
+Screenshot: `shared-chrome-folder-reload.png`. The finite desktop/mobile browser
+smoke also passes folder reload through the real UI. Its first extended run
+needed a null guard while waiting for the reloading breadcrumb to mount.
+
+History tests cover Folder/Tag restoration, encoded tag names, Save context,
+unrelated application routes, explicit scope, and invalid/ambiguous parameters.
+`pnpm check` passed all 25 tasks: desktop 603 files passed, 2 skipped; 4,127 tests
+passed, 5 skipped. The production build passed all 11 tasks and five budgets;
+the browser build passed separately. Saved View and complete filter-history
+restoration remain a further navigation slice.

@@ -8,6 +8,7 @@ import {
   useNavigationHistory,
 } from "@/features/library/state/navigation-history";
 import { saveIdFromPath } from "@/features/saves/lib/save-nav";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import styles from "./styles.module.css";
 
 export function ChromeHistoryNav() {
@@ -25,6 +26,7 @@ export function ChromeHistoryNav() {
   });
   const routerIndex = router.state.location.state?.__TSR_index ?? 0;
   const isSave = saveIdFromPath(pathname) !== null;
+  const browser = isBrowserRuntime();
   const hasRouterForwardTarget =
     saveForwardTarget !== null &&
     routerIndex < saveForwardTarget.routerIndex &&
@@ -83,9 +85,11 @@ export function ChromeHistoryNav() {
         size="sm"
         variant="ghost"
         aria-label="Back"
-        disabled={isSave ? !canBack : history.index === 0 && !canBack}
+        disabled={
+          browser || isSave ? !canBack : history.index === 0 && !canBack
+        }
         onClick={() => {
-          if (isSave) {
+          if (browser || isSave) {
             router.history.back();
             return;
           }
@@ -102,14 +106,14 @@ export function ChromeHistoryNav() {
         variant="ghost"
         aria-label="Forward"
         disabled={
-          isSave
+          browser || isSave
             ? !canForward
             : !hasSaveAhead &&
               history.index >= history.entries.length - 1 &&
               (!canForward || hasStaleSaveAhead)
         }
         onClick={() => {
-          if (isSave || hasSaveAhead) {
+          if (browser || isSave || hasSaveAhead) {
             router.history.forward();
             return;
           }

@@ -26,7 +26,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Assistant attachments and chat export | Browser + host | Uploaded attachment registration retains names and hides host paths; Markdown download adapter implemented; provider vision and full browser flow pending |
 | Assistant review, stop and recovery | Host + browser | Live Chrome Stop, persisted review after host restart, Apply and exact-value Undo passed; empty reviews and nullable-note conflict defects fixed; broader question/provider/device matrix pending |
 | Authentication, origins and session lifecycle | Host | Exact Host/Origin checks, Library binding, Secure HTTPS cookie, login limits, immediate stream revocation and logout tests passed |
-| Deep links and reload | Browser + host | Real browser history and application fallback; Save/assistant/settings paths and saved-item reload passed; folder contents persist but the active folder resets on reload, pending navigation adaptation |
+| Deep links and reload | Browser + host | Folder/tag scope encoded in browser history; Chrome folder and Save reload, app Back/Forward and browser Back passed; finite desktop/mobile smoke includes folder reload; Saved View/filter-history matrix pending |
 | Private Tailscale HTTPS | Host | Serve on port 9443; same-machine authenticated HTTPS/restart check passed; existing Serve routes preserved; second-device test pending |
 | Mobile browser composition | Browser | Earlier Chromium 390×844 milestone passed; expanded workflow matrix and physical phone remain pending |
 | Archive replay | Needs isolated browser equivalent | Electron webview retained for desktop; browser replay is not enabled until separate-origin authentication and hostile-content isolation are proven |

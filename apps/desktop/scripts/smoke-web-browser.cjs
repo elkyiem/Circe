@@ -287,6 +287,23 @@ app
       );
       await click('[aria-label="Back"]');
       await waitFor(`document.querySelector('[data-save-id="${video.id}"]')`);
+      await click(`[data-folder-sortable="${folder.id}"] [role="treeitem"]`);
+      await waitFor(
+        `new URLSearchParams(location.search).get('folder') === '${folder.id}' && document.querySelector('[data-save-id="${image.id}"]')`,
+      );
+      const folderReloaded = new Promise((resolve) =>
+        win.webContents.once("did-finish-load", resolve),
+      );
+      win.reload();
+      await folderReloaded;
+      await waitFor(
+        `new URLSearchParams(location.search).get('folder') === '${folder.id}' && document.querySelector('[aria-label="Breadcrumb"]')?.innerText.includes(${JSON.stringify(folderName)}) && document.querySelector('[data-save-id="${image.id}"]')`,
+      );
+      await snapshot("folder-reloaded");
+      await click('[aria-label="Back"]');
+      await waitFor(
+        `!location.search.includes('folder=') && document.querySelector('[data-save-id="${video.id}"]')`,
+      );
       await openSave(video.id);
       await waitFor(
         'Array.from(document.querySelectorAll("video")).some(video => video.readyState >= 1 && video.duration >= 4)',
@@ -373,6 +390,7 @@ app
           image: true,
           videoSeeking: true,
           reload: true,
+          folderReload: true,
           evidence,
         }),
       );

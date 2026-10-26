@@ -28,6 +28,11 @@ host-global history revision and reject a different history head. Device
 presentation preferences overlay host preferences without replacing provider,
 processing or storage settings.
 
+Browser history carries Folder/Tag and ordinary Library scopes in URLs and
+restores them through the existing Library state owner. Save URLs retain their
+originating scope across reload. Browser toolbar navigation uses browser history;
+the desktop keeps its existing memory history and Folder navigation behavior.
+
 One Electron host owns all Library mutations and task settlement. Ingest fixtures
 supply ordinary structured Capture Seeds to `enqueue`; the existing reconciler,
 `capture_tweet`, media fetch, poster and finalize tasks produce real files and
