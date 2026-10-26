@@ -16,6 +16,7 @@ import {
   lookupCachedThumbnail,
 } from "./core/thumbnail";
 import { VIDEO_CACHE_HOST } from "./core/video-preview-proxy";
+import { byteRange } from "./lib/byte-range";
 import { isPathInside } from "./lib/path-identity";
 import { clampThumbWidth } from "./lib/thumbnail";
 import { libraryRoot, resolvePaths, saveFile } from "./paths";
@@ -62,126 +63,110 @@ export function registerScheme() {
 }
 
 export function registerProtocol() {
-  protocol.handle(POND_PROTOCOL, async (request) => {
-    try {
-      const url = new URL(request.url);
-      const host = url.hostname;
-      const file = decodeURIComponent(url.pathname.replace(/^\//, ""));
-      if (!host || !file) {
-        return new Response("bad request", { status: 400 });
-      }
-      const { resolved, root } = resolveTarget(host, file);
-      if (!root || !isPathInside(root, resolved)) {
-        return new Response("forbidden", { status: 403 });
-      }
+  protocol.handle(POND_PROTOCOL, servePondMedia);
+  void net;
+}
 
-      const version = url.searchParams.get("v");
-      let target = resolved;
-      let immutable = version !== null;
+export async function servePondMedia(request: Request): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const host = url.hostname;
+    const file = decodeURIComponent(url.pathname.replace(/^\//, ""));
+    if (!host || !file) {
+      return new Response("bad request", { status: 400 });
+    }
+    const { resolved, root } = resolveTarget(host, file);
+    if (!root || !isPathInside(root, resolved)) {
+      return new Response("forbidden", { status: 403 });
+    }
 
-      const previewParam = url.searchParams.get("preview");
-      const widthParam =
-        previewParam ?? url.searchParams.get("tw") ?? url.searchParams.get("w");
-      if (host !== META_HOST && widthParam) {
-        const width = clampThumbWidth(Number(widthParam));
-        if (width !== null) {
-          const request = {
+    const version = url.searchParams.get("v");
+    let target = resolved;
+    let immutable = version !== null;
+
+    const previewParam = url.searchParams.get("preview");
+    const widthParam =
+      previewParam ?? url.searchParams.get("tw") ?? url.searchParams.get("w");
+    if (host !== META_HOST && widthParam) {
+      const width = clampThumbWidth(Number(widthParam));
+      if (width !== null) {
+        const request = {
+          saveId: host,
+          sourcePath: resolved,
+          width,
+          version,
+        };
+        const thumb = previewParam
+          ? await getOrCreateThumbnail({ ...request, priority: "foreground" })
+          : lookupCachedThumbnail(request);
+        if (thumb) {
+          target = thumb.path;
+          immutable = true;
+        } else if (!previewParam) {
+          ensureThumbnailInBackground({
             saveId: host,
             sourcePath: resolved,
             width,
             version,
-          };
-          const thumb = previewParam
-            ? await getOrCreateThumbnail({ ...request, priority: "foreground" })
-            : lookupCachedThumbnail(request);
-          if (thumb) {
-            target = thumb.path;
-            immutable = true;
-          } else if (!previewParam) {
-            ensureThumbnailInBackground({
-              saveId: host,
-              sourcePath: resolved,
-              width,
-              version,
-              priority: "background",
-            });
-            immutable = false;
-          }
-        }
-      }
-
-      const info = await stat(target);
-      if (!info.isFile()) {
-        return new Response("not found", { status: 404 });
-      }
-
-      const total = (await libraryMediaMetadata(target)).originalSize;
-      const ext = extname(target).toLowerCase();
-      const contentType = mime.contentType(ext) || "application/octet-stream";
-
-      const headers = new Headers();
-      headers.set("content-type", contentType);
-      headers.set("accept-ranges", "bytes");
-      /** ACAO header so the renderer can read bytes into a canvas without tainting it. */
-      headers.set("access-control-allow-origin", "*");
-      headers.set(
-        "cache-control",
-        immutable
-          ? `public, max-age=${ONE_YEAR_SECONDS}, immutable`
-          : "public, max-age=600",
-      );
-
-      const rangeHeader = request.headers.get("range");
-      if (rangeHeader) {
-        const m = /^bytes=(\d+)-(\d*)$/i.exec(rangeHeader.trim());
-        if (!m) {
-          headers.set("content-range", `bytes */${total}`);
-          return new Response("invalid range", { status: 416, headers });
-        }
-        const start = Number(m[1]);
-        const end =
-          m[2] && m[2].length > 0
-            ? Math.min(Number(m[2]), total - 1)
-            : total - 1;
-        if (
-          !Number.isFinite(start) ||
-          !Number.isFinite(end) ||
-          start > end ||
-          start < 0 ||
-          start >= total
-        ) {
-          headers.set("content-range", `bytes */${total}`);
-          return new Response("range not satisfiable", {
-            status: 416,
-            headers,
+            priority: "background",
           });
+          immutable = false;
         }
-        const length = end - start + 1;
-        headers.set("content-range", `bytes ${start}-${end}/${total}`);
-        headers.set("content-length", String(length));
-        return new Response(
-          request.method === "HEAD" ? null : fileBody(target, { start, end }),
-          { status: 206, headers },
-        );
       }
+    }
 
-      headers.set("content-length", String(total));
-      return new Response(request.method === "HEAD" ? null : fileBody(target), {
-        status: 200,
-        headers,
-      });
-    } catch (err) {
-      const isMissing =
-        err instanceof Error && /ENOENT/.test(err.message ?? "");
-      if (isMissing) {
-        log.debug("[pond://] not found", request.url);
-      } else {
-        log.warn("[pond://] resolve failed", request.url, err);
-      }
+    const info = await stat(target);
+    if (!info.isFile()) {
       return new Response("not found", { status: 404 });
     }
-  });
-  void net;
+
+    const total = (await libraryMediaMetadata(target)).originalSize;
+    const ext = extname(target).toLowerCase();
+    const contentType = mime.contentType(ext) || "application/octet-stream";
+
+    const headers = new Headers();
+    headers.set("content-type", contentType);
+    headers.set("accept-ranges", "bytes");
+    /** ACAO header so the renderer can read bytes into a canvas without tainting it. */
+    headers.set("access-control-allow-origin", "*");
+    headers.set(
+      "cache-control",
+      immutable
+        ? `public, max-age=${ONE_YEAR_SECONDS}, immutable`
+        : "public, max-age=600",
+    );
+
+    const rangeHeader = request.headers.get("range");
+    if (rangeHeader) {
+      const range = byteRange(rangeHeader, total);
+      if (!range) {
+        headers.set("content-range", `bytes */${total}`);
+        return new Response("range not satisfiable", { status: 416, headers });
+      }
+      const { start, end } = range;
+      const length = end - start + 1;
+      headers.set("content-range", `bytes ${start}-${end}/${total}`);
+      headers.set("content-length", String(length));
+      return new Response(
+        request.method === "HEAD" ? null : fileBody(target, { start, end }),
+        { status: 206, headers },
+      );
+    }
+
+    headers.set("content-length", String(total));
+    return new Response(request.method === "HEAD" ? null : fileBody(target), {
+      status: 200,
+      headers,
+    });
+  } catch (err) {
+    const isMissing = err instanceof Error && /ENOENT/.test(err.message ?? "");
+    if (isMissing) {
+      log.debug("[pond://] not found", request.url);
+    } else {
+      log.warn("[pond://] resolve failed", request.url, err);
+    }
+    return new Response("not found", { status: 404 });
+  }
 }
 
 function fileBody(path: string, range?: { start: number; end: number }) {

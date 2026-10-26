@@ -19,6 +19,7 @@
   },
   "include": [
     "electron.vite.config.ts",
+    "vite.browser.config.ts",
     "css-composes-hmr.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",

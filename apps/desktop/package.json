@@ -50,7 +50,9 @@
     "smoke:offline-release": "node ./scripts/smoke-offline-release.mjs",
     "generate:harvest": "node scripts/generate-harvest-validation.mjs",
     "generate": "pnpm generate:harvest",
-    "generate:check": "pnpm generate:harvest --check"
+    "generate:check": "pnpm generate:harvest --check",
+    "build:web": "vite build --config vite.browser.config.ts",
+    "start:web": "node scripts/start-web.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.54",

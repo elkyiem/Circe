@@ -2,7 +2,10 @@ import { THUMBNAIL_CACHE_VERSION } from "@shared/media-index";
 import type { Save, SaveFile } from "@/features/saves/types";
 
 export function buildPondUrl(saveId: string, file: SaveFile): string {
-  const base = `pond://${saveId}/${file.path}`;
+  const base =
+    globalThis.document?.documentElement.dataset.runtime === "browser"
+      ? `/web/media/${encodeURIComponent(saveId)}/${file.path.split("/").map(encodeURIComponent).join("/")}`
+      : `pond://${saveId}/${file.path}`;
   const bust = cacheBuster(file);
   return bust ? `${base}?v=${bust}` : base;
 }

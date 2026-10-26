@@ -1,0 +1,102 @@
+.connect {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  gap: 16px;
+  place-content: center;
+  padding: 24px;
+  color: var(--ds-gray-12);
+  background: var(--ds-background-1);
+}
+.connect form {
+  display: grid;
+  gap: 16px;
+  max-width: 360px;
+}
+.connect h1 {
+  font-size: 28px;
+}
+.connect input {
+  font-size: 16px;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--ds-gray-12);
+  background: var(--ds-gray-2);
+  border-bottom: 1px solid var(--ds-gray-4);
+}
+.bar > span {
+  margin-inline-end: auto;
+}
+.bar label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.bar p {
+  flex-basis: 100%;
+}
+:global(html[data-runtime="browser"]) :global([data-slot="window"]) {
+  --window-chrome-start: 8px;
+}
+:global(body) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+:global(#root) {
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 700px) {
+  .bar {
+    padding: 8px;
+  }
+  .bar button,
+  .bar select {
+    min-height: 36px;
+  }
+  :global(html[data-runtime="browser"]) :global([data-slot="window"]) {
+    --window-inset: 0px;
+  }
+}
+@media (max-width: 700px) {
+  :global(html[data-runtime="browser"]) :global([data-slot="window"]) {
+    --window-left-width: 0px;
+    --window-right-width: 0px;
+    --window-right-inset: 0px;
+  }
+  :global(html[data-runtime="browser"]) :global([data-slot="left"][data-open]),
+  :global(html[data-runtime="browser"])
+    :global([data-slot="right"][data-open]) {
+    position: absolute;
+    top: 44px;
+    bottom: 0;
+    z-index: 5;
+    width: min(340px, calc(100vw - 24px));
+    background: var(--ds-gray-2);
+  }
+  :global(html[data-runtime="browser"]) :global([data-slot="left"][data-open]) {
+    left: 0;
+  }
+  :global(html[data-runtime="browser"])
+    :global([data-slot="right"][data-open]) {
+    right: 0;
+  }
+}
+@media (max-width: 700px) {
+  :global(html[data-runtime="browser"])
+    :global([data-slot="left"][data-open])
+    > div {
+    width: 100%;
+    min-width: 0;
+    transform: none;
+  }
+}

@@ -109,6 +109,10 @@ markStartup("modules-loaded");
 app.setName("Pond");
 disableMenuActionImages();
 
+if (process.env.IRIS_WEB === "1" && !process.env.POND_SANDBOX) {
+  throw new Error("Iris requires an isolated POND_SANDBOX profile.");
+}
+
 if (process.env.POND_SANDBOX) {
   const sandbox = resolvePath(process.env.POND_SANDBOX);
   /** setPath does not create directories, and Chromium expects sessionData to exist. */
@@ -148,6 +152,8 @@ if (wantsMcp) app.dock?.hide();
 const initialDeepLink = deepLinkArg(process.argv);
 
 let nativeServer: NetServer | null = null;
+let webServer: Awaited<ReturnType<typeof import("./web").startWebHost>> | null =
+  null;
 let stopMediaWarmer: (() => void) | null = null;
 
 let signalRendererReady: (() => void) | null = null;
@@ -332,6 +338,10 @@ async function openActiveLibrary(): Promise<PondPaths | null> {
 }
 
 async function postLaunchInit(): Promise<void> {
+  if (process.env.IRIS_WEB === "1") {
+    const { startWebHost } = await import("./web");
+    webServer = await startWebHost();
+  }
   if (!process.env.POND_SANDBOX) {
     await registerSummonHotkey();
   }
@@ -590,6 +600,7 @@ app.on("before-quit", async (event) => {
   } catch (err) {
     log.warn("[pond] native host close failed", err);
   }
+  webServer?.close();
   try {
     await withDeadline(runtimeControls.closeHttpServer(), SERVER_CLOSE_MS);
   } catch (err) {
