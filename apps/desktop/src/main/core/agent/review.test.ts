@@ -8,6 +8,7 @@ import { reviewChanges as review, reviewDependencies } from "./review";
 interface ReviewTestState {
   changes: AssistantChange[];
   title: string;
+  notes: string | null;
   tags: string[];
   deletedAt: Date | null;
   folderIds: string[];
@@ -16,6 +17,7 @@ interface ReviewTestState {
 const state: ReviewTestState = {
   changes: [],
   title: "Original",
+  notes: null,
   tags: ["design"],
   deletedAt: null,
   folderIds: ["folder"],
@@ -52,7 +54,7 @@ const deps = {
     title: mock.title,
     tags: mock.tags,
     deletedAt: mock.deletedAt,
-    notes: null,
+    notes: mock.notes,
     rating: null,
   }),
   saveMetadata: async (_id: string, metadata: AssistantMetadata) => {
@@ -80,6 +82,7 @@ const reviewChanges = (input: Parameters<typeof review>[0]) =>
 beforeEach(() => {
   vi.clearAllMocks();
   mock.title = "Original";
+  mock.notes = null;
   mock.tags = ["design"];
   mock.deletedAt = null;
   mock.fail = false;
@@ -99,6 +102,11 @@ beforeEach(() => {
     if (mock.fail) throw new Error("Disk unavailable");
     if (tx.model === "save" && tx.kind === "update" && tx.patch.title != null)
       mock.title = tx.patch.title;
+    if (tx.model === "save" && tx.kind === "update" && "notes" in tx.patch) {
+      if (tx.before?.notes !== mock.notes)
+        throw new Error("The Save changed. Review the operation again.");
+      mock.notes = tx.patch.notes ?? null;
+    }
     return {
       id: 1,
       modelName: tx.model,
@@ -120,6 +128,52 @@ const input = {
 };
 
 describe("reviewed library edits", () => {
+  it.each([null, ""])(
+    "preserves the stored empty note value %s through Apply and Undo",
+    async (notes) => {
+      mock.notes = notes;
+      mock.changes = [
+        {
+          id: "change",
+          saveId: "save",
+          title: "Original",
+          reason: "Requested note",
+          field: "note",
+          before: "",
+          after: "Reviewed note",
+          status: "pending",
+        },
+      ];
+      const applied = await reviewChanges(input);
+      expect(applied.changes[0]).toMatchObject({
+        status: "applied",
+        before: notes,
+      });
+      expect(mock.notes).toBe("Reviewed note");
+      await reviewChanges({ ...input, action: "undo" });
+      expect(mock.notes).toBe(notes);
+      expect(mock.changes[0]?.status).toBe("undone");
+    },
+  );
+  it("keeps a newer note when the review snapshot is stale", async () => {
+    mock.notes = "Newer note";
+    mock.changes = [
+      {
+        id: "change",
+        saveId: "save",
+        title: "Original",
+        reason: "Requested note",
+        field: "note",
+        before: "",
+        after: "Reviewed note",
+        status: "pending",
+      },
+    ];
+    const result = await reviewChanges(input);
+    expect(result.changes[0]?.error).toMatch(/newer edit was kept/);
+    expect(mock.write).not.toHaveBeenCalled();
+    expect(mock.notes).toBe("Newer note");
+  });
   it("applies only stored selected proposals and ignores replayed Apply", async () => {
     await reviewChanges({ ...input, changeIds: ["invented"] });
     expect(mock.write).not.toHaveBeenCalled();

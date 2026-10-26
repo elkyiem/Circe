@@ -145,7 +145,9 @@ export async function reviewChanges(
                     : current[change.field];
           const expected =
             input.action === "undo" ? change.after : change.before;
-          if (change.field !== "rating" && !sameValue(value, expected))
+          const displayedExpected =
+            change.field === "note" ? (expected ?? "") : expected;
+          if (change.field !== "rating" && !sameValue(value, displayedExpected))
             throw new Error(
               "This value changed since the review. Your newer edit was kept.",
             );
@@ -153,6 +155,10 @@ export async function reviewChanges(
             throw new Error(
               "This value changed since the review. Your newer edit was kept.",
             );
+          // The reading tool displays null notes as empty text. Keep the exact
+          // stored value for the executor's conflict check and a faithful Undo.
+          if (input.action === "apply" && change.field === "note")
+            change.before = current.notes;
           await writeChange(change, input.action, deps);
           change.status = input.action === "undo" ? "undone" : "applied";
         }
