@@ -113,6 +113,10 @@ markStartup("modules-loaded");
 const webHostRequested =
   (process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1";
 app.setName(webHostRequested ? "Circé" : "Pond");
+if (webHostRequested) {
+  // Chromium's HTTP header bridge cannot carry the accented display name.
+  app.userAgentFallback = app.userAgentFallback.replace("Circé", "Circe");
+}
 disableMenuActionImages();
 
 if (webHostRequested && !process.env.POND_SANDBOX) {

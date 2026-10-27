@@ -502,3 +502,37 @@ The shared Circé host and Tailscale were stopped at inspection. Live browser,
 physical-device, new Source sign-ins and short-address activation require the
 designated runtime owner. The local Portless/HTTPS forwarder does not configure
 DNS or certificates on an unvisited remote device.
+
+## Runtime activation follow-up — 2026-10-27
+
+The user explicitly designated this chat runtime owner. The existing Library
+opens after the checkout relocation, and authenticated reads, Fish settings,
+MCP settings and the private HTTPS session at
+`https://elkyiem.tailffeb5b.ts.net:9443` passed. The host runs independently of T3;
+its PID and logs are under ignored `.artifacts/circe-runtime/`.
+
+- The authenticated HTTP workflow passed image/video ingestion and identity,
+  media byte ranges, pagination, search, Folder assignment and restart retention.
+- The real browser workflow passed over loopback and private Tailscale HTTPS at
+  1280×900 and 390×844, including image
+  rendering, video seeking, Folder assignment/removal, browser navigation and reload.
+- Smoke scripts now retain old fixture titles and find fixtures outside the newest
+  100 Saves. Their Folder selectors follow Pond 2's accessible menu roles.
+- The CI failure on the renamed extension output was traced to one stale
+  `.output-iris` path; it now reads `.output-circe`.
+- Portless 0.15.11 rejects `--tld` on its app command. A cross-platform Node
+  launcher now provides `PORTLESS_TLD=elkyiem` and the `circe` app name.
+- The network smoke reproduced a real Unicode User-Agent failure after the Circé
+  rename. The host keeps the accented display name and sets an ASCII `Circe`
+  HTTP token before creating sessions. The regression fetches an actual image
+  through Electron's `pond://` handler, passed after the fix, and is included in the CI driver.
+
+Administrator authorization for Portless timed out, so `https://circe.elkyiem`
+is still pending. No root proxy, hosts-file change or CA trust change was made.
+The existing private HTTPS route is active and all other Serve routes are retained.
+
+After the network fix, `pnpm check` passed all 27 tasks (4,585 desktop tests),
+`pnpm build` passed all 12 tasks and budgets, the browser bundle rebuilt, and the
+network smoke passed. The independent host was restarted from those bundles;
+authenticated private-HTTPS restart and browser checks passed again, and the
+new runtime log contains no ByteString header errors.

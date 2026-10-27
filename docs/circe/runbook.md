@@ -75,6 +75,28 @@ the isolated host. It records the visible disconnection banner. Restart the same
 host and run the persistence check. Live account/source checks remain separate
 and require an explicitly connected test session.
 
+## Current shared host (2026-10-27)
+
+This chat was explicitly designated runtime owner. The rebuilt host is running
+independently of T3, with the existing isolated Library, on loopback port 4789.
+The verified private address is `https://elkyiem.tailffeb5b.ts.net:9443`.
+Runtime PID: `.artifacts/circe-runtime/host.pid`; log:
+`.artifacts/circe-runtime/host.log`. Stop that owner process before starting a
+replacement. It uses the same `scripts/start-web.mjs` launcher and sandbox.
+
+```sh
+# Only the designated runtime owner stops this process group:
+kill -TERM -- "-$(cat .artifacts/circe-runtime/host.pid)"
+```
+
+The Portless launchers below are configured for `https://circe.elkyiem` and work
+on macOS and Windows without shell-specific environment assignment. Short-address
+activation still needs administrator authorization to bind port 443, trust the
+Portless CA, and register the local hostname. The private credential card timed
+out; no privileged setup was performed. Existing Tailscale Serve routes were
+preserved. The phone and remote Windows address remain the private Tailscale URL
+until their local Portless setup is authorized.
+
 ## Short addresses with Portless
 
 The project is named **Circé**; GitHub and DNS use the ASCII spelling `Circe` / `circe`.

@@ -83,7 +83,12 @@ if (process.argv.includes("--after-restart")) {
     );
     const { rawJson } = await query("saves.rawJson", { id: save.id });
     assert.equal(rawJson.capture.id, save.sourceId);
-    assert.equal(rawJson.capture.title, `Circé fixture: ${kind}`);
+    // Stored fixture Captures keep their original title across the Circé rename.
+    assert.ok(
+      [`Circé fixture: ${kind}`, `Iris fixture: ${kind}`].includes(
+        rawJson.capture.title,
+      ),
+    );
     assert.ok(
       save.files.some((file) => file.kind === "tweet_screenshot_light"),
     );

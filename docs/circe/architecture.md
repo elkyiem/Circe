@@ -193,3 +193,8 @@ validates the short Host/Origin, rewrites them to the exact upstream origin and
 streams requests and responses without reading credentials into application code.
 The previous `IRIS_WEB_*` environment names and stored protocol namespaces remain
 compatible after the Circé rename.
+
+The Circé host retains its accented display name while its Electron fallback
+User-Agent uses the ASCII token `Circe`. Chromium's protocol bridge otherwise
+rejects renderer requests before they reach `pond://` media handlers. The network
+smoke verifies this boundary using an actual generated image in a temporary Library.

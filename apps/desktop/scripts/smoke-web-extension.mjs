@@ -9,7 +9,7 @@ const host = await connectWebHost();
 const statePath = join(host.sandbox, "extension-http-verification.json");
 const manifest = JSON.parse(
   await readFile(
-    resolve("../extension/.output-iris/chrome-mv3/manifest.json"),
+    resolve("../extension/.output-circe/chrome-mv3/manifest.json"),
     "utf8",
   ),
 );

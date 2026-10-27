@@ -54,6 +54,7 @@ try {
     await pause(250);
   }
   await run(process.execPath, ["scripts/smoke-web.mjs"]);
+  await run(electron, ["scripts/smoke-web-network.cjs"]);
   await run(process.execPath, ["scripts/smoke-web-parity.mjs"]);
   await run(process.execPath, ["scripts/smoke-web-identity.mjs"]);
   await run(electron, ["scripts/smoke-web-browser.cjs", "--extension-setup"]);

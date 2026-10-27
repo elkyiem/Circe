@@ -135,12 +135,10 @@ app
       await click(selector);
       await click(selector, 2);
     };
-    const closePopover = async () => {
-      if (
-        await run("Boolean(document.querySelector('[data-type=\"popover\"]'))")
-      )
-        await click('[aria-label="Add Folder"]');
-      await waitFor("!document.querySelector('[data-type=\"popover\"]')");
+    const closeFolderMenu = async () => {
+      win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+      win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+      await waitFor("!document.querySelector('[data-type=\"menu\"]')");
     };
     try {
       await win.loadURL(origin);
@@ -177,7 +175,16 @@ app
         assert.equal(response.status, 200);
         return response.json();
       };
-      const page = await query("saves.listPage", { limit: 100 });
+      const fixtureSaves = async () => {
+        const found = await query("saves.searchFts", {
+          q: "fixture",
+          limit: 1000,
+          deletedOnly: false,
+          mode: "all",
+        });
+        return query("saves.getMany", { ids: found.ids });
+      };
+      const page = { rows: await fixtureSaves() };
       for (const save of page.rows) titles.set(save.id, save.title);
       const image = page.rows.find(
         (save) => save.sourceId === "900000000000000002",
@@ -339,8 +346,21 @@ app
         'document.body.innerText.includes("Save enqueued") || document.body.innerText.includes("Fixture already")',
       );
       await snapshot("desktop-enqueued");
-      await waitFor('document.body.innerText.includes("Circé fixture: quote")');
-      const all = await query("saves.listPage", { limit: 100 });
+      const all = { rows: await fixtureSaves() };
+      for (const save of all.rows) titles.set(save.id, save.title);
+      const quote = all.rows.find(
+        (save) => save.sourceId === "900000000000000001",
+      );
+      assert.ok(quote, "The quote fixture must be in this Library.");
+      await openSave(quote.id);
+      await waitFor('document.querySelector("[data-save-details]")');
+      await click('[aria-label="Back"]');
+      if (
+        await run(
+          `Boolean(document.querySelector('[aria-label="Clear Search"]'))`,
+        )
+      )
+        await click('[aria-label="Clear Search"]');
       const library = await query("library.info");
       assert.ok(library.path.startsWith(sandbox));
       for (const sourceId of [
@@ -401,10 +421,10 @@ app
       await waitFor("document.querySelector('[aria-label=\"Add Folder\"]')");
       await click('[aria-label="Add Folder"]');
       await waitFor(
-        `document.querySelector('[data-type="popover"] [aria-label="${folderName}"]')`,
+        `document.querySelector('[role="menuitemcheckbox"]:has([title="${folderName}"])')`,
       );
-      await click(`[data-type="popover"] [aria-label="${folderName}"]`);
-      await closePopover();
+      await click(`[role="menuitemcheckbox"]:has([title="${folderName}"])`);
+      await closeFolderMenu();
       await waitFor(
         `document.querySelector('[aria-label="Remove folder ${folderName}"]')`,
       );
@@ -420,10 +440,10 @@ app
       );
       await click('[aria-label="Add Folder"]');
       await waitFor(
-        `document.querySelector('[data-type="popover"] [aria-label="${folderName}"]')`,
+        `document.querySelector('[role="menuitemcheckbox"]:has([title="${folderName}"])')`,
       );
-      await click(`[data-type="popover"] [aria-label="${folderName}"]`);
-      await closePopover();
+      await click(`[role="menuitemcheckbox"]:has([title="${folderName}"])`);
+      await closeFolderMenu();
       await waitFor(
         `document.querySelector('[aria-label="Remove folder ${folderName}"]')`,
       );
