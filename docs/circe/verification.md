@@ -539,7 +539,7 @@ Portless also publishes the private address
 `https://elkyiem.tailffeb5b.ts.net:8444`. The existing private HTTPS route on port
 9443 remains active. All prior Serve routes and Funnel settings were verified
 unchanged. Temporary administrator credential delivery files were removed after
-use. Other devices still need their own local Portless setup for the short name.
+use. Shared tailnet access was completed in the follow-up below.
 
 After the network fix, `pnpm check` passed all 27 tasks (4,585 desktop tests),
 `pnpm build` passed all 12 tasks and budgets, the browser bundle rebuilt, and the
@@ -558,3 +558,37 @@ rebuilt bundles. Authenticated media ranges, folder/search operations, private
 HTTPS persistence, and normal macOS certificate verification passed again.
 `pnpm check` passed all 27 tasks again, with 4,585 desktop tests passed and
 5 skipped.
+
+## Shared tailnet DNS and HTTPS — 2026-10-27
+
+The short addresses now work through the Mac's Tailscale IP instead of requiring
+a Portless process on each visiting device. The owner installed the public CA
+on Windows and confirmed that `https://circe.elkyiem` loads there.
+
+- CoreDNS 1.15.0 serves the private `elkyiem` zone on `100.88.201.56:53`, with a
+  wildcard A record pointing to the Mac. UDP and TCP lookups passed; AAAA queries
+  return empty NOERROR responses, and unrelated DNS zones are refused.
+- Tailscale split DNS was patched only for `elkyiem`. Other split-DNS namespaces,
+  global nameservers, and MagicDNS preferences were read before and after and
+  verified unchanged. Queries through Tailscale's resolver at `100.100.100.100`
+  return `100.88.201.56` for both `circe.elkyiem` and `nono.elkyiem`.
+- HAProxy 3.4.7 routes TLS connections from Tailscale TCP port 443 through the
+  existing Portless proxy for `.elkyiem` names. Other hostnames retain the prior
+  HTTPS handlers, moved behind the gateway to port 9445. Every previous web
+  handler was compared with the resulting configuration. Other ports and Funnel
+  settings were retained. The original default target returned 502 before the
+  change, and its response remained identical afterward.
+- Trusted HTTPS requests for both short names passed when explicitly connected
+  to `100.88.201.56`. The desktop/mobile browser smoke also passed with Chromium
+  resolving Circé to that Tailscale IP: image rendering, video seeking, folders,
+  navigation, reload, and folder persistence.
+- CoreDNS and HAProxy run under dedicated launchd jobs. Both reported running;
+  DNS binds only to the Tailscale IP and the TLS gateway only to loopback. The
+  firewall remains enabled, with the CoreDNS executable allowed. Runtime
+  configuration and logs live outside the repository checkout.
+- The routing helper uses LocalAPI concurrency tokens, retains backups, and its
+  rollback transformation was checked against the original configuration plus
+  a newer unrelated route. This check did not change live routing.
+- Temporary administrator-password and Tailscale API-token delivery files were
+  removed after use. Public Windows/iPad certificate artifacts remain available
+  under `.artifacts/circe-device-setup/`.

@@ -104,10 +104,11 @@ pnpm --filter @pond/desktop exec portless trust
 ```
 
 Then verify `curl https://circe.elkyiem` succeeds without a custom CA option.
-Temporary administrator credential delivery files were removed after use. All
-existing Tailscale Serve routes were preserved. The phone and remote Windows
-address remain the private Tailscale URL until their local Portless setup is
-authorized. The launchers below work on macOS and Windows without shell-specific
+Temporary administrator credential delivery files were removed after use. The
+shared tailnet gateway below now makes the short address available on other
+devices too. Existing web handlers remain available; the original port-443
+handler runs behind the gateway on port 9445. Other Serve ports and Funnel
+settings are unchanged. The launchers below work without shell-specific
 environment assignment.
 
 The launcher supplies its CA to child Node processes automatically. Standalone
@@ -139,26 +140,80 @@ including port 9443, remain separate. Portless may request local administrator
 authorization to trust its development certificate and register the local name.
 It does not use Funnel.
 
-The short custom name resolves on the device running Portless. To use the same
-short name on another Tailscale device, run its local Portless forwarder from
-this checkout, passing the host's printed Tailscale address:
-
-```sh
-pnpm --filter @pond/desktop start:web:remote https://elkyiem.tailffeb5b.ts.net:9443
-```
-
-Open `https://circe.elkyiem` on that device. This starts only a local forwarding
-route; it reuses the Mac's Library and host. The upstream connection validates
-its HTTPS certificate and retains authenticated uploads, media ranges and SSE.
-Foreign Host and Origin headers are rejected. Phones without a local Portless
-proxy use the printed Tailscale HTTPS address directly; custom DNS alone cannot
-supply a trusted certificate for this short name.
+For the current tailnet, open `https://circe.elkyiem` directly on a connected
+device after trusting the Mac's Portless CA once. A client-side proxy and a local
+Circé checkout are not needed. The same CA covers `https://nono.elkyiem`.
+`start:web:remote` remains available as a developer fallback on networks without
+shared DNS; it is not part of this tailnet's normal device setup.
 
 `CIRCE_WEB_*` settings supersede the previous `IRIS_WEB_*` names; the host still
 accepts those older environment variables. The hidden sandbox name, session
 cookie, upload tickets, extension ID and IndexedDB keys remain stable to retain
 existing data and pairing. Rebuild/reload the unpacked Circé extension from its
 new checkout path after the folder rename.
+
+## Shared tailnet address
+
+Tailscale split DNS sends the `elkyiem` namespace to `100.88.201.56`. A CoreDNS
+service on that Tailscale IP serves the private zone; its wildcard maps app names
+to the same Mac. Other DNS namespaces, global nameservers, and MagicDNS settings
+were preserved. Clients must accept Tailscale DNS settings.
+
+On the Mac, Tailscale forwards private TCP port 443 to HAProxy on loopback port
+5443. HAProxy routes TLS connections with an `.elkyiem` hostname to the existing
+Portless HTTPS proxy on loopback port 443. Other TLS hostnames go to the original
+Tailscale HTTPS handlers on port 9445. TLS remains encrypted through the gateway;
+it uses the existing certificates. The fallback listener receives the gateway's
+connection. The original port-443 target on port 3000
+returned 502 before this change and retains the same response afterward.
+
+These services are shared by Circé and Nono. Restarting Circé does not require
+stopping them:
+
+| Service | macOS job | Configuration |
+| --- | --- | --- |
+| Private DNS | `system/com.elkyiem.tailnet-dns` | `/Library/Application Support/ElkyiemNetwork/Corefile` and `elkyiem.zone` |
+| TLS gateway | `gui/501/com.elkyiem.tailnet-https` | `/Users/elkyiem/.config/elkyiem-network/haproxy.cfg` |
+
+CoreDNS 1.15.0 and HAProxy 3.4.7 were installed with Homebrew. Their launchd jobs
+start independently of T3. DNS binds only to `100.88.201.56:53`; HAProxy binds
+only to `127.0.0.1:5443`. The Mac firewall remains enabled, with an allowance for
+the CoreDNS executable. Root-owned DNS configuration lives outside the checkout.
+DNS logs are under `/Library/Logs/ElkyiemNetwork`; gateway logs are under
+`/Users/elkyiem/.config/elkyiem-network`.
+
+Finite verification:
+
+```sh
+dig @100.100.100.100 circe.elkyiem A +short
+dig @100.100.100.100 nono.elkyiem A +short
+# Both return 100.88.201.56.
+curl --resolve circe.elkyiem:443:100.88.201.56 https://circe.elkyiem
+launchctl print system/com.elkyiem.tailnet-dns
+launchctl print gui/501/com.elkyiem.tailnet-https
+```
+
+The owner confirmed `https://circe.elkyiem` loads on Windows after installing the
+CA. The iPad requires that same CA to be installed and enabled for full trust in
+Settings. Public certificate files are under ignored
+`.artifacts/circe-device-setup/`; certificate private keys stay on the Mac.
+
+Serve backups and the concurrency-checked routing helper are under ignored
+`.artifacts/circe-runtime/shared-network/`. Do not replace Tailscale TCP port 443
+with an app-specific Serve mapping; that port now carries the shared gateway.
+Keep additional app-specific Serve ports separate. To restore the previous
+port-443 routing, the designated network operator first removes the `elkyiem`
+restricted nameserver in Tailscale DNS, then runs both phases:
+
+```sh
+python3 .artifacts/circe-runtime/shared-network/serve-routing.py unroute
+python3 .artifacts/circe-runtime/shared-network/serve-routing.py rollback
+```
+
+The helper restores the original HTTPS handlers while retaining unrelated newer
+Serve entries. Launchd jobs can then be unloaded if this shared setup is being
+removed. Temporary API-token and administrator-password delivery files were
+deleted after activation.
 
 ## Private HTTPS and the assistant
 
