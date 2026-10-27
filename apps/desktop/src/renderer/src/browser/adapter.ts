@@ -181,7 +181,7 @@ export async function installBrowserAdapter(libraryId: string) {
         window.dispatchEvent(
           new CustomEvent("iris-error", {
             detail:
-              "The browser blocked the new tab. Allow popups for Iris and try again.",
+              "The browser blocked the new tab. Allow popups for Circé and try again.",
           }),
         );
         return { ok: false };
@@ -191,7 +191,7 @@ export async function installBrowserAdapter(libraryId: string) {
       return { ok: true };
     },
     appInfo: async () => ({
-      name: "Iris",
+      name: "Circé",
       version: "2.0.0-web",
       platform: "browser",
       arch: "browser",

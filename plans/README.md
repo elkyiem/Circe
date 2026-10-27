@@ -1,4 +1,4 @@
-# Iris implementation plans
+# Circé implementation plans
 
 Generated on 2026-10-26 against commit `2629bfb5`. These are proposed plans;
 no application implementation is included in this planning change.

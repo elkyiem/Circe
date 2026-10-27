@@ -33,7 +33,7 @@ export async function readConnection(): Promise<ExtensionConnection | null> {
         else
           reject(
             new Error(
-              "The stored Iris connection is unreadable. Reconnect the extension.",
+              "The stored Circé connection is unreadable. Reconnect the extension.",
             ),
           );
       };

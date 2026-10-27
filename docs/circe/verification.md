@@ -1,6 +1,6 @@
 # Kickoff verification record
 
-## Iris extension transport — 2026-10-26
+## Circé extension transport — 2026-10-26
 
 This slice started from local `web` commit `6309ddef`, with a clean working
 tree. The pre-change `pnpm check` passed all 25 tasks (4,134 desktop tests).
@@ -13,8 +13,8 @@ The audited upstream commit remains
   restart, expiry, rotation, independent browsers, revocation, exact origins,
   preflight, Library binding, rate limits, forbidden operations and request size.
 - `pnpm build`: 11 tasks and all five performance budgets passed. The browser
-  build and separate `build:iris` Chromium artifact passed. No dependency was
-  added. The Iris build has a separate ID and cannot call the installed Pond
+  build and separate `build:circe` Chromium artifact passed. No dependency was
+  added. The Circé build has a separate ID and cannot call the installed Pond
   native host while unpaired; the normal unpaired Pond build retains native
   messaging. Paired network/auth/storage failures cannot fall through to it.
 - `smoke-web-extension.mjs`: `WEB_EXTENSION_PASSED` against the real isolated
@@ -27,7 +27,7 @@ The audited upstream commit remains
   `WEB_EXTENSION_RESTART_PASSED`: both the capture and extension credential
   persisted. It then revoked its own credential, verified rejection, and removed
   its private 0600 test-state file. No live Source cookies were used.
-- CI builds the Iris artifact and includes the first HTTP extension smoke in its
+- CI builds the Circé artifact and includes the first HTTP extension smoke in its
   isolated driver. The complete CI driver was not launched locally because this
   chat uses the single shared host. Restart evidence above is from the explicit
   local stop/restart, not the CI script.
@@ -59,7 +59,7 @@ it is not promoted to `dev` while the broader acceptance matrix remains pending.
 
 ## Live Twitter connection and capture — 2026-10-26
 
-The owner manually loaded the separate Iris extension, paired it with the private
+The owner manually loaded the separate Circé extension, paired it with the private
 Tailscale host, then chose Twitter in the web app and confirmed the import scope.
 The host confirmed one paired browser, imported the requested session into its
 isolated Account partition, and matched the expected signed-in handle. No Chrome
@@ -86,7 +86,7 @@ the Library-bound polling path successfully delivered this connection request.
   screenshot fallback, whereas the image/video samples used native React cards.
   The fallback's video file has no `sourceUrl`; the yt-dlp identity established
   that relationship instead of treating that absent field as a mismatch.
-- The installed Iris popup's **Harvest Post → Save** sent an already-saved post
+- The installed Circé popup's **Harvest Post → Save** sent an already-saved post
   through the real capture queue. Its persisted receipt completed with
   `duplicateCount: 1` and the original Save ID. A revision-fenced Undo restored
   the original title, notes, rating, tags and user-title lock exactly; no social
@@ -122,7 +122,7 @@ caught the renderer's Save parser discarding that reason; the regression now
 passes through the same parser. The accumulated transfer history also squeezed
 the download grid to zero height. That panel now has a bounded, keyboard-scrollable
 area so active Save jobs retain space. The extension toolbar and popup now derive
-their titles from the manifest name so Iris can be distinguished
+their titles from the manifest name so Circé can be distinguished
 from the separately installed Pond extension. Normal Pond retains its title.
 These title changes take effect when the unpacked extension is reloaded.
 
@@ -143,7 +143,7 @@ Focused download-state checks passed 15 tests across two files. Size/transfer
 checks passed 13 tests across three files. The full follow-up `pnpm check` passed
 25 tasks: desktop 608 test files passed, 2 skipped; 4,149 tests passed, 5 skipped.
 `pnpm build` passed all 11 tasks and all five budgets; the browser and separate
-Iris extension builds passed. Local logs use `.local/verification/live-source-*`.
+Circé extension builds passed. Local logs use `.local/verification/live-source-*`.
 
 ## Original kickoff baseline
 
@@ -370,7 +370,7 @@ package resolution; this was a harness issue before import ran.
 
 Pond's existing package importer assigns destination Save/Folder IDs and remaps
 their references. Source IDs and structured Capture identities are retained.
-Iris preserves that upstream behavior; copying a complete Library and importing
+Circé preserves that upstream behavior; copying a complete Library and importing
 a package are different operations. This check does not claim every organization
 attribute or foreign import format has a browser acceptance test.
 
@@ -473,3 +473,32 @@ test-only processes were stopped; the shared host remained running. Profile
 removal now retries transient filesystem failures and reports a failed cleanup
 with a nonzero exit instead of opening an uncaught-error dialog. The Note
 restart check was repeated and exited successfully with the profile removed.
+
+## Pond 2.0 and Circé rename — 2026-10-27
+
+Synced upstream `main` through `c594ed4d`, including release tag `v2.0.0`.
+Renamed the GitHub fork to `elkyiem/Circe`, the project and checkout to Circé,
+and the browser/extension branding to Circé. The isolated profile's three stored
+checkout-path records were relocated with backups. Existing session namespaces,
+Library identity and extension signing key remain compatible.
+
+Verification from `/Users/elkyiem/Documents/GitHub/Circé`:
+
+- `pnpm install --frozen-lockfile`: passed with Node 24.14.1 / pnpm 11.27.0.
+- `pnpm check`: all 27 tasks passed; desktop 664 files passed, 4,585 tests passed,
+  5 skipped (including the separately checked native database cases).
+- `pnpm build`: all 12 tasks passed, including every unchanged performance budget.
+- `pnpm --filter @pond/desktop build:web`: passed.
+- `pnpm --filter @pond/extension build:circe`: passed; manifest name Circé,
+  version 2.0.0, existing extension signing identity retained.
+- Electron ABI database/vector checks: 2 files and 8 tests passed.
+- `smoke-agent-stream.cjs`: passed reply streaming, completion and cancellation.
+- `smoke-desktop.cjs --use-mock-keychain`: passed visible startup, preload Library queries and detached preview creation/cleanup with an isolated test Library. The mock keychain avoids a macOS authorization dialog during this finite check.
+- Portless forwarding tests cover authenticated uploads, media ranges, cookie
+  retention and foreign Host/Origin denial. Browser Data Export picker and
+  Library-bound Fish handoff regression cases are part of the offline suite.
+
+The shared Circé host and Tailscale were stopped at inspection. Live browser,
+physical-device, new Source sign-ins and short-address activation require the
+designated runtime owner. The local Portless/HTTPS forwarder does not configure
+DNS or certificates on an unvisited remote device.

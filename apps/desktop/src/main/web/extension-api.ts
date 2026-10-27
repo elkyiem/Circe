@@ -50,7 +50,7 @@ export function createExtensionApi(
       c.header("Access-Control-Allow-Methods", "POST, DELETE, OPTIONS");
       c.header(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization, X-Iris-Extension, X-Iris-Library",
+        "Content-Type, Authorization, X-Circé-Extension, X-Circé-Library",
       );
     }
     if (c.req.method === "OPTIONS") return c.body(null, 204);

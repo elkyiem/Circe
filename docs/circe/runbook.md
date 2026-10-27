@@ -1,21 +1,17 @@
-# Run Iris locally
+# Run Circé locally
 
-Checkout: `/Users/elkyiem/Documents/GitHub/iris-web`, branch `web`.
-Origin: `https://github.com/elkyiem/Iris.git`.
+Checkout: `/Users/elkyiem/Documents/GitHub/Circé`, branch `web`.
+Origin: `https://github.com/elkyiem/Circe.git`.
 Upstream: `https://github.com/raphaelsalaja/pond.git`.
-The older `/Users/elkyiem/Documents/GitHub/Iris` checkout is outside this work's
-write scope. Its current on-disk Git identity differed from the supplied legacy
-checkout description; it was inspected read-only and left untouched.
-
 Use Node 24 (`.nvmrc`) and pnpm 11.27.0 (`packageManager`). For this machine:
 
 ```sh
-cd /Users/elkyiem/Documents/GitHub/iris-web
+cd /Users/elkyiem/Documents/GitHub/Circé
 export PATH=/Users/elkyiem/.nvm/versions/node/v24.14.1/bin:$PATH
 pnpm install --frozen-lockfile
 pnpm --filter @pond/desktop build
 pnpm --filter @pond/desktop build:web
-IRIS_WEB_ORIGINS=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop start:web
+CIRCE_WEB_ORIGINS=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop start:web
 ```
 
 Open `http://127.0.0.1:4789`. Connect using the key in
@@ -35,10 +31,10 @@ Optional environment variables:
 | Variable | Meaning |
 | --- | --- |
 | `POND_SANDBOX` | Separate disposable profile root; default `.artifacts/iris-web-sandbox` |
-| `IRIS_WEB_PORT` | Loopback listener port; default 4789 |
-| `IRIS_WEB_ORIGIN` | Primary exact browser origin; defaults to loopback HTTP |
-| `IRIS_WEB_ORIGINS` | Additional exact HTTPS origins, comma-separated; no paths or wildcard |
-| `IRIS_WEB_FIXTURES` | `1` enables offline fixtures; `0` disables them |
+| `CIRCE_WEB_PORT` | Loopback listener port; default 4789 |
+| `CIRCE_WEB_ORIGIN` | Primary exact browser origin; defaults to loopback HTTP |
+| `CIRCE_WEB_ORIGINS` | Additional exact HTTPS origins, comma-separated; no paths or wildcard |
+| `CIRCE_WEB_FIXTURES` | `1` enables offline fixtures; `0` disables them |
 
 Fixture mode is on in the development launcher. Enqueue Quoted post, Original
 image or Video in the browser connection bar; inspect progress in Downloads.
@@ -79,11 +75,52 @@ the isolated host. It records the visible disconnection banner. Restart the same
 host and run the persistence check. Live account/source checks remain separate
 and require an explicitly connected test session.
 
+## Short addresses with Portless
+
+The project is named **Circé**; GitHub and DNS use the ASCII spelling `Circe` / `circe`.
+The chosen short address is `https://circe.elkyiem`.
+
+Only the designated runtime owner starts the shared host. After building both
+clients and reconnecting Tailscale, replace the stopped host with:
+
+```sh
+CIRCE_WEB_ORIGINS=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop start:web:portless
+```
+
+Portless is pinned as a development dependency. This command registers `circe`
+under the custom `elkyiem` suffix, keeps the host on loopback port 4789, and
+publishes a private Tailscale Serve address. The launcher prints both addresses;
+the host accepts those exact origins automatically. Existing Serve routes,
+including port 9443, remain separate. Portless may request local administrator
+authorization to trust its development certificate and register the local name.
+It does not use Funnel.
+
+The short custom name resolves on the device running Portless. To use the same
+short name on another Tailscale device, run its local Portless forwarder from
+this checkout, passing the host's printed Tailscale address:
+
+```sh
+pnpm --filter @pond/desktop start:web:remote https://elkyiem.tailffeb5b.ts.net:9443
+```
+
+Open `https://circe.elkyiem` on that device. This starts only a local forwarding
+route; it reuses the Mac's Library and host. The upstream connection validates
+its HTTPS certificate and retains authenticated uploads, media ranges and SSE.
+Foreign Host and Origin headers are rejected. Phones without a local Portless
+proxy use the printed Tailscale HTTPS address directly; custom DNS alone cannot
+supply a trusted certificate for this short name.
+
+`CIRCE_WEB_*` settings supersede the previous `IRIS_WEB_*` names; the host still
+accepts those older environment variables. The hidden sandbox name, session
+cookie, upload tickets, extension ID and IndexedDB keys remain stable to retain
+existing data and pairing. Rebuild/reload the unpacked Circé extension from its
+new checkout path after the folder rename.
+
 ## Private HTTPS and the assistant
 
 The current private URL is `https://elkyiem.tailffeb5b.ts.net:9443`. It uses the
 same isolated host and access-key login. Tailscale Serve preserves the existing
-routes on other ports. Recreate only Iris's mapping if needed:
+routes on other ports. Recreate only Circé's mapping if needed:
 
 ```sh
 tailscale serve --bg --https=9443 http://127.0.0.1:4789
@@ -120,7 +157,7 @@ pnpm --filter @pond/desktop exec node scripts/smoke-web-imports.mjs --after-rest
 env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs --editing --after-restart
 # Live model use; requires the explicitly authorized, connected subscription:
 pnpm --filter @pond/desktop exec node scripts/smoke-web-agent.mjs
-IRIS_WEB_ORIGIN=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop exec node scripts/smoke-web.mjs --after-restart
+CIRCE_WEB_ORIGIN=https://elkyiem.tailffeb5b.ts.net:9443 pnpm --filter @pond/desktop exec node scripts/smoke-web.mjs --after-restart
 ```
 
 The parity smoke checks edits/conflicts/Undo, tags, views, Canvas content conflicts,
@@ -148,38 +185,38 @@ which uses that fixture with Chromium's real file chooser protocol and verifies
 the shared Settings UI, custom tab icon, reload and reset. It restores the prior
 logo too. These checks are also part of the isolated CI driver.
 
-## Connect the browser extension to Iris
+## Connect the browser extension to Circé
 
 ```sh
-pnpm --filter @pond/extension build:iris
+pnpm --filter @pond/extension build:circe
 ```
 
 In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load
 unpacked**, and select
-`/Users/elkyiem/Documents/GitHub/iris-web/apps/extension/.output-iris/chrome-mv3`.
-This build is named Iris and has a separate ID from Pond. Do not change the
+`/Users/elkyiem/Documents/GitHub/Circé/apps/extension/.output-circe/chrome-mv3`.
+This build is named Circé and has a separate ID from Pond. Do not change the
 installed Pond native-host manifests. Chrome's extension manager must be opened
 by the owner because the collaborative browser URL policy blocks that protocol.
 
-Open the Iris extension panel → **Connection**. Enter
+Open the Circé extension panel → **Connection**. Enter
 `https://elkyiem.tailffeb5b.ts.net:9443` and choose the host's `web-access-key`
 file. On the Mac its full path is
-`/Users/elkyiem/Documents/GitHub/iris-web/.artifacts/iris-web-sandbox/web-access-key`.
-Use Cmd-Shift-G in the file picker to reach the hidden directory. **Connect Iris**
+`/Users/elkyiem/Documents/GitHub/Circé/.artifacts/iris-web-sandbox/web-access-key`.
+Use Cmd-Shift-G in the file picker to reach the hidden directory. **Connect Circé**
 authorizes this extension for this host and Library. The bootstrap key is cleared
 after pairing; a separate, revocable credential stays in the extension.
 
-Refresh Iris and any already-open X tab after loading the extension. In Iris,
+Refresh Circé and any already-open X tab after loading the extension. In Circé,
 choose **Sources → New Source → Twitter**. The paired extension uses the X
 session in its own Chrome profile; if signed out, it reuses an existing Source
 tab or opens one in that browser. Then choose the import scope and start it.
 Nothing syncs from a new Account until its import scope is confirmed. A remote
-Iris page can also request connection from the paired browser on the Mac; its
+Circé page can also request connection from the paired browser on the Mac; its
 worker checks the host every 30 seconds, subject to the existing retry pacing.
 
 Ordinary bookmarks/likes on supported pages use the existing hooks and capture
 queue. Scheduled collection remains host-owned, so Chrome need not stay open for
-the host to sync an already-connected Account. **Disconnect Iris** revokes the
+the host to sync an already-connected Account. **Disconnect Circé** revokes the
 extension credential; it does not remove Source Accounts already connected on
 the host. Disconnect those separately in Sources. An unreachable host must be
 reachable again for the panel to revoke its credential. Re-pair after changing

@@ -1,8 +1,8 @@
 import { createServer } from "node:http";
 import { request as httpsRequest } from "node:https";
 
-/** A visiting device's Portless route forwards to the existing private Iris host. */
-export function createIrisForwarder({
+/** A visiting device's Portless route forwards to the existing private Circé host. */
+export function createCirceForwarder({
   address,
   upstream,
   request = httpsRequest,
@@ -20,7 +20,7 @@ export function createIrisForwarder({
         url.hash,
     )
   )
-    throw new Error("Use exact HTTPS Iris addresses.");
+    throw new Error("Use exact HTTPS Circé addresses.");
 
   return createServer((incoming, outgoing) => {
     if (
@@ -58,7 +58,7 @@ export function createIrisForwarder({
           "content-type": "text/plain",
           "cache-control": "no-store",
         });
-      outgoing.end("Iris is unreachable. Check Tailscale and the Iris host.");
+      outgoing.end("Circé is unreachable. Check Tailscale and the Circé host.");
     });
     outgoing.on("close", () => forwarded.destroy());
     incoming.pipe(forwarded);
@@ -67,7 +67,7 @@ export function createIrisForwarder({
 
 if (process.argv[1] === import.meta.filename) {
   const address = process.env.PORTLESS_URL;
-  const upstream = process.env.IRIS_REMOTE_ORIGIN ?? process.argv[2];
+  const upstream = process.env.CIRCE_REMOTE_ORIGIN ?? process.argv[2];
   const port = Number(process.env.PORT);
   if (
     !address ||
@@ -77,10 +77,10 @@ if (process.argv[1] === import.meta.filename) {
     port > 65535
   )
     throw new Error(
-      "Run start:web:remote with an HTTPS Iris host address through Portless.",
+      "Run start:web:remote with an HTTPS Circé host address through Portless.",
     );
-  const server = createIrisForwarder({ address, upstream });
-  server.listen(port, "127.0.0.1", () => console.info(`Iris: ${address}`));
+  const server = createCirceForwarder({ address, upstream });
+  server.listen(port, "127.0.0.1", () => console.info(`Circé: ${address}`));
   for (const signal of ["SIGINT", "SIGTERM"])
     process.on(signal, () => {
       server.closeAllConnections();

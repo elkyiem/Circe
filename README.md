@@ -1,3 +1,14 @@
+# Circé
+
+Circé brings Pond's Library to desktop and mobile browsers through a private,
+authenticated host. This fork tracks [Pond](https://github.com/raphaelsalaja/pond);
+`main` mirrors upstream and `web` adds the browser application.
+
+[Run Circé](docs/circe/runbook.md) · [Feature parity](docs/circe/parity.md) ·
+[Architecture](docs/circe/architecture.md)
+
+The upstream Pond desktop installation instructions follow.
+
 > The web is a sea of information. Everyone deserves their own pond.
 
 ## Install

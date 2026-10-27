@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createServer, request } from "node:http";
 import { after, test } from "node:test";
-import { createIrisForwarder } from "./forward-web.mjs";
+import { createCirceForwarder } from "./forward-web.mjs";
 
 const servers = [];
 after(async () => {
@@ -60,8 +60,8 @@ test("forwards authenticated uploads and media ranges through the exact short ad
     }),
   );
   const port = await listen(
-    createIrisForwarder({
-      address: "https://iris.elkyiem",
+    createCirceForwarder({
+      address: "https://circe.elkyiem",
       upstream: "https://host.example.ts.net:9443",
       // Exercise the real HTTP stream against a finite offline upstream.
       request: (_url, options, callback) =>
@@ -78,8 +78,8 @@ test("forwards authenticated uploads and media ranges through the exact short ad
   const response = await requestAt(port, "/web/media/save/file?test=1", {
     method: "POST",
     headers: {
-      host: "iris.elkyiem",
-      origin: "https://iris.elkyiem",
+      host: "circe.elkyiem",
+      origin: "https://circe.elkyiem",
       cookie: "iris=test",
       range: "bytes=0-3",
       "x-iris-library": "library-a",
@@ -99,8 +99,8 @@ test("forwards authenticated uploads and media ranges through the exact short ad
 
   for (const headers of [
     { host: "attacker.test" },
-    { host: "iris.elkyiem", origin: "https://attacker.test" },
-    { host: "iris.elkyiem", "sec-fetch-site": "cross-site" },
+    { host: "circe.elkyiem", origin: "https://attacker.test" },
+    { host: "circe.elkyiem", "sec-fetch-site": "cross-site" },
   ]) {
     assert.equal(
       (await requestAt(port, "/web/session", { headers })).status,
@@ -117,6 +117,6 @@ test("rejects insecure, credential-bearing, and path-based upstream addresses", 
     "https://host.test/path",
   ])
     assert.throws(() =>
-      createIrisForwarder({ address: "https://iris.elkyiem", upstream }),
+      createCirceForwarder({ address: "https://circe.elkyiem", upstream }),
     );
 });

@@ -160,14 +160,14 @@ Settings has a dedicated renderer and scoped preload. Its singleton native windo
 
 The app composition layer passes the Library's full selection and folder membership to the Save inspector; a full viewer continues to inspect one Save. Immediate folder assignments use deltas and notes/tag removal use main-owned bulk transactions with Undo. Inspector text drafts are keyed by target IDs and retain failures for retry.
 
-## Iris browser transport
+## Circé browser transport
 
-The Iris browser entrypoint installs an HTTP implementation of the renderer
+The Circé browser entrypoint installs an HTTP implementation of the renderer
 capability boundary before loading the shared application. A separate, opt-in
 Electron listener owns authenticated browser queries, media and SyncAction SSE.
 Its explicit allowlist excludes credentials, native dialogs and Library
 transitions. Electron remains the single persistence and queue owner. See the
-[Iris architecture decision](../iris/architecture.md) and
-[local runbook](../iris/runbook.md) for isolation, origin/session policy and the
+[Circé architecture decision](../circe/architecture.md) and
+[local runbook](../circe/runbook.md) for isolation, origin/session policy and the
 remaining platform boundaries. The desktop preload and its clients retain their
 existing behavior.

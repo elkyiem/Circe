@@ -1,4 +1,4 @@
-name: Iris web
+name: Circé web
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [web, dev]
 
 concurrency:
-  group: iris-web-${{ github.ref }}
+  group: circe-web-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
       - run: pnpm check
       - run: pnpm build
       - run: pnpm --filter @pond/desktop build:web
-      - run: pnpm --filter @pond/extension build:iris
+      - run: pnpm --filter @pond/extension build:circe
       - name: Isolated host and browser workflows
         run: |
           SANDBOX="$(dirname "$(cd apps/desktop && node -p "require('electron')")")/chrome-sandbox"

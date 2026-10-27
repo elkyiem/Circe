@@ -15,9 +15,9 @@ const directory = await mkdtemp(join(tmpdir(), "iris-web-ci-"));
 const env = {
   ...process.env,
   POND_SANDBOX: directory,
-  IRIS_WEB_PORT: "4792",
-  IRIS_WEB_ORIGIN: "http://127.0.0.1:4792",
-  IRIS_WEB_FIXTURES: "1",
+  CIRCE_WEB_PORT: "4792",
+  CIRCE_WEB_ORIGIN: "http://127.0.0.1:4792",
+  CIRCE_WEB_FIXTURES: "1",
 };
 delete env.ELECTRON_RUN_AS_NODE;
 const host = spawn(process.execPath, ["scripts/start-web.mjs"], {
@@ -46,7 +46,7 @@ try {
     if (host.exitCode !== null)
       throw new Error("The isolated host exited before readiness.");
     try {
-      if ((await fetch(`${env.IRIS_WEB_ORIGIN}/web/session`)).status === 401)
+      if ((await fetch(`${env.CIRCE_WEB_ORIGIN}/web/session`)).status === 401)
         break;
     } catch {}
     if (Date.now() - started > 60000)

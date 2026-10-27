@@ -21,7 +21,7 @@
   "scripts": {
     "build": "wxt build && wxt build -b firefox --mv3",
     "build:firefox": "wxt build -b firefox --mv3",
-    "build:iris": "IRIS_EXTENSION=1 wxt build",
+    "build:circe": "CIRCE_EXTENSION=1 wxt build",
     "build:safari": "wxt build -b safari --mv3",
     "dev": "wxt",
     "icons": "node scripts/generate-icons.mjs",

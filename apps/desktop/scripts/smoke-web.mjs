@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 const sandbox = resolve(
   process.env.POND_SANDBOX ?? "../../.artifacts/iris-web-sandbox",
 );
-const origin = process.env.IRIS_WEB_ORIGIN ?? "http://127.0.0.1:4789";
+const origin = process.env.CIRCE_WEB_ORIGIN ?? "http://127.0.0.1:4789";
 const key = (await readFile(join(sandbox, "web-access-key"), "utf8")).trim();
 const login = await fetch(`${origin}/web/session`, {
   method: "POST",
@@ -83,7 +83,7 @@ if (process.argv.includes("--after-restart")) {
     );
     const { rawJson } = await query("saves.rawJson", { id: save.id });
     assert.equal(rawJson.capture.id, save.sourceId);
-    assert.equal(rawJson.capture.title, `Iris fixture: ${kind}`);
+    assert.equal(rawJson.capture.title, `Circé fixture: ${kind}`);
     assert.ok(
       save.files.some((file) => file.kind === "tweet_screenshot_light"),
     );

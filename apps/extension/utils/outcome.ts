@@ -22,19 +22,19 @@ export type CaptureOutcome =
 const NATIVE_ERRORS = new Map([
   [
     "iris_pairing_required",
-    "Pair the Iris extension in Connection before saving.",
+    "Pair the Circé extension in Connection before saving.",
   ],
   [
     "iris_auth_required",
-    "Reconnect the Iris extension to authorize this Library.",
+    "Reconnect the Circé extension to authorize this Library.",
   ],
   [
     "iris_library_changed",
-    "The host opened another Library. Pair the Iris extension again.",
+    "The host opened another Library. Pair the Circé extension again.",
   ],
   [
     "iris_invalid_response",
-    "The Iris host returned an unreadable reply. Update Iris and try again.",
+    "The Circé host returned an unreadable reply. Update Circé and try again.",
   ],
   [
     "too_large",

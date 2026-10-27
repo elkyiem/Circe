@@ -10,7 +10,7 @@ const {
 const { tmpdir } = require("node:os");
 const { resolve, join } = require("node:path");
 
-const origin = process.env.IRIS_WEB_ORIGIN ?? "http://127.0.0.1:4789";
+const origin = process.env.CIRCE_WEB_ORIGIN ?? "http://127.0.0.1:4789";
 const sandbox = resolve(
   process.env.POND_SANDBOX ?? "../../.artifacts/iris-web-sandbox",
 );
@@ -339,7 +339,7 @@ app
         'document.body.innerText.includes("Save enqueued") || document.body.innerText.includes("Fixture already")',
       );
       await snapshot("desktop-enqueued");
-      await waitFor('document.body.innerText.includes("Iris fixture: quote")');
+      await waitFor('document.body.innerText.includes("Circé fixture: quote")');
       const all = await query("saves.listPage", { limit: 100 });
       const library = await query("library.info");
       assert.ok(library.path.startsWith(sandbox));

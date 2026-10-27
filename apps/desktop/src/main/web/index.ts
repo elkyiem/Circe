@@ -26,9 +26,10 @@ import { createWebVideo } from "./video";
 
 export async function startWebHost() {
   const sandbox = process.env.POND_SANDBOX;
-  if (!sandbox) throw new Error("The Iris web host requires POND_SANDBOX.");
+  if (!sandbox) throw new Error("The Circé web host requires POND_SANDBOX.");
   const { port, origin, origins } = webHostConfig(process.env);
-  const fixtures = process.env.IRIS_WEB_FIXTURES === "1";
+  const fixtures =
+    (process.env.CIRCE_WEB_FIXTURES ?? process.env.IRIS_WEB_FIXTURES) === "1";
   const files = createWebFiles(
     join(electronApp.getPath("userData"), "web-files"),
   );

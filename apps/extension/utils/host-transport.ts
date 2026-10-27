@@ -1,7 +1,7 @@
 import {
+  CirceHostOriginSchema,
   type ExtensionConnection,
   ExtensionConnectionSchema,
-  IrisHostOriginSchema,
 } from "@pond/schema/extension-connection";
 import {
   type NativeRequest,
@@ -65,7 +65,7 @@ export function createHostTransport({
       }
     },
     async pair(origin: string, key: string, name: string) {
-      const host = IrisHostOriginSchema.parse(origin);
+      const host = CirceHostOriginSchema.parse(origin);
       const previous = await read().catch(() => null);
       const pairHeaders = new Headers({
         "content-type": "application/json",
@@ -87,11 +87,11 @@ export function createHostTransport({
             ? "The access key was not accepted."
             : response.status === 429
               ? "Too many attempts. Try again in five minutes."
-              : "Couldn't pair. Check the Iris address and try again.",
+              : "Couldn't pair. Check the Circé address and try again.",
         );
       const connection = ExtensionConnectionSchema.parse(await response.json());
       if (connection.origin !== host)
-        throw new Error("The host returned a different Iris address.");
+        throw new Error("The host returned a different Circé address.");
       return connection;
     },
     async revoke(connection: ExtensionConnection) {

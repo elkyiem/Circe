@@ -13,7 +13,7 @@ for (const address of [
   runtimeEnv.PORTLESS_URL,
   runtimeEnv.PORTLESS_TAILSCALE_URL,
 ])
-  if (address) console.info(`Iris: ${address}`);
+  if (address) console.info(`Circé: ${address}`);
 const child = spawn(
   electron,
   [".", "--enable-logging", "--use-mock-keychain"],
@@ -22,8 +22,9 @@ const child = spawn(
     env: {
       ...runtimeEnv,
       POND_SANDBOX: sandbox,
-      IRIS_WEB: "1",
-      IRIS_WEB_FIXTURES: process.env.IRIS_WEB_FIXTURES ?? "1",
+      CIRCE_WEB: "1",
+      CIRCE_WEB_FIXTURES:
+        process.env.CIRCE_WEB_FIXTURES ?? process.env.IRIS_WEB_FIXTURES ?? "1",
     },
   },
 );

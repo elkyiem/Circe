@@ -43,7 +43,7 @@ function fixture({
 }
 
 describe("extension host transport", () => {
-  it("does not route to native Pond when stored Iris credentials cannot be read", async () => {
+  it("does not route to native Pond when stored Circé credentials cannot be read", async () => {
     const native: NativeRequest[] = [];
     const transport = createHostTransport({
       extension: "chrome-extension://fixture",

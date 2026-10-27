@@ -55,7 +55,7 @@
     "generate:check": "pnpm generate:harvest --check",
     "build:web": "vite build --config vite.browser.config.ts",
     "start:web": "node scripts/start-web.mjs",
-    "start:web:portless": "portless iris --tld elkyiem --tailscale node scripts/start-web.mjs",
+    "start:web:portless": "portless iris --tld elkyiem --app-port 4789 --tailscale node scripts/start-web.mjs",
     "start:web:remote": "portless iris --tld elkyiem node scripts/forward-web.mjs"
   },
   "dependencies": {

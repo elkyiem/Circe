@@ -27,7 +27,7 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
       const result = await sendMessage("irisPair", {
         origin,
         key: key.trim(),
-        name: "Iris browser extension",
+        name: "Circé browser extension",
       });
       if (!result.ok) {
         setError(result.message);
@@ -37,7 +37,7 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
       setConnection(await readSummary());
     } catch {
       setError(
-        "Couldn't reach Iris. Check the address and your Tailscale connection.",
+        "Couldn't reach Circé. Check the address and your Tailscale connection.",
       );
     } finally {
       setBusy(false);
@@ -80,11 +80,11 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
             <p role="status">Paired with {connection.name}</p>
             <p className={styles.address}>{connection.origin}</p>
             <p>
-              Source sessions and captures from this browser go to this Iris
+              Source sessions and captures from this browser go to this Circé
               host.
             </p>
             <Button disabled={busy} onClick={() => void disconnect()}>
-              Disconnect Iris
+              Disconnect Circé
             </Button>
           </>
         ) : (
@@ -92,8 +92,8 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
             onSubmit={(event) => void submit(event)}
             className={styles.form}
           >
-            <p>Connect to Iris on your Mac or another private host.</p>
-            <label htmlFor={`${id}-origin`}>Iris address</label>
+            <p>Connect to Circé on your Mac or another private host.</p>
+            <label htmlFor={`${id}-origin`}>Circé address</label>
             <Input.Root>
               <Input.Field
                 id={`${id}-origin`}
@@ -126,7 +126,7 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
                 if (!file) return;
                 if (file.size > 1024) {
                   setError(
-                    "Choose the small web-access-key file from the Iris host.",
+                    "Choose the small web-access-key file from the Circé host.",
                   );
                   return;
                 }
@@ -143,7 +143,7 @@ export function ConnectionPanel({ onBack }: { onBack(): void }) {
               separate connection credential stays in the extension.
             </p>
             <Button type="submit" variant="primary" disabled={busy}>
-              {busy ? "Connecting…" : "Connect Iris"}
+              {busy ? "Connecting…" : "Connect Circé"}
             </Button>
           </form>
         )}

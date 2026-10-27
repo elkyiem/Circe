@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { connectWebHost } from "./web-smoke-client.mjs";
 
 function pdf() {
-  const text = "BT /F1 18 Tf 20 150 Td (Iris PDF viewer fixture) Tj ET";
+  const text = "BT /F1 18 Tf 20 150 Td (Circé PDF viewer fixture) Tj ET";
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -59,7 +59,10 @@ function glb() {
   });
   const json = Buffer.from(
     JSON.stringify({
-      asset: { version: "2.0", generator: "Iris deterministic viewer fixture" },
+      asset: {
+        version: "2.0",
+        generator: "Circé deterministic viewer fixture",
+      },
       scene: 0,
       scenes: [{ nodes: [0] }],
       nodes: [{ mesh: 0 }],
@@ -129,7 +132,7 @@ epub.file(
 );
 epub.file(
   "OEBPS/content.opf",
-  '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">iris-viewer-fixture</dc:identifier><dc:title>Iris EPUB viewer fixture</dc:title><dc:language>en</dc:language><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" properties="nav" media-type="application/xhtml+xml"/><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>',
+  '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">iris-viewer-fixture</dc:identifier><dc:title>Circé EPUB viewer fixture</dc:title><dc:language>en</dc:language><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" properties="nav" media-type="application/xhtml+xml"/><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>',
 );
 epub.file(
   "OEBPS/nav.xhtml",
@@ -137,17 +140,17 @@ epub.file(
 );
 epub.file(
   "OEBPS/chapter.xhtml",
-  '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture chapter</title></head><body><h1>Iris EPUB fixture chapter</h1><p>Offline book content with no external resources.</p></body></html>',
+  '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Fixture chapter</title></head><body><h1>Circé EPUB fixture chapter</h1><p>Offline book content with no external resources.</p></body></html>',
 );
 const archive = new JSZip();
-archive.file("nested/readme.txt", "Iris ZIP viewer fixture");
+archive.file("nested/readme.txt", "Circé ZIP viewer fixture");
 archive.file("image.png", image);
 const live = new JSZip();
 live.file("photo.png", image);
 live.file("motion.mp4", await readFile(resolve("test/fixtures/web/video.mp4")));
 live.file(
   "captions.vtt",
-  "WEBVTT\n\n00:00.000 --> 00:04.000\nIris Live Photo fixture\n",
+  "WEBVTT\n\n00:00.000 --> 00:04.000\nCircé Live Photo fixture\n",
 );
 const docx = new JSZip();
 docx.file(
@@ -160,7 +163,7 @@ docx.file(
 );
 docx.file(
   "word/document.xml",
-  '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Iris native document preview fixture</w:t></w:r></w:p><w:sectPr/></w:body></w:document>',
+  '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Circé native document preview fixture</w:t></w:r></w:p><w:sectPr/></w:body></w:document>',
 );
 docx.file("docProps/thumbnail.png", image);
 const fixtures = [
@@ -182,7 +185,7 @@ const fixtures = [
     kind: "text",
     name: "viewer-text.txt",
     bytes: Buffer.from(
-      "Iris text viewer fixture\nOffline text with Unicode: café, 水, 🎨.\n",
+      "Circé text viewer fixture\nOffline text with Unicode: café, 水, 🎨.\n",
     ),
   },
   {
@@ -205,7 +208,7 @@ const fixtures = [
     kind: "safe-web",
     name: "viewer-page.html",
     bytes: Buffer.from(
-      '<!doctype html><h1>Iris offline HTML fixture</h1><script>parent.irisUntrustedExecuted=true;fetch("/web/query",{method:"POST",credentials:"include",body:JSON.stringify({name:"folders.create",params:{name:"UNTRUSTED CONTENT EXECUTED"}})})</script><form action="https://example.invalid"><input name="secret"></form>',
+      '<!doctype html><h1>Circé offline HTML fixture</h1><script>parent.irisUntrustedExecuted=true;fetch("/web/query",{method:"POST",credentials:"include",body:JSON.stringify({name:"folders.create",params:{name:"UNTRUSTED CONTENT EXECUTED"}})})</script><form action="https://example.invalid"><input name="secret"></form>',
     ),
   },
   {
@@ -216,7 +219,7 @@ const fixtures = [
   {
     kind: "generic",
     name: "viewer-generic.iris-fixture",
-    bytes: Buffer.from("Iris original file download fixture"),
+    bytes: Buffer.from("Circé original file download fixture"),
   },
 ];
 const proof = [];
@@ -234,7 +237,7 @@ for (const fixture of fixtures) {
   const ticket = await uploaded.json();
   const imported = await host.call("files", {
     name: "saves.importFiles",
-    params: { paths: [ticket.token], tags: ["Iris viewer fixture"] },
+    params: { paths: [ticket.token], tags: ["Circé viewer fixture"] },
   });
   assert.equal(imported.ok, true, fixture.name);
   assert.equal(imported.ids.length, 1);

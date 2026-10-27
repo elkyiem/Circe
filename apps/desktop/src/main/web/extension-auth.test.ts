@@ -32,7 +32,7 @@ const input = {
   libraryId: "library-a",
 };
 
-describe("Iris extension credentials", () => {
+describe("Circé extension credentials", () => {
   it("rejects a wrong bootstrap key and stores only a digest of the separate credential", async () => {
     const test = await fixture();
     expect(await test.auth.pair({ ...input, key: "wrong" })).toBeNull();

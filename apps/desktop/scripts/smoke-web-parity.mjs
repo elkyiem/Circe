@@ -207,7 +207,7 @@ const csv = await host.call("files", {
 const csvResponse = await fetch(`${host.origin}${csv.download}`, {
   headers: host.headers,
 });
-assert.ok((await csvResponse.text()).includes("Iris fixture: image"));
+assert.ok((await csvResponse.text()).includes("Circé fixture: image"));
 const conversion = await host.call("files", {
   name: "conversion.start",
   params: {

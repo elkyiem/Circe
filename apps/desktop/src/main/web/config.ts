@@ -14,16 +14,18 @@ const Origin = z.string().refine((value) => {
   } catch {
     return false;
   }
-}, "Iris origins must be exact HTTPS origins or loopback HTTP origins.");
+}, "Circé origins must be exact HTTPS origins or loopback HTTP origins.");
 
 /** Portless supplies its assigned port and exact URLs before launching the host. */
 export function webHostConfig(env: NodeJS.ProcessEnv) {
-  const port = Port.parse(env.IRIS_WEB_PORT ?? env.PORT ?? 4789);
+  const port = Port.parse(
+    env.CIRCE_WEB_PORT ?? env.IRIS_WEB_PORT ?? env.PORT ?? 4789,
+  );
   const origin = Origin.parse(
-    env.IRIS_WEB_ORIGIN ?? `http://127.0.0.1:${port}`,
+    env.CIRCE_WEB_ORIGIN ?? env.IRIS_WEB_ORIGIN ?? `http://127.0.0.1:${port}`,
   );
   const origins = [
-    ...(env.IRIS_WEB_ORIGINS ?? "").split(","),
+    ...(env.CIRCE_WEB_ORIGINS ?? env.IRIS_WEB_ORIGINS ?? "").split(","),
     env.PORTLESS_URL,
     env.PORTLESS_TAILSCALE_URL,
   ]

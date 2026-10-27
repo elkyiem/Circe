@@ -103,7 +103,7 @@ describe("browser host boundary", () => {
     cleanups.push(() => rm(directory, { recursive: true, force: true }));
     await writeFile(
       join(directory, "browser.html"),
-      "<!doctype html><title>Iris route fixture</title>",
+      "<!doctype html><title>Circé route fixture</title>",
     );
     const test = await host(directory);
     for (const path of [
@@ -113,7 +113,7 @@ describe("browser host boundary", () => {
       "/settings/agent-models",
     ])
       expect(await (await test.request(path)).text()).toBe(
-        "<!doctype html><title>Iris route fixture</title>",
+        "<!doctype html><title>Circé route fixture</title>",
       );
     expect((await test.request("/assets/missing.js")).status).toBe(404);
     expect((await test.request("/web/missing")).status).toBe(401);

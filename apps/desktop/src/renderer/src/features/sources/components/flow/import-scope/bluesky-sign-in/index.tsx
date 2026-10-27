@@ -92,7 +92,7 @@ export function BlueskySignIn({ accountId }: { accountId: string }) {
         ) : (
           <Settings.ItemDescription>
             {isBrowserRuntime()
-              ? "Bookmarks need a sign-in window on the Iris host computer. Sign in there to enable bookmark sync here."
+              ? "Bookmarks need a sign-in window on the Circé host computer. Sign in there to enable bookmark sync here."
               : DESCRIPTION}
           </Settings.ItemDescription>
         )}

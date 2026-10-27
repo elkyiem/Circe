@@ -47,7 +47,7 @@ function BrowserConnection() {
       .then(() => import("../main"))
       .then(() => setReady(true))
       .catch((failure) => {
-        console.error("Iris browser startup failed", failure);
+        console.error("Circé browser startup failed", failure);
         setError(
           failure instanceof Error
             ? failure.message
@@ -87,7 +87,7 @@ function BrowserConnection() {
             }
           }}
         >
-          <h1>Iris</h1>
+          <h1>Circé</h1>
           <p>{status}</p>
           <p>
             Enter the access key from your isolated host’s web-access-key file.

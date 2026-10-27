@@ -18,11 +18,11 @@ exports.verifyBrowserViewers = async function verifyBrowserViewers({
     audio: `Array.from(document.querySelectorAll('[data-save-details] audio')).some(audio => audio.readyState >= 1 && audio.duration >= 1.9)`,
     font: `Array.from(document.fonts).some(font => font.family.startsWith('pond-preview-') && font.status === 'loaded') && document.body.innerText.includes('Sphinx of black quartz')`,
     text: `document.querySelector('[data-save-details]')?.innerText.includes('Offline text with Unicode: café, 水, 🎨.')`,
-    epub: `Array.from(document.querySelectorAll('[data-save-details] iframe')).some(frame => {try{return frame.contentDocument?.body?.innerText.includes('Iris EPUB fixture chapter')}catch{return false}})`,
+    epub: `Array.from(document.querySelectorAll('[data-save-details] iframe')).some(frame => {try{return frame.contentDocument?.body?.innerText.includes('Circé EPUB fixture chapter')}catch{return false}})`,
     model: `document.querySelector('canvas[aria-label^="3D model"]') && !document.body.innerText.includes('Loading 3D model')`,
     archive: `document.querySelector('[data-save-details]')?.innerText.includes('nested/readme.txt')`,
     "live-photo": `Array.from(document.querySelectorAll('[data-save-details] img')).some(image => image.src.startsWith('blob:') && image.complete && image.naturalWidth === 320)`,
-    "safe-web": `document.querySelector('iframe[title="Offline HTML preview"]')?.srcdoc.includes('Iris offline HTML fixture')`,
+    "safe-web": `document.querySelector('iframe[title="Offline HTML preview"]')?.srcdoc.includes('Circé offline HTML fixture')`,
     "native-preview": `Array.from(document.querySelectorAll('[data-save-details] [aria-label="Image"] img')).some(image => image.src.includes('preview=2048') && image.complete && image.naturalWidth > 0 && !image.hasAttribute('data-pending'))`,
     generic: `document.querySelector('[data-save-details]')?.innerText.includes('viewer-generic.iris-fixture') && document.querySelector('[aria-label="Download Original"]')`,
   };
@@ -78,7 +78,7 @@ exports.verifyBrowserViewers = async function verifyBrowserViewers({
           await waitFor(
             "document.querySelector('[aria-label=\"Search PDF\"]')",
           );
-          await win.webContents.insertText("Iris");
+          await win.webContents.insertText("Circé");
           win.webContents.sendInputEvent({
             type: "keyDown",
             keyCode: "Return",
@@ -147,7 +147,7 @@ exports.verifyBrowserViewers = async function verifyBrowserViewers({
           await downloaded;
           assert.equal(
             readFileSync(destination, "utf8"),
-            "Iris original file download fixture",
+            "Circé original file download fixture",
           );
         }
       } catch (error) {

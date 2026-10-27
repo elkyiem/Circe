@@ -6,7 +6,7 @@ export async function connectWebHost() {
   const sandbox = resolve(
     process.env.POND_SANDBOX ?? "../../.artifacts/iris-web-sandbox",
   );
-  const origin = process.env.IRIS_WEB_ORIGIN ?? "http://127.0.0.1:4789";
+  const origin = process.env.CIRCE_WEB_ORIGIN ?? "http://127.0.0.1:4789";
   const key = (await readFile(join(sandbox, "web-access-key"), "utf8")).trim();
   const login = await fetch(`${origin}/web/session`, {
     method: "POST",

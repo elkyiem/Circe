@@ -1,6 +1,6 @@
 # Feature parity ledger
 
-Baseline: Pond 1.6.3 at `0e9dc817e17baafe60d9151a7fc49be5dc3e0861`.
+Baseline: Pond 2.0.0 plus upstream `main` through `c594ed4d` (2026-10-27).
 Long-term objective: every Pond workflow from desktop and mobile browsers.
 Full parity is **in progress**. An exposed operation is not verification evidence.
 
@@ -23,7 +23,7 @@ Full parity is **in progress**. An exposed operation is not verification evidenc
 | Queue/Downloads controls and progress | Host | Pause/resume HTTP check; existing durable queue and governor; live Twitter budget deferral observed and countdown exposed; full ingest settlement/recovery/load matrix pending |
 | Twitter quote/image/video | Host | Deterministic fixtures plus live original image/video playback, seeking and reload in Chrome; live parent/quote/author/file identities checked; native cards verified for image/video samples and existing screenshot fallback verified for the quote; direct downloads above the upstream 50 MiB ceiling and full import settlement remain open |
 | Accounts, Watches and collectors | Electron host + paired browser extension | Owner paired Chrome and connected Twitter through New Source; existing importer transferred the requested session and host collector queued 4,102 live Saves; other Sources, schedules and Watches acceptance pending |
-| Browser extension connection | Browser extension + host | Separate Iris Chromium build; scoped auth/origins, restart persistence, expiry/rotation/revocation tested; real Chrome pairing and manual capture reused the existing Save ID, with metadata Undo verified; automatic hooks and remote-device extension matrix pending |
+| Browser extension connection | Browser extension + host | Separate Circé Chromium build; scoped auth/origins, restart persistence, expiry/rotation/revocation tested; real Chrome pairing and manual capture reused the existing Save ID, with metadata Undo verified; automatic hooks and remote-device extension matrix pending |
 | Assistant streaming, chat persistence and citations | Electron host + browser | Authorized ChatGPT subscription via Codex; live HTTP search/persisted citation passed; actual shared Chrome composer, streamed completion and citation to the correct image passed |
 | Assistant model preferences | Host | Browser stale-preference defect fixed with regression test; Codex Default selection survives reload |
 | Assistant attachments and chat export | Browser + host | Uploaded attachment registration retains names and hides host paths; Markdown download adapter implemented; provider vision and full browser flow pending |
@@ -49,3 +49,26 @@ Library or production Source cookies were used. The private development Library
 continues to be owned by one Electron host. See [verification](verification.md)
 for exact evidence and [the execution plan](../../plans/001-complete-browser-parity.md)
 for the remaining phases.
+
+## Pond 2.0 integration
+
+`main` was 107 commits behind upstream and has been fast-forwarded. `web` merges
+that history while retaining its browser features. This is an explicit sync;
+no scheduled upstream updater is configured.
+
+- All 18 Source descriptors, harvesters and settings come from the shared Pond 2
+  implementation. Bluesky handle connection has an HTTP command adapter.
+- Fish CRUD, routines, MCP server settings and presence events use the existing
+  host handlers. Extension captures target Fish in browsers without focusing a
+  native host window. Apple Intelligence still runs on a supported Mac host.
+- Import Data Export chooses a ZIP on the visiting device, uploads it with an
+  opaque Library-bound ticket, and calls Pond's archive reader on the host.
+- Bluesky private bookmarks retain upstream's host sign-in window. The browser
+  explicitly labels that step; public likes use the handle form.
+- Circé's Portless launchers support `https://circe.elkyiem` locally and through a
+  local forwarding proxy on another Tailscale device. Exact-origin validation,
+  session cookies, uploads and media ranges have offline regression coverage.
+
+The offline suite and production bundles are checked separately from live Source
+sign-ins and physical-device acceptance. Earlier verification entries describe
+their recorded baseline; they do not prove every new Source or Fish provider.

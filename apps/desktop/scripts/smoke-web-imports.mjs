@@ -51,7 +51,7 @@ for (const [index, save] of originals.entries()) {
   );
   assert.equal(media.status, 200);
   const bytes = Buffer.from(await media.arrayBuffer());
-  const relativePath = `Iris folder fixture/${index === 0 ? "Quotes" : "Images"}/same.png`;
+  const relativePath = `Circé folder fixture/${index === 0 ? "Quotes" : "Images"}/same.png`;
   const localFile = join(host.sandbox, "visiting-device", relativePath);
   await mkdir(dirname(localFile), { recursive: true });
   await writeFile(localFile, bytes);
@@ -88,7 +88,7 @@ assert.equal(imported.ids.length, 2);
 const folders = await host.query("folders.list");
 const picked = folders.find(
   (folder) =>
-    folder.name === "Iris folder fixture" && folder.parentId === parent.id,
+    folder.name === "Circé folder fixture" && folder.parentId === parent.id,
 );
 assert.ok(picked);
 const memberships = await host.query("folders.memberships");

@@ -57,7 +57,7 @@ import { useActiveTab, useShortcuts } from "../hooks";
 import { ShortcutsPanel } from "./shortcuts";
 import styles from "./styles.module.css";
 
-const ConnectionPanel = import.meta.env.IRIS_EXTENSION
+const ConnectionPanel = import.meta.env.CIRCE_EXTENSION
   ? lazy(() =>
       import("./connection").then((module) => ({
         default: module.ConnectionPanel,
@@ -235,7 +235,7 @@ function MoreRows({
 }) {
   return (
     <div className={styles.group}>
-      {import.meta.env.IRIS_EXTENSION && (
+      {import.meta.env.CIRCE_EXTENSION && (
         <Button
           variant="ghost"
           width="full"
@@ -345,7 +345,7 @@ function Commands({
       <Shell returned={returned}>
         <Empty.Root className={styles.center}>
           <Empty.Title>
-            {result.iris ? "Iris needs attention" : copy.title}
+            {result.iris ? "Circé needs attention" : copy.title}
           </Empty.Title>
           <Empty.Description>
             {result.message ?? copy.description}
@@ -353,7 +353,7 @@ function Commands({
           <Empty.Action className={styles.actions}>
             {result.iris ? (
               <Button variant="secondary" onClick={onConnection}>
-                Connect Iris
+                Connect Circé
               </Button>
             ) : result.reason === "host_forbidden" ? (
               <Button

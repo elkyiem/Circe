@@ -110,11 +110,13 @@ import {
 markStartup("modules-loaded");
 
 /** Force app.name before any menu/dock work; dev falls back to "Electron" otherwise. */
-app.setName("Pond");
+const webHostRequested =
+  (process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1";
+app.setName(webHostRequested ? "Circé" : "Pond");
 disableMenuActionImages();
 
-if (process.env.IRIS_WEB === "1" && !process.env.POND_SANDBOX) {
-  throw new Error("Iris requires an isolated POND_SANDBOX profile.");
+if (webHostRequested && !process.env.POND_SANDBOX) {
+  throw new Error("Circé requires an isolated POND_SANDBOX profile.");
 }
 
 if (process.env.POND_SANDBOX) {
@@ -132,7 +134,7 @@ if (process.env.POND_SANDBOX) {
 }
 if (process.platform === "darwin") {
   app.setAboutPanelOptions({
-    applicationName: "Pond",
+    applicationName: app.getName(),
     applicationVersion: app.getVersion(),
     copyright: "Copyright © 2026 Raphael Salaja",
   });
@@ -345,7 +347,7 @@ async function openActiveLibrary(): Promise<PondPaths | null> {
 }
 
 async function postLaunchInit(): Promise<void> {
-  if (process.env.IRIS_WEB === "1") {
+  if (webHostRequested) {
     const { startWebHost } = await import("./web");
     webServer = await startWebHost();
   }

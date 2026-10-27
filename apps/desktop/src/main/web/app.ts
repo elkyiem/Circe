@@ -169,7 +169,7 @@ export function createWebApp(host: WebHost) {
       !sessions.valid(getCookie(c, COOKIE), sessionScope(c.req.header("host")))
     )
       return c.json(
-        { error: "Connect to the Iris host with your access key." },
+        { error: "Connect to the Circé host with your access key." },
         401,
       );
     if (

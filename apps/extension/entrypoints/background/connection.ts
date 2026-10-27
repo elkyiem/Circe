@@ -1,6 +1,6 @@
 import {
+  CirceHostOriginSchema,
   ExtensionPairRequestSchema,
-  IrisHostOriginSchema,
 } from "@pond/schema/extension-connection";
 import { SOURCES } from "@pond/schema/source-ids";
 import { z } from "zod";
@@ -11,14 +11,14 @@ import { connectBrowserSource } from "./session";
 import { syncSettings } from "./settings";
 
 const PairInput = ExtensionPairRequestSchema.extend({
-  origin: IrisHostOriginSchema,
+  origin: CirceHostOriginSchema,
 });
 const SourceInput = z.object({ source: z.enum(SOURCES) }).strict();
 const internalPage = (url?: string) =>
   Boolean(url?.startsWith(browser.runtime.getURL("")));
 const unavailable = {
   ok: false as const,
-  message: "Open the Iris extension panel to change its connection.",
+  message: "Open the Circé extension panel to change its connection.",
 };
 
 export function registerConnectionMessages() {
@@ -57,7 +57,7 @@ export function registerConnectionMessages() {
         message:
           error instanceof Error && !(error instanceof z.ZodError)
             ? error.message
-            : "Check the Iris address and access key.",
+            : "Check the Circé address and access key.",
       };
     }
   });
@@ -78,7 +78,7 @@ export function registerConnectionMessages() {
       return {
         ok: false,
         message:
-          "Couldn't revoke the connection. Reconnect to the Iris host and try again.",
+          "Couldn't revoke the connection. Reconnect to the Circé host and try again.",
       };
     }
   });
@@ -89,7 +89,7 @@ export function registerConnectionMessages() {
       !sender.url ||
       new URL(sender.url).origin !== connection.origin
     )
-      return { ok: false, message: "This page is not the paired Iris host." };
+      return { ok: false, message: "This page is not the paired Circé host." };
     const parsed = SourceInput.safeParse(data);
     if (!parsed.success)
       return { ok: false, message: "Choose a supported Source." };

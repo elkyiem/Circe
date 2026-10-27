@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
-import { IRIS_EXTENSION_ID } from "@pond/schema/extension-connection";
+import { CIRCE_EXTENSION_ID } from "@pond/schema/extension-connection";
 import type { NativeRequest } from "@pond/schema/native";
 import { afterEach, describe, expect, it } from "vitest";
 import { createWebApp, type WebHost } from "./app";
@@ -14,7 +14,7 @@ const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
-const extension = `chrome-extension://${IRIS_EXTENSION_ID}`;
+const extension = `chrome-extension://${CIRCE_EXTENSION_ID}`;
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), "iris-extension-api-"));
   const auth = await openExtensionAuth({

@@ -1,4 +1,4 @@
-import { IRIS_EXTENSION_ID } from "@pond/schema/extension-connection";
+import { CIRCE_EXTENSION_ID } from "@pond/schema/extension-connection";
 import { z } from "zod";
 import { readConnection } from "@/utils/connection-store";
 import { onMessage } from "@/utils/messaging";
@@ -19,7 +19,7 @@ const pondPathSchema = z
   .optional();
 
 export default defineBackground(() => {
-  registerConnectionMessages();
+  if (import.meta.env.CIRCE_EXTENSION) registerConnectionMessages();
   browser.runtime.onInstalled.addListener(async () => {
     await ensureSettings();
     clearBadge();
@@ -74,7 +74,7 @@ export default defineBackground(() => {
       await browser.tabs.create({ url: `${connection.origin}/${target}` });
       return true;
     }
-    if (browser.runtime.id === IRIS_EXTENSION_ID) return false;
+    if (browser.runtime.id === CIRCE_EXTENSION_ID) return false;
     const [tab] = await browser.tabs.query({
       active: true,
       currentWindow: true,

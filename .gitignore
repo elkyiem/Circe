@@ -38,6 +38,7 @@ Thumbs.db
 apps/extension/dist
 apps/extension/.output
 apps/extension/.output-iris
+apps/extension/.output-circe
 apps/extension/.wxt
 apps/raycast/raycast-env.d.ts
 # vercel

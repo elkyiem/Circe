@@ -38,7 +38,7 @@ const response = await host.request("agent", {
       parts: [
         {
           type: "text",
-          text: "Find the Save titled Iris fixture: image. Describe what was saved and cite it. Do not modify any Save.",
+          text: "Find the Save titled Circé fixture: image. Describe what was saved and cite it. Do not modify any Save.",
         },
       ],
     },

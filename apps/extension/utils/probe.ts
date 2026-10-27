@@ -35,12 +35,12 @@ export async function probe(): Promise<ProbeResult> {
         iris: true,
         message:
           result.error === "iris_pairing_required"
-            ? "Open Connection to pair this extension with your Iris host."
+            ? "Open Connection to pair this extension with your Circé host."
             : result.error === "iris_offline"
-              ? "The Iris host is unreachable. Check the host and your Tailscale connection."
+              ? "The Circé host is unreachable. Check the host and your Tailscale connection."
               : result.error === "iris_library_changed"
-                ? "The Iris host opened another Library. Open Connection to pair with it."
-                : "Your Iris connection expired or was revoked. Open Connection to pair again.",
+                ? "The Circé host opened another Library. Open Connection to pair with it."
+                : "Your Circé connection expired or was revoked. Open Connection to pair again.",
       };
     if (isUnreachable(result.error))
       return { state: "offline", reason: result.error };

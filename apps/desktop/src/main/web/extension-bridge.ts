@@ -78,7 +78,7 @@ export function createExtensionBridge(auth: ExtensionAuth) {
               ...receipt,
               library: expected,
               error: receipt.error
-                ? "Capture failed. Inspect Downloads in Iris."
+                ? "Capture failed. Inspect Downloads in Circé."
                 : undefined,
             },
           };

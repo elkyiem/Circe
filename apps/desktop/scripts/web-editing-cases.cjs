@@ -118,7 +118,7 @@ exports.verifyBrowserEditing = async function verifyBrowserEditing({
       )
         await click('[aria-label="Toggle Sidebar"]');
     }
-    const title = `Iris browser note ${width} ${Date.now().toString(36)}`;
+    const title = `Circé browser note ${width} ${Date.now().toString(36)}`;
     const body = `Written in the real editor at ${width} pixels: café, 水, 🎨.`;
     await click('[data-save-details] [aria-label="Title"]');
     await win.webContents.insertText(title);

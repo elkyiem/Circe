@@ -29,7 +29,7 @@ exports.verifyExtensionSetup = async ({
   );
   await click('[data-iris-source-test="twitter"]');
   await waitFor(
-    'document.body.innerText.includes("Pair the Iris extension using Connection in its panel, then try again.")',
+    'document.body.innerText.includes("Pair the Circé extension using Connection in its panel, then try again.")',
   );
   assert.equal((await query("accounts.list")).accounts.length, 0);
   for (const [width, height] of [

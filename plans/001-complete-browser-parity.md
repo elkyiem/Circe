@@ -1,4 +1,4 @@
-# Plan 001: Complete Pond feature parity in the Iris browser client
+# Plan 001: Complete Pond feature parity in the Circé browser client
 
 > Execution was authorized in this chat on 2026-10-26, including use of the
 > ChatGPT subscription. Deliver independently verified commits and keep the
@@ -19,7 +19,7 @@
   for browser parity and must not block it.
 
 Before execution, run `git status --short` and
-`git diff --stat 2629bfb53b8a6840a3b69f45c113b98a32d79f4d..HEAD -- apps/desktop apps/extension packages/schema docs/iris .github/workflows`.
+`git diff --stat 2629bfb53b8a6840a3b69f45c113b98a32d79f4d..HEAD -- apps/desktop apps/extension packages/schema docs/circe .github/workflows`.
 Preserve newer work. Reconcile changed assumptions against this roadmap before
 implementing the affected phase.
 
@@ -47,12 +47,12 @@ The first milestone already shares the actual renderer, uses typed HTTP queries,
 cookie-authenticated media and SyncAction SSE, and exercises a disposable Library.
 Browsing, folder assignment, image/video fixtures and restart persistence work.
 Subsequent slices verified shared Chrome sign-in, organization, representative
-viewers, assistant streaming/review and a paired Iris extension. On 2026-10-26
+viewers, assistant streaming/review and a paired Circé extension. On 2026-10-26
 the owner connected Twitter through that extension; the resident host queued
 4,102 live Saves. Live original image/video playback and seeking, quote identity
 and a manual duplicate capture passed. Full ingest settlement, automatic hooks,
 other Sources and the remaining parity matrix are still open. The dated evidence
-and current boundaries live in `docs/iris/{verification,parity}.md`.
+and current boundaries live in `docs/circe/{verification,parity}.md`.
 
 Key owners to inspect before changing a phase:
 
@@ -159,7 +159,7 @@ after each gate using actual work and Source test access.
 4. Reproduce the recorded theme timeout and native socket cleanup race in an
    isolated environment; establish a passing gate or a narrowly documented,
    evidenced baseline exception. Do not weaken tests globally.
-5. Add Iris verification for `web`/`dev`: the inherited CI currently targets
+5. Add Circé verification for `web`/`dev`: the inherited CI currently targets
    `main`. Keep main as the clean upstream mirror. Add browser-build and browser
    workflow coverage without removing desktop CI coverage.
 
@@ -228,7 +228,7 @@ upload/extraction failures leave recoverable staging rather than incomplete Save
    logout/session expiry stops access to subsequent events and media.
 4. Add an explicit host connection flow: browser starts/observes the request;
    sign-in completes on the host through Pond's existing browser/extension and
-   session-import path. Report when host interaction is required. The Iris page
+   session-import path. Report when host interaction is required. The Circé page
    cannot read another site's browser cookies. Do not promise phone-only Account
    setup without a separate, demonstrated Source-specific implementation. Mark
    host-assisted sign-in honestly; it does not complete a requirement for fully
@@ -264,7 +264,7 @@ card PNGs and separately downloaded original media identity for Twitter/Threads.
    files. Add download/copy-frame equivalents for native output operations.
 4. Prototype archive replay isolation early in this phase. The current viewer
    uses Electron `<webview>`. Archived scripts/HTML must not run with access to
-   Iris's authenticated application origin. Prove authenticated asset delivery,
+   Circé's authenticated application origin. Prove authenticated asset delivery,
    internal navigation and sandbox/origin isolation in a real browser before
    choosing the final replay adapter. Keep WARC/replay formats unchanged.
 5. Port Canvas CRUD/autosave, cards, notes, drawings, connectors, groups, crops,
@@ -278,7 +278,7 @@ card PNGs and separately downloaded original media identity for Twitter/Threads.
 Verify: `pnpm --filter @pond/desktop exec vitest run src/main/web src/renderer/src/features/saves src/renderer/src/features/canvas src/main/core/combine-images src/main/ipc/queries/canvases src/main/ipc/queries/conversion`.
 Acceptance: one representative fixture per registered capability; visual
 comparison against desktop; media seek/copy/export; document reload; Canvas
-rename/edit/reload/export; archived hostile content cannot invoke Iris operations
+rename/edit/reload/export; archived hostile content cannot invoke Circé operations
 or read credentials. Preserve PNG/media Twitter viewing as the baseline.
 
 ### Phase 5 — Complete Agent, providers, semantic search and enrichments (L; depends on 1, 2 and 4)
@@ -408,22 +408,22 @@ environment failures, baseline failures and regressions separately.
 ## Scope, branches and safety boundaries
 
 Implementation scope: the explicit owners listed above, related colocated tests,
-browser build/verification configuration, and `docs/iris` plus architecture docs.
+browser build/verification configuration, and `docs/circe` plus architecture docs.
 Phase 0 should turn each slice into a smaller task with an exact file list before
 implementation. Do not use this broad roadmap as a license for unrelated cleanup.
 
 Preserve the upstream license, package names, Source IDs and portable formats.
 No renderer rewrite, new UI kit, PostgreSQL, Redis, replacement job system,
-Playwright collector replacement, old Iris architecture import or Electron
+Playwright collector replacement, old Circé architecture import or Electron
 removal is in scope.
 
-Work in `/Users/elkyiem/Documents/GitHub/iris-web` on `web`. Preserve unrelated
+Work in `/Users/elkyiem/Documents/GitHub/Circé` on `web`. Preserve unrelated
 changes. Use conventional, independently reviewable commits. Do not push, publish
 or open a PR without a request. Baselines flow upstream/main → main → dev → web;
-features flow web → dev. Iris commits must never enter main. Record upstream
+features flow web → dev. Circé commits must never enter main. Record upstream
 drift before adopting a newer SHA.
 
-Do not write to `/Users/elkyiem/Documents/GitHub/Iris`,
+Do not write to `/Users/elkyiem/Documents/GitHub/Circé`,
 `/Users/elkyiem/Pond/Elk.pond`, or the normal Pond Application Support profile.
 Use existing ignored sandbox data or new purpose-built disposable fixtures;
 never copy production cookies. Only the designated shared runtime owner starts
@@ -442,7 +442,7 @@ the shared instance; no duplicate servers from worktrees.
   folder/view metadata and original bytes.
 - [ ] Every supported Source has separate fixture and live-verification status.
 - [ ] Agent/enrichment continuity and execution ownership are demonstrated.
-- [ ] Untrusted replay content cannot exercise authenticated Iris operations.
+- [ ] Untrusted replay content cannot exercise authenticated Circé operations.
 - [ ] Desktop checks and web checks pass; any existing exception is evidenced
   and scoped. No test is weakened to disguise a regression.
 - [ ] Private HTTPS and physical mobile-device workflows are verified.

@@ -115,8 +115,8 @@ it.each([true, false])(
       });
       expect(host.textContent).toContain(
         paired
-          ? "The Iris extension is connecting Twitter from your browser."
-          : "Pair the Iris extension using Connection in its panel, then try again.",
+          ? "The Circé extension is connecting Twitter from your browser."
+          : "Pair the Circé extension using Connection in its panel, then try again.",
       );
       expect(host.textContent).toContain(
         "Only the paired extension shares the requested Source session",

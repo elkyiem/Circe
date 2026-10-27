@@ -1,7 +1,7 @@
-# Iris browser milestone
+# Circé browser milestone
 
-Status: first host-backed implementation. Upstream baseline: Pond 1.6.3,
-`0e9dc817e17baafe60d9151a7fc49be5dc3e0861`.
+Status: host-backed browser implementation. Upstream baseline: Pond 2.0.0,
+including upstream `main` through `c594ed4d` (2026-10-27).
 
 ## Decision
 
@@ -94,9 +94,9 @@ Combine Images opens the same lazy-loaded component in a browser dialog. Create
 uses the existing host compositor; Export returns an authenticated download.
 The browser never supplies an output path on the host.
 
-The extension can pair with an exact Iris address and Library. Its existing
+The extension can pair with an exact Circé address and Library. Its existing
 capture tools, Source hooks, cookie API and session scheduler then use a narrow
-HTTP adapter instead of native messaging. A separate unpacked Iris build has its
+HTTP adapter instead of native messaging. A separate unpacked Circé build has its
 own extension ID, leaving the installed Pond extension and native host intact.
 An unpaired standard Pond build retains native messaging. A paired request never
 falls through to another local Library after a network or authorization failure.
@@ -114,7 +114,7 @@ An exhaustive access classification makes new upstream native operations require
 an explicit remote-access decision before the host can compile.
 
 After **New Source**, the browser notifies the extension through a credential-free
-page message. The background checks the sender against the paired Iris origin
+page message. The background checks the sender against the paired Circé origin
 and checks that the host is waiting for that Source. Only then does the existing
 cookie API send that Source's session to the original importer. A host poll also
 supports connecting from a different device. Session imports without an explicit,
@@ -150,8 +150,8 @@ home/Library, logs and native socket. Upstream sandbox guards suppress protocol
 registration, native-host installation, shortcuts and auto-updates. Keep the
 normal Pond app installed and its Library closed to this development host.
 
-The listener binds `127.0.0.1:4789` by default. `IRIS_WEB_ORIGIN` and the optional
-comma-separated `IRIS_WEB_ORIGINS` explicitly name accepted origins. A reverse
+The listener binds `127.0.0.1:4789` by default. `CIRCE_WEB_ORIGIN` and the optional
+comma-separated `CIRCE_WEB_ORIGINS` explicitly name accepted origins. A reverse
 proxy must preserve Host; each request's Origin must match that Host's configured
 origin. HTTPS sessions use Secure cookies. Arbitrary forwarded headers are not
 trusted. The development host is privately reachable through Tailscale Serve on
@@ -167,7 +167,7 @@ baseline; upstream drift was zero. `main` is the clean fast-forward-only upstrea
 mirror. Baseline updates flow upstream/main → main → dev → web. Record the new
 SHA and drift before each adoption; run upstream checks before adapting changes,
 then rerun the web boundary tests and real browser workflows. Completed features
-flow web → dev; bring web current with dev afterward. No Iris commit belongs on
+flow web → dev; bring web current with dev afterward. No Circé commit belongs on
 main. Preserve Pond's license, copyright, identifiers and serialized formats.
 
 Removing Electron later means replacing concrete host dependencies behind their
@@ -175,3 +175,21 @@ owners: session/harvest windows, utilityProcess workers, card rendering, native
 media tools, notifications/dialogs and lifecycle services. Move those ports one
 at a time, source by source, with compatibility fixtures and queue recovery tests.
 Keep the browser transport stable and preserve a single persistence owner.
+
+## Pond 2.0 and Circé addresses
+
+Fish and MCP settings use the same validated host queries as desktop. Fish
+presence and capture navigation cross the authenticated SSE channel; a browser
+capture keeps its Library binding and opens Fish in the browser instead of
+activating a desktop window. Bluesky public likes use the host's handle connector;
+its bookmark sign-in remains an explicit host window. Data Export ZIPs follow the
+existing bounded, opaque upload-ticket route before entering Pond's archive reader.
+
+Portless injects the assigned port, local HTTPS origin and private Tailscale
+origin before host startup. `web/config` validates each exact origin; it never
+accepts wildcard origins or trusts forwarded-host headers. A visiting device may
+run a loopback Portless forwarder to the host's Tailscale HTTPS URL. That adapter
+validates the short Host/Origin, rewrites them to the exact upstream origin and
+streams requests and responses without reading credentials into application code.
+The previous `IRIS_WEB_*` environment names and stored protocol namespaces remain
+compatible after the Circé rename.

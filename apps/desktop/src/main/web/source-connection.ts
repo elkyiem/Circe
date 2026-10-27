@@ -38,7 +38,7 @@ export async function openWebSourceConnection(source: Source) {
     callback(false),
   );
   const window = new BrowserWindow({
-    title: `Iris isolated sign-in — ${source}`,
+    title: `Circé isolated sign-in — ${source}`,
     width: 1000,
     height: 780,
     show: true,

@@ -87,7 +87,7 @@ export function ConnectWaitSection() {
               </>
             ) : step === "unavailable" ? (
               isBrowserRuntime() && mode === "extension" ? (
-                "Pair the Iris extension using Connection in its panel, then try again. No Source session has been connected."
+                "Pair the Circé extension using Connection in its panel, then try again. No Source session has been connected."
               ) : byHandle ? (
                 `Pond couldn't reach ${label}. Check your connection and try again.`
               ) : (
@@ -96,7 +96,7 @@ export function ConnectWaitSection() {
             ) : step === "signed_out" ? (
               isBrowserRuntime() ? (
                 mode === "extension" ? (
-                  "Sign in in the browser where the paired Iris extension is installed. Iris will finish the connection here."
+                  "Sign in in the browser where the paired Circé extension is installed. Circé will finish the connection here."
                 ) : (
                   "Sign-in was not completed in the isolated host window. Open it again to connect."
                 )
@@ -112,7 +112,7 @@ export function ConnectWaitSection() {
               <>
                 {isBrowserRuntime()
                   ? mode === "extension"
-                    ? `The Iris extension is connecting ${label} from your browser. Sign in there if needed.`
+                    ? `The Circé extension is connecting ${label} from your browser. Sign in there if needed.`
                     : `Sign in to ${label} in the isolated window on the host computer.`
                   : `Sign in to ${label} in your browser.`}
                 <br />
@@ -232,8 +232,8 @@ function ExtensionNote() {
     return (
       <p className={styles.note}>
         {mode === "extension"
-          ? "Only the paired extension shares the requested Source session with the Iris host. Captures are saved to that host’s Library."
-          : "Sign-in needs access to the host computer. Iris keeps the Account session there; it does not read another browser’s cookies."}
+          ? "Only the paired extension shares the requested Source session with the Circé host. Captures are saved to that host’s Library."
+          : "Sign-in needs access to the host computer. Circé keeps the Account session there; it does not read another browser’s cookies."}
       </p>
     );
   return (

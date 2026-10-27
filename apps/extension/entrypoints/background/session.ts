@@ -19,7 +19,7 @@ const SCHEDULER_STORAGE_KEY = "sessionPushScheduler";
 
 const pendingSessionSchema = z.object({ source: z.enum(SOURCES) });
 
-/** Explicitly requested by the paired Iris page; cookie access remains in the extension. */
+/** Explicitly requested by the paired Circé page; cookie access remains in the extension. */
 export async function connectBrowserSource(
   source: Source,
 ): Promise<ToolResult> {
@@ -27,7 +27,7 @@ export async function connectBrowserSource(
   if (pending.kind !== "pending" || pending.source !== source)
     return {
       ok: false,
-      message: "Start connecting this Source in Iris first.",
+      message: "Start connecting this Source in Circé first.",
     };
   const result = await pushSession(source);
   if (result.ok && result.data.connected) return { ok: true };

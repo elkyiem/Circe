@@ -1,4 +1,4 @@
-import { IRIS_EXTENSION_ID } from "@pond/schema/extension-connection";
+import { CIRCE_EXTENSION_ID } from "@pond/schema/extension-connection";
 import {
   NATIVE_HOST_NAME,
   type NativeRequest,
@@ -44,7 +44,7 @@ const HOST_NAME =
   import.meta.env.BROWSER === "safari" ? SAFARI_HOST_NAME : NATIVE_HOST_NAME;
 
 async function localCall(request: NativeRequest): Promise<NativeResponse> {
-  if (browser.runtime.id === IRIS_EXTENSION_ID)
+  if (browser.runtime.id === CIRCE_EXTENSION_ID)
     return { ok: false, error: "iris_pairing_required" };
   try {
     const response = await browser.runtime.sendNativeMessage(
@@ -66,5 +66,7 @@ export const hostTransport = createHostTransport({
   extension: browser.runtime.getURL("").replace(/\/$/, ""),
 });
 
-/** A paired Iris failure must never fall through to a different local Library. */
-export const nativeCall = hostTransport.call;
+/** A paired Circé failure must never fall through to a different local Library. */
+export const nativeCall = import.meta.env.CIRCE_EXTENSION
+  ? hostTransport.call
+  : localCall;
