@@ -92,11 +92,12 @@ kill -TERM -- "-$(cat .artifacts/circe-runtime/host.pid)"
 ```
 
 The Portless HTTPS proxy is running on loopback port 443, and the local hostname
-resolves to loopback. Login, image/video media ranges, search, and folder operations
-passed through the short address using the Portless CA explicitly. macOS still
-rejects the certificate through its normal trust verifier: native trust commands
-timed out, so browser certificate trust remains pending. Complete that step from
-a local Terminal in this checkout and approve its macOS authentication prompt:
+resolves to loopback. macOS trusts the Portless CA for SSL after the owner approved
+its native authentication dialog. `security verify-cert` and
+`curl https://circe.elkyiem` both pass without an explicit CA option. Login,
+image/video media ranges, search, and folder operations passed through the short
+address. If trust needs to be restored, run this from a local Terminal in this
+checkout and approve its macOS authentication prompt:
 
 ```sh
 pnpm --filter @pond/desktop exec portless trust
@@ -108,6 +109,15 @@ existing Tailscale Serve routes were preserved. The phone and remote Windows
 address remain the private Tailscale URL until their local Portless setup is
 authorized. The launchers below work on macOS and Windows without shell-specific
 environment assignment.
+
+The launcher supplies its CA to child Node processes automatically. Standalone
+smoke processes need the same setting for their Node-side fixture requests;
+Chromium still verifies page certificates through macOS trust:
+
+```sh
+NODE_EXTRA_CA_CERTS="$HOME/.portless/ca.pem" CIRCE_WEB_ORIGIN=https://circe.elkyiem pnpm --filter @pond/desktop exec node scripts/smoke-web.mjs
+env -u ELECTRON_RUN_AS_NODE NODE_EXTRA_CA_CERTS="$HOME/.portless/ca.pem" CIRCE_WEB_ORIGIN=https://circe.elkyiem pnpm --filter @pond/desktop exec electron scripts/smoke-web-browser.cjs
+```
 
 ## Short addresses with Portless
 

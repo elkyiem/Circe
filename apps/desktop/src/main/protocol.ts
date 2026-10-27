@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import { app, net, protocol } from "electron";
 import log from "electron-log/main.js";
 import mime from "mime-types";
+import { isValid as isUlid } from "ulid";
 import { POND_PROTOCOL } from "../shared/constants";
 import {
   libraryMediaMetadata,
@@ -70,7 +71,10 @@ export function registerProtocol() {
 export async function servePondMedia(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const host = url.hostname;
+    // Chromium lowercases standard-scheme hosts; Save directories keep uppercase ULIDs.
+    const host = isUlid(url.hostname)
+      ? url.hostname.toUpperCase()
+      : url.hostname;
     const file = decodeURIComponent(url.pathname.replace(/^\//, ""));
     if (!host || !file) {
       return new Response("bad request", { status: 400 });

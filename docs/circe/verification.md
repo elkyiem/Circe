@@ -527,12 +527,34 @@ its PID and logs are under ignored `.artifacts/circe-runtime/`.
   HTTP token before creating sessions. The regression fetches an actual image
   through Electron's `pond://` handler, passed after the fix, and is included in the CI driver.
 
-Administrator authorization for Portless timed out, so `https://circe.elkyiem`
-is still pending. No root proxy, hosts-file change or CA trust change was made.
-The existing private HTTPS route is active and all other Serve routes are retained.
+After the owner approved the native certificate dialog, `https://circe.elkyiem`
+became active on this Mac. Portless runs on loopback port 443, the local hostname
+resolves to loopback, and macOS certificate verification and ordinary `curl` both
+pass. The browser workflow passed at desktop and mobile widths through this
+trusted short address, including video seeking and reload persistence. Node-side
+fixture requests use the same `NODE_EXTRA_CA_CERTS` setting supplied by Portless;
+Chromium page loads use macOS certificate trust.
+
+Portless also publishes the private address
+`https://elkyiem.tailffeb5b.ts.net:8444`. The existing private HTTPS route on port
+9443 remains active. All prior Serve routes and Funnel settings were verified
+unchanged. Temporary administrator credential delivery files were removed after
+use. Other devices still need their own local Portless setup for the short name.
 
 After the network fix, `pnpm check` passed all 27 tasks (4,585 desktop tests),
 `pnpm build` passed all 12 tasks and budgets, the browser bundle rebuilt, and the
 network smoke passed. The independent host was restarted from those bundles;
 authenticated private-HTTPS restart and browser checks passed again, and the
 new runtime log contains no ByteString header errors.
+
+A later Ubuntu CI run exposed a case-sensitive media lookup failure. Chromium
+lowercases standard-scheme authorities, but Save directories retain uppercase
+ULIDs. The protocol now restores valid Save ULIDs before resolving media and
+thumbnails. The existing network smoke was run against a temporary case-sensitive
+HFS+ volume on macOS: it reproduced `404 !== 200` before the fix and passed after
+the fix. That volume was detached and removed. The production build passed all
+12 tasks and size budgets, and the shared Portless host was restarted from the
+rebuilt bundles. Authenticated media ranges, folder/search operations, private
+HTTPS persistence, and normal macOS certificate verification passed again.
+`pnpm check` passed all 27 tasks again, with 4,585 desktop tests passed and
+5 skipped.
