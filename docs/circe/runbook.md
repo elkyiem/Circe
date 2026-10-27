@@ -78,8 +78,10 @@ and require an explicitly connected test session.
 ## Current shared host (2026-10-27)
 
 This chat was explicitly designated runtime owner. The rebuilt host is running
-independently of T3, with the existing isolated Library, on loopback port 4789.
-The verified private address is `https://elkyiem.tailffeb5b.ts.net:9443`.
+independently of T3 through `scripts/start-web-address.mjs host`, with the existing
+isolated Library, on loopback port 4789. Portless registers `https://circe.elkyiem`
+and adds the private address `https://elkyiem.tailffeb5b.ts.net:8444`. The existing
+private address `https://elkyiem.tailffeb5b.ts.net:9443` remains available too.
 Runtime PID: `.artifacts/circe-runtime/host.pid`; log:
 `.artifacts/circe-runtime/host.log`. Stop that owner process before starting a
 replacement. It uses the same `scripts/start-web.mjs` launcher and sandbox.
@@ -89,13 +91,23 @@ replacement. It uses the same `scripts/start-web.mjs` launcher and sandbox.
 kill -TERM -- "-$(cat .artifacts/circe-runtime/host.pid)"
 ```
 
-The Portless launchers below are configured for `https://circe.elkyiem` and work
-on macOS and Windows without shell-specific environment assignment. Short-address
-activation still needs administrator authorization to bind port 443, trust the
-Portless CA, and register the local hostname. The private credential card timed
-out; no privileged setup was performed. Existing Tailscale Serve routes were
-preserved. The phone and remote Windows address remain the private Tailscale URL
-until their local Portless setup is authorized.
+The Portless HTTPS proxy is running on loopback port 443, and the local hostname
+resolves to loopback. Login, image/video media ranges, search, and folder operations
+passed through the short address using the Portless CA explicitly. macOS still
+rejects the certificate through its normal trust verifier: native trust commands
+timed out, so browser certificate trust remains pending. Complete that step from
+a local Terminal in this checkout and approve its macOS authentication prompt:
+
+```sh
+pnpm --filter @pond/desktop exec portless trust
+```
+
+Then verify `curl https://circe.elkyiem` succeeds without a custom CA option.
+Temporary administrator credential delivery files were removed after use. All
+existing Tailscale Serve routes were preserved. The phone and remote Windows
+address remain the private Tailscale URL until their local Portless setup is
+authorized. The launchers below work on macOS and Windows without shell-specific
+environment assignment.
 
 ## Short addresses with Portless
 
