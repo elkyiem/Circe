@@ -24,6 +24,22 @@ export type ReasonResult<Reason extends string, Data = NoData> =
   | OkSuccess<Data>
   | ReasonFailure<Reason>;
 
+/**
+ * Why Safari would not open Pond's extension settings. `unsigned-build` is the common one
+ * for a locally built copy: Safari builds its list from the code signature and skips
+ * ad-hoc appexes unless "Allow unsigned extensions" is on.
+ */
+export type SafariSettingsFailureReason =
+  | "unsupported"
+  | "not-bundled"
+  | "helper-missing"
+  | "unsigned-build"
+  | "safari-refused";
+
+export type OpenSafariResult =
+  | { ok: true }
+  | { ok: false; reason: SafariSettingsFailureReason; error: string };
+
 export type CancellableResult<Data = NoData> =
   | OkResult<Data>
   | ReasonFailure<"cancelled">;

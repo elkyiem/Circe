@@ -162,6 +162,9 @@ The app composition layer passes the Library's full selection and folder members
 
 ## Circé browser transport
 
+The Saves feature exposes `saves/lookup.ts` for reading a loaded Save's Source.
+Source sign-in notices use that entry without accessing the mutable Save pool.
+
 The Circé browser entrypoint installs an HTTP implementation of the renderer
 capability boundary before loading the shared application. A separate, opt-in
 Electron listener owns authenticated browser queries, media and SyncAction SSE.

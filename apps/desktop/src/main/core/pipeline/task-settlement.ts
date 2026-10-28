@@ -1,4 +1,10 @@
-import { type Source, saves, type Task, tasks } from "@pond/schema/db";
+import {
+  queueGenerations,
+  type Source,
+  saves,
+  type Task,
+  tasks,
+} from "@pond/schema/db";
 import type { PipelineTaskEvent } from "@pond/schema/events";
 import { and, eq, inArray } from "drizzle-orm";
 import log from "electron-log/main.js";
@@ -205,6 +211,37 @@ export async function handleFailure(
       recordedAttempts: task.attempts,
       settled: false,
     };
+  }
+  /* A harvest that needs a sign-in waits a day. A refreshed save, or a capture that already has files, should not look like it is still saving in the meantime. */
+  if (decision.status === "blocked" && task.op === "harvest_metadata") {
+    const current = db
+      .select({ status: saves.status, files: saves.files })
+      .from(saves)
+      .where(eq(saves.id, task.saveId))
+      .get();
+    const generation = task.generationId
+      ? db
+          .select({ kind: queueGenerations.kind })
+          .from(queueGenerations)
+          .where(eq(queueGenerations.id, task.generationId))
+          .get()
+      : undefined;
+    const refresh = generation?.kind === "refresh";
+    if (
+      current?.status === "ingesting" &&
+      (refresh || (current.files?.length ?? 0) > 0)
+    ) {
+      /* The renderer tells the user to sign in only when the block came from a refresh they asked for. */
+      await persistSave(
+        task.saveId,
+        { status: "complete", ingestCompletedAt: new Date() },
+        {
+          actorReason: refresh
+            ? "pipeline:refresh-blocked"
+            : "pipeline:blocked-keep-files",
+        },
+      );
+    }
   }
   if (decision.status === "dead") {
     metrics.tasksFailed++;

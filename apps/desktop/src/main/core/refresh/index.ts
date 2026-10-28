@@ -1,11 +1,12 @@
 import { rm } from "node:fs/promises";
 import { saves, tasks } from "@pond/schema/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, ne, or } from "drizzle-orm";
 import log from "electron-log/main.js";
 import { getDb } from "../../db";
 import { saveFile } from "../../paths";
 import { persistSave } from "../persist-save";
 import { resetTasksForSave } from "../pipeline/enqueue";
+import { createPendingTasks } from "../pipeline/enqueue-scheduling";
 import { withInteractivePriority } from "../pipeline/priority";
 import { createQueueGeneration } from "../pipeline/queue-generations";
 import { kickReconciler } from "../pipeline/reconciler-client";
@@ -30,7 +31,6 @@ export async function refreshSave(
   const current = rows[0];
   if (!current) return { ok: false, reason: "not_found" };
   if (!current.url) return { ok: false, reason: "no_url" };
-
   try {
     const generationId = await createQueueGeneration({
       kind: "refresh",
@@ -89,10 +89,65 @@ export async function refreshSave(
       .where(and(eq(tasks.saveId, saveId), eq(tasks.op, "harvest_metadata")))
       .run();
 
-    if ((harvest.changes ?? 0) === 0) {
+    // The new metadata can point at different media; fetch_blobs only
+    // downloads what is not on disk yet, and ensure_poster only builds
+    // posters that are missing. Tasks that are not done also rerun: a
+    // blocked refresh restores the save, which sweeps its waiting tasks
+    // to dead, and the save only completes once every task is done.
+    db.update(tasks)
+      .set({
+        status: "pending",
+        attempts: 0,
+        generationId,
+        lastError: null,
+        nextRunAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(tasks.saveId, saveId),
+          ne(tasks.op, "harvest_metadata"),
+          or(
+            inArray(tasks.op, ["fetch_blobs", "ensure_poster"]),
+            ne(tasks.status, "done"),
+          ),
+        ),
+      )
+      .run();
+
+    // Saves read back from the library folder have no task rows, since
+    // tasks live only in the local index. Add whatever the source's plan
+    // is missing.
+    const existingOps = new Set(
+      db
+        .select({ op: tasks.op })
+        .from(tasks)
+        .where(eq(tasks.saveId, saveId))
+        .all()
+        .map((row) => row.op),
+    );
+    const missing = createPendingTasks(
+      saveId,
+      current.source,
+      now,
+      "user:refresh",
+      undefined,
+      generationId,
+    )
+      .filter((row) => !existingOps.has(row.op))
+      .map((row) =>
+        row.op === "harvest_metadata"
+          ? { ...row, payload: withInteractivePriority({ force: true }) }
+          : row,
+      );
+    if (
+      (harvest.changes ?? 0) === 0 &&
+      !missing.some((row) => row.op === "harvest_metadata")
+    ) {
       log.warn("[pond refresh] no harvest_metadata task", saveId);
       return { ok: false, reason: "internal_error" };
     }
+    if (missing.length > 0) db.insert(tasks).values(missing).run();
 
     await persistSave(
       saveId,

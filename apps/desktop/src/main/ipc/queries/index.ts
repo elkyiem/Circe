@@ -30,6 +30,7 @@ import { mediaUnderstandingQueries } from "./media-understanding";
 import { openWithQueries } from "./open-with";
 import type { QueryHandlerMap, QueryParams } from "./params";
 import { queueQueries } from "./queue";
+import { safariExtensionQueries } from "./safari-extension";
 import { savedViewsQueries } from "./saved-views";
 import { savesQueries } from "./saves";
 import { settingsQueries } from "./settings";
@@ -72,6 +73,7 @@ const queryRegistry = {
   ...accountsQueries,
   ...watchesQueries,
   ...sourcesQueries,
+  ...safariExtensionQueries,
 } satisfies ContractHandlers;
 
 const QueryNameEnum = z.enum(Object.keys(queryRegistry));

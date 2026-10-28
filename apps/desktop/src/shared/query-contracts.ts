@@ -55,6 +55,10 @@ import type {
 } from "./query-contracts-system";
 import type { QueueQueryInputs, QueueQueryResults } from "./queue-contracts";
 import type {
+  SafariExtensionQueryInputs,
+  SafariExtensionQueryResults,
+} from "./safari-extension-contracts";
+import type {
   SavesClipboardQueryInputs,
   SavesClipboardQueryResults,
 } from "./saves-clipboard-contracts";
@@ -127,6 +131,7 @@ export type { OkResult } from "./query-contracts-shared";
 
 export interface QueryInputs
   extends AccountQueryInputs,
+    SafariExtensionQueryInputs,
     TransferQueryInputs,
     BulkQueryInputs,
     FolderQueryInputs,
@@ -339,6 +344,7 @@ export interface QueryInputs
 
 export interface QueryResults
   extends AccountQueryResults,
+    SafariExtensionQueryResults,
     TransferQueryResults,
     BulkQueryResults,
     SystemQueryResults,

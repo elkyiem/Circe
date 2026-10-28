@@ -47,11 +47,33 @@
 }
 
 .name {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   font-size: var(--ds-text-md);
   font-weight: var(--ds-weight-xl);
 }
 
 .browsers {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-gray-11);
+}
+
+.badge {
+  padding: 1px 6px;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-weight-xl);
+  color: var(--ds-green-11);
+  background: var(--ds-green-3);
+  border-radius: 4px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 20px;
+  margin: 12px 0 0;
   font-size: var(--ds-text-sm);
   color: var(--ds-gray-11);
 }

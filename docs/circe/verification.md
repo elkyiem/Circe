@@ -592,3 +592,45 @@ on Windows and confirmed that `https://circe.elkyiem` loads there.
 - Temporary administrator-password and Tailscale API-token delivery files were
   removed after use. Public Windows/iPad certificate artifacts remain available
   under `.artifacts/circe-device-setup/`.
+
+
+## Main-to-web sync — 2026-10-28
+
+Merged the 12 new `main` commits through `d949c928` into `web`. At the time of
+verification, `origin/main` and `upstream/main` both pointed to that commit.
+The merge retained Circé's download-size diagnostics alongside upstream's image
+validation tests. The refresh sign-in notice reads a loaded Save's Source through
+an explicit Saves entrypoint, satisfying the feature ownership check.
+
+The new native Safari operations are classified as host-only. A regression test
+first reproduced the visiting Mac browser showing Safari controls, then passed
+after those controls were restricted to the desktop runtime. Boundary tests also
+reject all three native Safari queries and verify that `pipeline:refresh-blocked`
+reasons survive the authenticated SSE stream. Upstream's notice tests cover the
+sign-in action, retry after connection, and unloaded Saves.
+
+- `pnpm check`: all 27 tasks passed; desktop 668 files passed, 4,627 tests passed,
+  5 skipped.
+- `pnpm build`: all 12 tasks and existing performance budgets passed.
+- `build:web` and the Circé extension build passed.
+- `smoke-desktop.cjs --use-mock-keychain` passed with a temporary isolated Library.
+- React Doctor changed-scope scans before and after the compatibility fixes both
+  scored 90/100 with the same three advisories. The small media-kind lookup,
+  sequential Safari probes and intentionally bounded embedding batches were
+  reviewed; they did not identify a browser regression requiring a behavior change.
+- The designated runtime owner restarted only the shared Circé host from the
+  rebuilt bundles, preserving its sandbox. The authenticated restart check passed,
+  followed by image/video byte ranges, pagination, search and Folder operations.
+- The real browser smoke passed at 1280×900 and 390×844, with Circé explicitly
+  resolved to the Mac's Tailscale IP. Image rendering, video seeking, Folder
+  assignment/removal, navigation and reload persistence passed.
+- Trusted HTTPS requests for Circé and Nono through `100.88.201.56` both returned
+  200. The complete Tailscale Serve configuration before and after the host
+  restart was identical; shared DNS, gateway and certificate setup were retained.
+
+Local logs are `/tmp/circe-main-sync-{check,build,web-build,extension-build,
+react-doctor,desktop-smoke,web-restart,web-http,web-browser}.log`. Physical Windows
+and iPad acceptance of these new application changes was not repeated. Source
+sign-ins and external network harvests remain separate from these offline checks.
+The [sync process](sync.md) records the repeatable commands and a proposed sync-PR
+workflow; no automatic updater or deployment was enabled.

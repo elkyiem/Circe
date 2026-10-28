@@ -135,4 +135,20 @@ run("codesign", [
   appex,
 ]);
 
+// The settings helper: Electron cannot call SFSafariApplication itself, and Safari has
+// no URL scheme for its Extensions pane.
+const helper = join(desktopRoot, "resources/bin/pond-safari-settings");
+mkdirSync(dirname(helper), { recursive: true });
+run("xcrun", [
+  "--sdk",
+  "macosx",
+  "swiftc",
+  "-O",
+  "-o",
+  helper,
+  resolve(extensionRoot, "safari/pond-safari-settings.swift"),
+]);
+run("codesign", ["--force", "--sign", "-", helper]);
+
 console.log(`[pond safari] extension bundled at ${appex}`);
+console.log(`[pond safari] settings helper at ${helper}`);

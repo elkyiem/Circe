@@ -1,6 +1,6 @@
 # Feature parity ledger
 
-Baseline: Pond 2.0.0 plus upstream `main` through `c594ed4d` (2026-10-27).
+Baseline: Pond 2.0.0 plus upstream `main` through `d949c928` (2026-10-28).
 Long-term objective: every Pond workflow from desktop and mobile browsers.
 Full parity is **in progress**. An exposed operation is not verification evidence.
 
@@ -52,9 +52,9 @@ for the remaining phases.
 
 ## Pond 2.0 integration
 
-`main` was 107 commits behind upstream and has been fast-forwarded. `web` merges
-that history while retaining its browser features. This is an explicit sync;
-no scheduled upstream updater is configured.
+`main` mirrors upstream. `web` includes that history through `d949c928`, including
+the 12 commits after the original Pond 2 integration. This is an explicit sync;
+no scheduled upstream updater is configured. See the [sync process](sync.md).
 
 - All 18 Source descriptors, harvesters and settings come from the shared Pond 2
   implementation. Bluesky handle connection has an HTTP command adapter.
@@ -65,9 +65,15 @@ no scheduled upstream updater is configured.
   opaque Library-bound ticket, and calls Pond's archive reader on the host.
 - Bluesky private bookmarks retain upstream's host sign-in window. The browser
   explicitly labels that step; public likes use the handle form.
-- Circé's Portless launchers support `https://circe.elkyiem` locally and through a
-  local forwarding proxy on another Tailscale device. Exact-origin validation,
-  session cookies, uploads and media ranges have offline regression coverage.
+- Refresh from Source, product detection, source-icon repair, dark-mode media
+  counts and batched tag vocabulary embeddings share the upstream implementation.
+  Refresh sign-in notices travel over the authenticated browser event stream.
+- Safari extension status and settings remain native desktop operations. The
+  visiting browser does not show controls for the host's Safari installation.
+- Circé's Portless launcher supports `https://circe.elkyiem` locally and through
+  shared tailnet DNS and HTTPS. Visiting devices trust the Mac's CA once; no
+  client proxy is required. Exact-origin validation, session cookies, uploads
+  and media ranges have offline regression coverage.
 
 The offline suite and production bundles are checked separately from live Source
 sign-ins and physical-device acceptance. Earlier verification entries describe

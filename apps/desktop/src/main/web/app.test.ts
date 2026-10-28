@@ -208,6 +208,9 @@ describe("browser host boundary", () => {
       "saves.createManual",
       "library.switchTo",
       "saves.filePath",
+      "extension.safariStatus",
+      "extension.openSafariSettings",
+      "extension.openSafari",
       "__proto__",
     ]) {
       const response = await test.request("/web/query", {
@@ -320,42 +323,46 @@ describe("browser host boundary", () => {
     expect(response.status).toBe(409);
     expect(test.calls).toEqual([]);
   });
-  it("opens an authenticated event stream and cleans up on disconnect", async () => {
-    const test = await host();
-    const cookie = await test.login();
-    const controller = new AbortController();
-    const response = await test.request("/web/events", {
-      headers: { cookie },
-      signal: controller.signal,
-    });
-    const reader = response.body?.getReader();
-    const first = await reader?.read();
-    expect(new TextDecoder().decode(first?.value)).toContain("event: ready");
-    expect(test.listeners.size).toBe(1);
-    const action: WireSyncAction = {
-      id: 7,
-      batchId: null,
-      modelName: "save",
-      modelId: "fixture",
-      action: "U",
-      data: { status: "complete" },
-      prevData: null,
-      actor: "system",
-      actorReason: "pipeline:finalize",
-      createdAt: 1234,
-    };
-    for (const listener of test.listeners) listener(action);
-    let delivered = "";
-    while (!delivered.includes("event: sync")) {
-      const chunk = await reader?.read();
-      if (!chunk || chunk.done) break;
-      delivered += new TextDecoder().decode(chunk.value);
-    }
-    expect(delivered).toContain('"status":"complete"');
-    expect(delivered).toContain('"createdAt":1234');
-    controller.abort();
-    await reader?.cancel().catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    expect(test.listeners.size).toBe(0);
-  });
+  it.each(["pipeline:finalize", "pipeline:refresh-blocked"])(
+    "delivers %s over an authenticated event stream and cleans up on disconnect",
+    async (actorReason) => {
+      const test = await host();
+      const cookie = await test.login();
+      const controller = new AbortController();
+      const response = await test.request("/web/events", {
+        headers: { cookie },
+        signal: controller.signal,
+      });
+      const reader = response.body?.getReader();
+      const first = await reader?.read();
+      expect(new TextDecoder().decode(first?.value)).toContain("event: ready");
+      expect(test.listeners.size).toBe(1);
+      const action: WireSyncAction = {
+        id: 7,
+        batchId: null,
+        modelName: "save",
+        modelId: "fixture",
+        action: "U",
+        data: { status: "complete" },
+        prevData: null,
+        actor: "system",
+        actorReason,
+        createdAt: 1234,
+      };
+      for (const listener of test.listeners) listener(action);
+      let delivered = "";
+      while (!delivered.includes("event: sync")) {
+        const chunk = await reader?.read();
+        if (!chunk || chunk.done) break;
+        delivered += new TextDecoder().decode(chunk.value);
+      }
+      expect(delivered).toContain('"status":"complete"');
+      expect(delivered).toContain('"createdAt":1234');
+      expect(delivered).toContain(JSON.stringify(actorReason));
+      controller.abort();
+      await reader?.cancel().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      expect(test.listeners.size).toBe(0);
+    },
+  );
 });

@@ -1,6 +1,8 @@
 import { CHROME_WEB_STORE_URL, FIREFOX_ADDONS_URL } from "@pond/schema/native";
 import { Button, Dialog } from "@pond/ui";
-import { useState } from "react";
+import type { SafariExtensionStatus } from "@shared/safari-extension-contracts";
+import { useCallback, useEffect, useState } from "react";
+import { IS_MAC, isBrowserRuntime } from "@/shared/lib/platform";
 import styles from "./styles.module.css";
 
 const STORES = [
@@ -18,6 +20,42 @@ const STORES = [
   },
 ];
 
+/**
+ * Safari has no store page: the extension ships inside Pond.app, so there is nothing to
+ * download. Whether it runs is decided by a switch in Safari's own settings, which is why
+ * this row reports state and opens Safari instead of offering an install.
+ */
+function safariDetail(status: SafariExtensionStatus | null): string {
+  switch (status?.state) {
+    case "enabled":
+      return "On, in Safari 18 or later";
+    case "disabled":
+      return "Installed, but switched off in Safari";
+    case "not_registered":
+      return status.signature === "ad-hoc"
+        ? "Safari ignores unsigned builds"
+        : "Open Safari once to finish setting it up";
+    case "not_bundled":
+      return "Not included in this build";
+    default:
+      return "Safari 18 or later, on macOS";
+  }
+}
+
+const SAFARI_STEPS = [
+  "Open Safari, then Settings and Extensions.",
+  "Turn on Pond.",
+  "Allow it for the sites you save from, or choose Always Allow on Every Website.",
+];
+
+/** Safari only lists an ad-hoc appex once this is on, and it is off by default. */
+const UNSIGNED_STEPS = [
+  "Open Safari, then Settings and Advanced.",
+  "Turn on Show features for web developers.",
+  "In the Developer tab, turn on Allow unsigned extensions.",
+  "Then turn on Pond in Extensions.",
+];
+
 export function BrowserExtensionDialog({
   open,
   onOpenChange,
@@ -25,7 +63,28 @@ export function BrowserExtensionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const nativeSafari = IS_MAC && !isBrowserRuntime();
   const [error, setError] = useState<string | null>(null);
+  const [safari, setSafari] = useState<SafariExtensionStatus | null>(null);
+  const [needsUnsigned, setNeedsUnsigned] = useState(false);
+
+  const refreshSafari = useCallback(() => {
+    if (!nativeSafari) return;
+    void window.pond
+      .query("extension.safariStatus", {})
+      .then(setSafari)
+      .catch(() => setSafari(null));
+  }, [nativeSafari]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSafari(null);
+    setNeedsUnsigned(false);
+    refreshSafari();
+    /** Enabling happens in Safari; re-read on return so the row updates without a reopen. */
+    window.addEventListener("focus", refreshSafari);
+    return () => window.removeEventListener("focus", refreshSafari);
+  }, [open, refreshSafari]);
 
   async function openStore(url: string): Promise<void> {
     setError(null);
@@ -34,6 +93,29 @@ export function BrowserExtensionDialog({
       setError("Pond couldn't open the store page. Try again.");
     }
   }
+
+  /**
+   * Jumps straight to Pond in Safari's settings. When Safari refuses — which it does for a
+   * build it does not list — fall back to opening Safari and explain the likely reason
+   * rather than leaving the button looking broken.
+   */
+  async function openSafariSettings(): Promise<void> {
+    setError(null);
+    const result = await window.pond.query("extension.openSafariSettings", {});
+    if (result.ok) return;
+    setNeedsUnsigned(result.reason === "unsigned-build");
+    setError(result.error);
+    await window.pond.query("extension.openSafari", {});
+  }
+
+  const safariState = safari?.state ?? null;
+  const safariOff =
+    safariState === "disabled" || safariState === "not_registered";
+  const steps = needsUnsigned
+    ? UNSIGNED_STEPS
+    : safariOff
+      ? SAFARI_STEPS
+      : null;
 
   return (
     <Dialog.Root
@@ -64,7 +146,35 @@ export function BrowserExtensionDialog({
                   </Button>
                 </li>
               ))}
+              {nativeSafari ? (
+                <li className={styles.store}>
+                  <div className={styles.text}>
+                    <span className={styles.name}>
+                      Safari
+                      {safariState === "enabled" ? (
+                        <span className={styles.badge}>Enabled</span>
+                      ) : null}
+                    </span>
+                    <span className={styles.browsers}>
+                      {safariDetail(safari)}
+                    </span>
+                  </div>
+                  {safariState === "enabled" ||
+                  safariState === "not_bundled" ? null : (
+                    <Button onClick={() => void openSafariSettings()}>
+                      Open Safari Settings
+                    </Button>
+                  )}
+                </li>
+              ) : null}
             </ul>
+            {steps ? (
+              <ol className={styles.steps}>
+                {steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            ) : null}
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

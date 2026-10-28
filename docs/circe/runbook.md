@@ -3,6 +3,7 @@
 Checkout: `/Users/elkyiem/Documents/GitHub/Circé`, branch `web`.
 Origin: `https://github.com/elkyiem/Circe.git`.
 Upstream: `https://github.com/raphaelsalaja/pond.git`.
+To bring new Pond pushes into `web`, follow the [sync process](sync.md).
 Use Node 24 (`.nvmrc`) and pnpm 11.27.0 (`packageManager`). For this machine:
 
 ```sh
