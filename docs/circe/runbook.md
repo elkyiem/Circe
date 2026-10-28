@@ -76,11 +76,11 @@ the isolated host. It records the visible disconnection banner. Restart the same
 host and run the persistence check. Live account/source checks remain separate
 and require an explicitly connected test session.
 
-## Current shared host (2026-10-27)
+## Current shared host (2026-10-28)
 
 This chat was explicitly designated runtime owner. The rebuilt host is running
 independently of T3 through `scripts/start-web-address.mjs host`, with the existing
-isolated Library, on loopback port 4789. Portless registers `https://circe.elkyiem`
+isolated Library and rebuilt Pond 2.0.1 bundles, on loopback port 4789. Portless registers `https://circe.elkyiem`
 and adds the private address `https://elkyiem.tailffeb5b.ts.net:8444`. The existing
 private address `https://elkyiem.tailffeb5b.ts.net:9443` remains available too.
 Runtime PID: `.artifacts/circe-runtime/host.pid`; log:

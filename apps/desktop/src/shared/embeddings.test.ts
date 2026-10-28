@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   clipEmbeddingVersion,
+  EMBEDDING_TOKEN_MAX_LENGTH,
+  EMBEDDING_TOKENIZER_OPTIONS,
   embeddingClassificationLabel,
   embeddingClusterText,
   embeddingCodeQuery,
@@ -12,6 +14,7 @@ import {
   mediaEmbeddingVersion,
   normalizedEmbeddingVector,
   textEmbeddingVersion,
+  tokenizeEmbeddingTexts,
 } from "./embeddings";
 import { EMBEDDING_MODEL } from "./on-device-models";
 
@@ -61,6 +64,23 @@ describe("EmbeddingGemma 2 input contracts", () => {
     expect(textEmbeddingVersion()).not.toBe(clipEmbeddingVersion());
     expect(textEmbeddingVersion()).toContain(EMBEDDING_MODEL.revision);
     expect(clipEmbeddingVersion()).toContain(EMBEDDING_MODEL.revision);
+  });
+
+  it("passes an explicit Gemma context length so truncation can apply", () => {
+    let options: unknown;
+    tokenizeEmbeddingTexts(
+      (texts, tokenizerOptions) => {
+        options = tokenizerOptions;
+        return texts;
+      },
+      ["long query"],
+    );
+    expect(options).toEqual({
+      padding: true,
+      truncation: true,
+      max_length: EMBEDDING_TOKEN_MAX_LENGTH,
+    });
+    expect(EMBEDDING_TOKENIZER_OPTIONS.max_length).toBe(2048);
   });
 
   it("accepts only finite, non-zero 768-dimensional model output", () => {

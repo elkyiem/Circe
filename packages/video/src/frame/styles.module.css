@@ -1,0 +1,26 @@
+.frame {
+  position: relative;
+  overflow: hidden;
+  font-family: var(--ds-ui-font-family);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  color: var(--ds-gray-12);
+  background: #fff;
+}
+
+/* The UI reset pins every element to the 14px optical size, which loosens large stage type. */
+:where(.frame) * {
+  font-variation-settings: normal;
+  font-feature-settings: "cv11", "ss01";
+  font-variant-numeric: normal;
+}
+
+/* Frames are pure functions of time; CSS transitions would run on the wall clock between captures. */
+:where(.frame) *,
+:where(.frame) *::before,
+:where(.frame) *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat transitions declared by Pond UI classes */
+  transition: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must beat animations declared by Pond UI classes */
+  animation: none !important;
+}

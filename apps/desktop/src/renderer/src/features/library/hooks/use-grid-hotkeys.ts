@@ -17,6 +17,7 @@ import {
 import { ensureSaves } from "@/features/saves/pool";
 import { getAppRouter } from "@/shared/lib/app-router";
 import { findScrollParent } from "@/shared/lib/dom";
+import { eventFromEditable } from "@/shared/lib/editable-target";
 import { bindingKeys, useShortcutBindings } from "@/shared/lib/shortcuts";
 import { notify } from "@/shared/lib/toast";
 
@@ -26,6 +27,7 @@ function canNavigate(event: KeyboardEvent): boolean {
   return (
     !event.defaultPrevented &&
     !event.isComposing &&
+    !eventFromEditable(event) &&
     collectionOwnsKeyboard() &&
     !saveIdFromPath(getAppRouter()?.state.location.pathname ?? "")
   );

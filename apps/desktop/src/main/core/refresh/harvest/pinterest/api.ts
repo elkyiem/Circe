@@ -5,8 +5,10 @@ import type {
   CaptureMedia,
   CaptureMetrics,
 } from "@pond/schema/raw";
+import { session } from "electron";
 import log from "electron-log/main.js";
 import { z } from "zod";
+import { browserUserAgent } from "../../harvest-window/constants";
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 " +
@@ -15,6 +17,17 @@ const FETCH_TIMEOUT_MS = 15_000;
 
 const OptionalText = z.string().optional().catch(undefined);
 const OptionalCount = z.number().optional().catch(undefined);
+
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+);
 
 const RelayUserSchema = z
   .object({
@@ -60,6 +73,20 @@ const RelayPinSchema = z
     images_736x: RelayImageSchema,
     images_564x: RelayImageSchema,
     images_474x: RelayImageSchema,
+    images: z
+      .record(z.string(), z.object({ url: OptionalText }).catch({}))
+      .optional()
+      .catch(undefined),
+    videos: z
+      .object({
+        video_list: z
+          .record(z.string(), z.object({ url: OptionalText }).catch({}))
+          .optional()
+          .catch(undefined),
+      })
+      .optional()
+      .catch(undefined),
+    storyPinData: JsonValueSchema.optional().catch(undefined),
     aggregatedPinData: z
       .object({
         aggregatedStats: z
@@ -96,7 +123,7 @@ const RelayEnvelopeSchema = z
   })
   .catch({});
 
-type PinterestCaptureResult =
+export type PinterestCaptureResult =
   | { ok: true; capture: Capture }
   | {
       ok: false;
@@ -104,24 +131,49 @@ type PinterestCaptureResult =
       status?: number;
     };
 
+/** One GET of pin HTML, so tests can answer for the network. */
+export type PinterestGet = (url: string) => Promise<Response>;
+
+const PIN_ACCEPT =
+  "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
+function pinHeaders(userAgent: string) {
+  return {
+    "user-agent": userAgent,
+    accept: PIN_ACCEPT,
+    "accept-language": "en-US,en;q=0.9",
+  };
+}
+
+const anonymousGet: PinterestGet = (url) =>
+  fetch(url, {
+    redirect: "follow",
+    headers: pinHeaders(USER_AGENT),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+export function pinterestSessionGet(partition: string): PinterestGet {
+  const ses = session.fromPartition(partition);
+  const ua = browserUserAgent();
+  return (url) =>
+    ses.fetch(url, {
+      redirect: "follow",
+      headers: pinHeaders(ua),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+}
+
 export async function fetchPinterestCapture({
   sourceId,
+  get = anonymousGet,
 }: {
   sourceId: string;
+  get?: PinterestGet;
 }): Promise<PinterestCaptureResult> {
   const url = `https://www.pinterest.com/pin/${sourceId}/`;
   let res: Response;
   try {
-    res = await fetch(url, {
-      redirect: "follow",
-      headers: {
-        "user-agent": USER_AGENT,
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    res = await get(url);
   } catch (err) {
     log.warn("[pond refresh:pinterest-api] fetch failed", url, err);
     return { ok: false, reason: "fetch_failed" };
@@ -144,7 +196,7 @@ type PinPage =
   | { kind: "not_found" }
   | { kind: "no_pin" };
 
-/** Pinterest answers 200 for a removed pin and reports `PinNotFound` in the relay payload instead. */
+/** Logged-out HTML reports `PinNotFound` for secret, group, idea, and video pins that still exist. */
 export function parsePinPage(html: string): PinPage {
   const candidates: JsonObject[] = [];
   let notFound = false;
@@ -282,18 +334,7 @@ function buildCapture(sourceId: string, url: string, pin: RelayPin): Capture {
     return Object.keys(out).length > 0 ? out : undefined;
   })();
 
-  const media = ((): CaptureMedia[] => {
-    const primary = pickStr([pin.images_orig?.url, pin.imageLargeUrl]);
-    if (!primary) return [];
-    const dims = pin.images_736x ?? pin.images_564x ?? pin.images_474x;
-    const entry: CaptureMedia = {
-      url: primary,
-      type: pin.isVideo ? "video" : "image",
-    };
-    if (dims?.width !== undefined) entry.width = dims.width;
-    if (dims?.height !== undefined) entry.height = dims.height;
-    return [entry];
-  })();
+  const media = mediaFromPin(pin);
 
   const metrics = ((): CaptureMetrics | undefined => {
     const out: CaptureMetrics = {};
@@ -345,6 +386,57 @@ function buildCapture(sourceId: string, url: string, pin: RelayPin): Capture {
   if (metrics) capture.metrics = metrics;
   if (extras) capture.extras = extras;
   return capture;
+}
+
+/** Video, story, idea, and product pins often omit `images_orig`. */
+function mediaFromPin(pin: RelayPin): CaptureMedia[] {
+  const still = pickStr([
+    pin.images_orig?.url,
+    pin.images?.orig?.url,
+    pin.imageLargeUrl,
+    pin.images_736x?.url,
+    pin.images?.["736x"]?.url,
+    pin.images_564x?.url,
+    pin.images_474x?.url,
+    ...httpUrls(pin.storyPinData).filter(
+      (url) => /pinimg\.com/i.test(url) && !/\.mp4(?:$|\?)/i.test(url),
+    ),
+  ]);
+  const video = pickStr([
+    ...videoListUrls(pin.videos?.video_list),
+    ...httpUrls(pin.storyPinData).filter((url) => /\.mp4(?:$|\?)/i.test(url)),
+  ]);
+  const url = video ?? still;
+  if (!url) return [];
+  const dims = pin.images_736x ?? pin.images_564x ?? pin.images_474x;
+  const entry: CaptureMedia = {
+    url,
+    type: video ? "video" : "image",
+  };
+  if (video && still) entry.posterUrl = still;
+  if (!video && dims?.width !== undefined) entry.width = dims.width;
+  if (!video && dims?.height !== undefined) entry.height = dims.height;
+  return [entry];
+}
+
+function videoListUrls(
+  list: Record<string, { url?: string }> | undefined,
+): string[] {
+  if (!list) return [];
+  const preferred = pickStr(
+    ["V_720P", "V_EXP7", "V_HLSV3_MOBILE"].map((key) => list[key]?.url),
+  );
+  if (preferred) return [preferred];
+  return Object.values(list).flatMap((item) => (item.url ? [item.url] : []));
+}
+
+function httpUrls(value: JsonValue | undefined): string[] {
+  if (value === undefined) return [];
+  const text = z.string().safeParse(value);
+  if (text.success) return /^https?:\/\//.test(text.data) ? [text.data] : [];
+  if (Array.isArray(value)) return value.flatMap(httpUrls);
+  if (value instanceof Object) return Object.values(value).flatMap(httpUrls);
+  return [];
 }
 
 function parsePinterestDate(raw: string | undefined): string | undefined {

@@ -2,14 +2,16 @@ import type { RawImage } from "@huggingface/transformers";
 import * as ort from "onnxruntime-web/webgpu";
 import { configuredWasmThreads, pickDevice } from "./inference-device";
 import {
-  SENSITIVE_CONTENT_MODEL_REVISION,
   SENSITIVE_CONTENT_MODEL_SHA256,
+  SENSITIVE_CONTENT_MODEL_URL,
   sensitiveProbabilitiesFromLogits,
 } from "./sensitive-content-contract";
 
-const MODEL_URL = `https://huggingface.co/Marqo/nsfw-image-detection-384/resolve/${SENSITIVE_CONTENT_MODEL_REVISION}/onnx/model.onnx`;
 const MODEL_CACHE = "pond-models-v1";
-const INPUT_SIZE = 384;
+const RETIRED_MODEL_URLS = [
+  "https://huggingface.co/Marqo/nsfw-image-detection-384/resolve/b2d8f0c3abe6e05062288460ecf58e42ea690e84/onnx/model.onnx",
+];
+const INPUT_SIZE = 224;
 const INFERENCE_BATCH_SIZE = 4;
 
 let sessionPromise: Promise<ort.InferenceSession> | null = null;
@@ -29,12 +31,17 @@ async function verifyModel(bytes: ArrayBuffer): Promise<ArrayBuffer> {
 }
 
 async function fetchModel(): Promise<ArrayBuffer> {
-  const request = new Request(MODEL_URL, { cache: "force-cache" });
+  const request = new Request(SENSITIVE_CONTENT_MODEL_URL, {
+    cache: "force-cache",
+  });
   let cache: Cache | null = null;
   try {
     cache = (await globalThis.caches?.open(MODEL_CACHE)) ?? null;
   } catch (error) {
     console.warn("[sensitive-content] model cache unavailable", error);
+  }
+  for (const url of RETIRED_MODEL_URLS) {
+    cache?.delete(url).catch(() => {});
   }
   const cached = await cache?.match(request);
   if (cached) {
@@ -95,7 +102,8 @@ function getSession(): Promise<ort.InferenceSession> {
   return sessionPromise;
 }
 
-async function centerCrop(image: RawImage): Promise<ImageData> {
+/** The model was trained on whole frames squashed to a square, not center crops. */
+async function squash(image: RawImage): Promise<ImageData> {
   const rgba = image.rgba();
   const source = new ImageData(
     new Uint8ClampedArray(rgba.data),
@@ -108,20 +116,7 @@ async function centerCrop(image: RawImage): Promise<ImageData> {
   if (!context) throw new Error("Sensitive-content canvas unavailable");
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  const side = Math.min(bitmap.width, bitmap.height);
-  const sourceX = Math.floor((bitmap.width - side) / 2);
-  const sourceY = Math.floor((bitmap.height - side) / 2);
-  context.drawImage(
-    bitmap,
-    sourceX,
-    sourceY,
-    side,
-    side,
-    0,
-    0,
-    INPUT_SIZE,
-    INPUT_SIZE,
-  );
+  context.drawImage(bitmap, 0, 0, INPUT_SIZE, INPUT_SIZE);
   bitmap.close();
   return context.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
 }
@@ -129,7 +124,7 @@ async function centerCrop(image: RawImage): Promise<ImageData> {
 async function batchTensor(images: RawImage[]): Promise<ort.Tensor> {
   const rows = await Promise.all(
     images.map(async (image) =>
-      ort.Tensor.fromImage(await centerCrop(image), {
+      ort.Tensor.fromImage(await squash(image), {
         dataType: "float32",
         tensorFormat: "RGB",
         tensorLayout: "NCHW",

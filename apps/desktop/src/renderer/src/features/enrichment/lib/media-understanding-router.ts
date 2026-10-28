@@ -88,7 +88,14 @@ const FALLBACK_FAILURES = new Set<
   "model_chatter",
   "output_too_long",
   "internal_error",
+  "unsupported_media",
+  "too_large",
 ]);
+
+/** These files cannot be sent to the local model, so a failed attempt must not stay eligible. */
+const UNREADABLE_MEDIA = new Set<
+  Extract<MediaUnderstandResult, { ok: false }>["reason"]
+>(["unsupported_media", "too_large"]);
 
 export function createMediaUnderstandingRouter(
   dependencies: Partial<MediaUnderstandingRouterDependencies> = {},
@@ -126,9 +133,9 @@ export function createMediaUnderstandingRouter(
         try {
           return await runGemma(input.saveId, input.task);
         } catch (error) {
+          if (!(error instanceof GemmaMediaUnderstandingError)) throw error;
           if (
             input.prefs.mediaUnderstandingFallbackToFlorence &&
-            error instanceof GemmaMediaUnderstandingError &&
             FALLBACK_FAILURES.has(error.reason)
           ) {
             const fallback = await runFlorencePrimary(input);
@@ -142,7 +149,17 @@ export function createMediaUnderstandingRouter(
                 /** Operational metrics must never affect enrichment. */
               }
             }
-            return fallback;
+            /** The sweep compares this stamp with the selected model, so a fallback must not stay eligible. */
+            return {
+              text: fallback.text,
+              model: gemmaModelVersion(input.task, input.prefs),
+            };
+          }
+          if (UNREADABLE_MEDIA.has(error.reason)) {
+            return {
+              text: "",
+              model: gemmaModelVersion(input.task, input.prefs),
+            };
           }
           throw error;
         }

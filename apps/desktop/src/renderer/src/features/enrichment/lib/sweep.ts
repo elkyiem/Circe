@@ -1,7 +1,17 @@
+import {
+  enrichmentCooldownFactor,
+  enrichmentRestMs,
+  enrichmentSuspended,
+} from "@shared/machine-pace";
 import pLimit from "p-limit";
 import { enrichmentMonitor } from "@/features/enrichment/state/enrichment-monitor";
 import { onPoolDirty, pool, upsertSave } from "@/features/saves/pool";
 import type { Save } from "@/features/saves/types";
+import {
+  readMachinePace,
+  retainMachinePace,
+  subscribeMachinePace,
+} from "@/shared/lib/machine-pace";
 import { getPrefsSnapshot, subscribePrefsSnapshot } from "@/shared/state/prefs";
 import { ENRICHERS, ENRICHERS_BY_ID } from "./registry";
 import type { Enricher } from "./types";
@@ -45,21 +55,13 @@ export function subscribeMediaUnderstandingRefresh(dependencies: {
 const enrichmentPreferenceAccess =
   createEnrichmentPreferenceAccess(getPrefsSnapshot);
 
-declare global {
-  interface Navigator {
-    getBattery?(): Promise<EventTarget & { charging: boolean }>;
-  }
-}
-
 /** Models are CPU/GPU heavy and share the UI renderer; one-at-a-time keeps the sweep from starving interactive work. */
 const limit = pLimit(1);
 const inflight = new Set<string>();
 const failed = new Set<string>();
-/** Inference runs on the UI renderer; pause while hidden so it never burns CPU/GPU invisibly. */
-let hidden = false;
 
 function suspended(): boolean {
-  return hidden;
+  return enrichmentSuspended(readMachinePace(), Date.now());
 }
 
 const stats = {
@@ -98,18 +100,13 @@ function keyFor(enricher: Enricher, save: Save): string {
 
 /**
  * Rest between runs so the CPU/GPU returns to idle instead of pinning at ~100% for the whole backlog; requestIdleCallback fires immediately on an idle machine, so heavy runs would otherwise go back-to-back.
- * @remarks Rest is ~50% of the run's own duration, clamped so quick runs still pause and long runs don't stall the backlog; pLimit(1) puts the gap between runs.
+ * @remarks Rest is ~50% of the run's own duration, clamped so quick runs still pause and long runs don't stall the backlog. Battery, a background window, and fair heat stretch that rest.
  */
-const COOLDOWN_MIN_MS = 400;
-const COOLDOWN_MAX_MS = 3000;
-let onBattery = false;
-const ON_BATTERY_COOLDOWN_FACTOR = 2.5;
 function cooldown(lastRunMs: number): Promise<void> {
   if (suspended()) return Promise.resolve();
-  const factor = onBattery ? ON_BATTERY_COOLDOWN_FACTOR : 1;
-  const ms = Math.min(
-    COOLDOWN_MAX_MS * factor,
-    Math.max(COOLDOWN_MIN_MS * factor, lastRunMs * 0.5 * factor),
+  const ms = enrichmentRestMs(
+    lastRunMs,
+    enrichmentCooldownFactor(readMachinePace()),
   );
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -262,12 +259,6 @@ export function rescanEnrichment(ids?: readonly string[]): void {
   scheduleScan();
 }
 
-function setHidden(next: boolean): void {
-  if (hidden === next) return;
-  hidden = next;
-  if (!hidden) scheduleScan();
-}
-
 export function startEnrichmentSweep(): () => void {
   if (sweepStarted) return () => {};
   sweepStarted = true;
@@ -294,37 +285,19 @@ export function startEnrichmentSweep(): () => void {
     if (lastFullScanGeneration !== mutationGeneration) scheduleScan();
   }, FULL_SCAN_MS);
 
-  let detachVisibility = (): void => {};
-  if (globalThis.document) {
-    hidden = document.hidden;
-    const onVisibility = (): void => setHidden(document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
-    detachVisibility = () =>
-      document.removeEventListener("visibilitychange", onVisibility);
-  }
-
-  let detachBattery = (): void => {};
-  const { getBattery } = navigator;
-  if (getBattery) {
-    void getBattery
-      .call(navigator)
-      .then((battery) => {
-        const sync = (): void => {
-          onBattery = !battery.charging;
-        };
-        sync();
-        battery.addEventListener("chargingchange", sync);
-        detachBattery = () =>
-          battery.removeEventListener("chargingchange", sync);
-      })
-      .catch(() => {});
-  }
+  let wasSuspended = suspended();
+  const detachPace = subscribeMachinePace(() => {
+    const next = suspended();
+    if (wasSuspended && !next) scheduleScan();
+    wasSuspended = next;
+  });
+  const releasePace = retainMachinePace();
 
   return () => {
     detachDirty();
     detachPrefs();
     clearInterval(fullScanTimer);
-    detachVisibility();
-    detachBattery();
+    detachPace();
+    releasePace();
   };
 }

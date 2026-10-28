@@ -1,5 +1,5 @@
 import type { IconComponent } from "@pond/icons/types";
-import { Fragment, type ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ColorSwatch } from "@/features/saves/components/detail/color-swatch";
 import { useSaveDetail } from "@/features/saves/hooks/use-save-detail";
 import {
@@ -33,7 +33,6 @@ interface SaveInfoSectionsProps {
   /** The caller passes its own file and date rows in `propertiesLead`, and Properties also takes the source rows. */
   omitFileAndDates?: boolean;
   propertiesLead?: ReactNode;
-  propertiesTrail?: ReactNode;
   sourceLead?: ReactNode;
 }
 
@@ -44,7 +43,6 @@ export function SaveInfoSections({
   hideCoreProperties,
   omitFileAndDates,
   propertiesLead,
-  propertiesTrail,
   sourceLead,
 }: SaveInfoSectionsProps) {
   const {
@@ -82,27 +80,25 @@ export function SaveInfoSections({
         </span>
       ) : null}
       {groups.map((group) => (
-        <Fragment key={group.title}>
-          <InfoSection
-            group={group}
-            save={save}
-            colors={hideCoreProperties ? [] : colors}
-            primaryColor={save.primaryColor ?? null}
-            saveId={save.id}
-            avatarUrl={avatarUrl}
-            sourceLogo={sourceLogo}
-            SourceIcon={SourceIcon}
-            placeholders={pending ? placeholderCount(group) : 0}
-            lead={
-              group.title === "Properties"
-                ? propertiesLead
-                : group.title === "Source"
-                  ? sourceLead
-                  : undefined
-            }
-          />
-          {group.title === "Properties" ? propertiesTrail : null}
-        </Fragment>
+        <InfoSection
+          key={group.title}
+          group={group}
+          save={save}
+          colors={hideCoreProperties ? [] : colors}
+          primaryColor={save.primaryColor ?? null}
+          saveId={save.id}
+          avatarUrl={avatarUrl}
+          sourceLogo={sourceLogo}
+          SourceIcon={SourceIcon}
+          placeholders={pending ? placeholderCount(group) : 0}
+          lead={
+            group.title === "Properties"
+              ? propertiesLead
+              : group.title === "Source"
+                ? sourceLead
+                : undefined
+          }
+        />
       ))}
       {pending && !renderedTitles.has("Properties") ? (
         <SkeletonSection title="Properties" rows={4} />

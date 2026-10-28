@@ -222,6 +222,18 @@ describe("gallery keyboard interaction", () => {
     expect(selection.snapshot()).toEqual(["A", "B"]);
     expect(selection.getCursor()).toBe("D");
   });
+  it("does not move the gallery cursor while typing in a field", async () => {
+    await mount();
+    selectOnlySave("A");
+    const input = document.createElement("input");
+    host.append(input);
+    input.focus();
+    await press("ArrowRight");
+    await press("Enter");
+    expect(selection.getCursor()).toBe("A");
+    expect(primarySelection.get()).toBe("A");
+  });
+
   it("selects every matching result from a partially loaded gallery", async () => {
     await mount(["A", "B"]);
     selectOnlySave("B");

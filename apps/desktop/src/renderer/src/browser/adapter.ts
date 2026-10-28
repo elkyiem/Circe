@@ -16,6 +16,7 @@ import type {
 } from "@shared/wire";
 import { z } from "zod";
 import defaultAppIcon from "@/generated/app-icon-previews/aqua.png";
+import { version } from "../../../../package.json";
 import type { PondApi, StorageGuardStatusWire } from "../../../preload";
 import { createBrowserCanvases } from "./canvases";
 import { BROWSER_BRIDGE_ACCESS } from "./capabilities";
@@ -121,6 +122,8 @@ export async function installBrowserAdapter(libraryId: string) {
         z.record(z.string(), z.json()).parse(args[0] ?? {}),
       );
     else if (name === "settings.getPrefs") result = preferences.read();
+    // A visiting browser cannot detect native MCP clients on its device.
+    else if (name === "agent.mcpClients") result = { clients: [] };
     else if (name === "library.recent") {
       const info = z
         .object({
@@ -192,7 +195,7 @@ export async function installBrowserAdapter(libraryId: string) {
     },
     appInfo: async () => ({
       name: "Circé",
-      version: "2.0.0-web",
+      version: `${version}-web`,
       platform: "browser",
       arch: "browser",
       username: "",
@@ -337,6 +340,9 @@ export async function installBrowserAdapter(libraryId: string) {
     onSyncStatus: (callback) => onEvent("source-sync", callback),
     onStorageStatus: (callback) => onEvent("storage", callback),
     onUpdateNotice: (callback) => onEvent("update", callback),
+    // Visibility and focus come from this device; browsers expose no thermal API.
+    machinePace: async () => ({ thermal: "unknown", onBattery: false }),
+    onMachinePace: noNativeEvents,
     onArchiveNavigate: noNativeEvents,
     onFish: (callback) => onEvent("fish", callback),
     onFishOpen: (callback) => onEvent("fish-open", callback),

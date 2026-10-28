@@ -74,6 +74,22 @@ describe("caption enricher", () => {
     ).toBe(true);
   });
 
+  it("treats an unreadable-media skip as already processed", async () => {
+    const selectedRouter = router();
+    selectedRouter.run = vi.fn(async () => ({
+      text: "",
+      model: "ollama/gemma4:e2b:caption:v1",
+    }));
+    const enricher = createCaptionEnricher(selectedRouter);
+    const result = await enricher.run(save(), prefs("gemma4"));
+    const stamped = {
+      ...save(),
+      ...result?.optimistic,
+    };
+
+    expect(enricher.eligible(stamped, prefs("gemma4"))).toBe(false);
+  });
+
   it("persists the router output and model stamp", async () => {
     const selectedRouter = router();
     const enricher = createCaptionEnricher(selectedRouter);

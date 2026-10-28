@@ -24,8 +24,7 @@ export function videoDownloadGroups(source?: ExternalSource): GroupConfig[] {
           key: "autoDownload",
           disabled: followsGlobal,
           title: "Download Videos Automatically",
-          description:
-            "Off keeps the link and poster, and you can download any video later.",
+          description: "Off keeps the link and poster for later.",
         },
       ],
     }),
@@ -41,7 +40,8 @@ export function videoDownloadGroups(source?: ExternalSource): GroupConfig[] {
           key: "maxHeight",
           disabled: followsGlobal,
           title: "Maximum Resolution",
-          description: "Higher means bigger files. 1080p suits most clips.",
+          description: "1080p suits most clips.",
+          tooltip: "Higher resolutions make bigger files.",
           options: [
             { value: 4320, label: "4320p (8K)" },
             { value: 2160, label: "2160p (4K)" },
@@ -97,7 +97,8 @@ export function videoDownloadGroups(source?: ExternalSource): GroupConfig[] {
           key: "videoCodec",
           disabled: followsGlobal,
           title: "Preferred Video Codec",
-          description: "H.264 is most compatible. AV1 and VP9 are smaller.",
+          description: "H.264 plays on the most devices.",
+          tooltip: "AV1 and VP9 make smaller files.",
           options: [
             { value: "h264", label: "H.264 (AVC)" },
             { value: "hevc", label: "H.265 (HEVC)" },
@@ -123,8 +124,7 @@ export function videoDownloadGroups(source?: ExternalSource): GroupConfig[] {
           key: "container",
           disabled: followsGlobal,
           title: "Container",
-          description:
-            "Choose the video file format. Auto works for most downloads.",
+          description: "Auto works for most downloads.",
           options: [
             { value: "auto", label: "Auto" },
             { value: "mp4", label: "MP4" },
@@ -143,8 +143,7 @@ export function videoDownloadGroups(source?: ExternalSource): GroupConfig[] {
           key: "subtitles",
           disabled: followsGlobal,
           title: "Subtitles",
-          description:
-            "Save subtitles as a separate file or include them in the video.",
+          description: "A separate file, or included in the video.",
           options: [
             { value: "off", label: "Off" },
             { value: "download", label: "Separate File" },

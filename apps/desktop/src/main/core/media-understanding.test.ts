@@ -73,6 +73,9 @@ describe("media understanding", () => {
     expect(calls[0]?.abortSignal).not.toBe(input.signal);
     expect(calls[0]?.abortSignal.aborted).toBe(false);
     expect(calls[0]).not.toHaveProperty("reasoning");
+    expect(calls[0]?.providerOptions).toEqual({
+      ollama: { reasoningEffort: "none" },
+    });
   });
 
   it("uses a separate OCR budget and preserves visible text", async () => {

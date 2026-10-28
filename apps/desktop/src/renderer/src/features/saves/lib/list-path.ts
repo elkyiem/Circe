@@ -18,6 +18,12 @@ function isLibraryListPath(pathname: string): boolean {
   return parseMode(listBaseFromPath(pathname)) !== null;
 }
 
+/** Library grids where the details column follows the current Save selection. */
+export function isSaveCollectionPath(pathname: string): boolean {
+  if (isSavePath(pathname)) return false;
+  return parseMode(listBaseFromPath(pathname)) !== null;
+}
+
 export function rememberListPath(pathname: string, search = ""): void {
   if (!isLibraryListPath(pathname)) return;
   lastListPath = listBaseFromPath(pathname);

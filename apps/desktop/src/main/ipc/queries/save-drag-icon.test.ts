@@ -42,7 +42,7 @@ it("leaves the count off a single save", () => {
 
 /** The first SVG text render initializes fonts, which takes several seconds on Windows runners. */
 it("rasterizes a thumbnail into a 2x PNG and skips a save with nothing to show", {
-  timeout: 20_000,
+  timeout: 60_000,
 }, async () => {
   const root = await mkdtemp(join(tmpdir(), "pond-drag-icon-"));
   roots.push(root);

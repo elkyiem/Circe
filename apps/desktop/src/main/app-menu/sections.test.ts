@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { resolveShortcuts } from "../../shared/shortcuts";
+import { menuAccelerator } from "../lib/menu-accelerator";
 import { buildEditSection } from "./edit-section";
 import { buildFileSection } from "./file-section";
 import { buildFindSection } from "./find-section";
@@ -311,6 +313,31 @@ describe("app menu sections", () => {
         expect.objectContaining({ label: "New Folder" }),
         expect.objectContaining({ label: "Import Files" }),
       ]),
+    );
+  });
+
+  it("omits unmodified typing accelerators from native menus", () => {
+    const bindings = resolveShortcuts({ profile: "pond", overrides: {} });
+    const context = createContext({ isMac: true, isPackaged: true });
+    context.accelerator = (id) => menuAccelerator(bindings[id]);
+    const view = buildViewSection(context).submenu;
+    const file = buildFileSection(context).submenu;
+    if (!Array.isArray(view) || !Array.isArray(file)) {
+      throw new Error("Missing menu sections");
+    }
+    expect(view.find((item) => item.label === "Waterfall")?.accelerator).toBe(
+      undefined,
+    );
+    expect(
+      view.find((item) => item.label === "Toggle Sidebar")?.accelerator,
+    ).toBe(undefined);
+    expect(
+      file.find((item) => item.label === "Open with Default App")?.accelerator,
+    ).toBe(undefined);
+    const go = buildGoSection(context).submenu;
+    if (!Array.isArray(go)) throw new Error("Missing Go submenu");
+    expect(go.find((item) => item.label === "Search")?.accelerator).toBe(
+      "CommandOrControl+K",
     );
   });
 });

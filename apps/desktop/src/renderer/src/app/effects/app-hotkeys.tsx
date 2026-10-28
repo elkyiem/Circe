@@ -1,6 +1,5 @@
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 import { useEffect } from "react";
-import { fishIdFromPath } from "@/features/fish";
 import {
   createNote,
   importPaths,
@@ -27,12 +26,13 @@ import {
   collectionOwnsKeyboard,
   saveOwnsKeyboard,
 } from "@/features/saves/lib/keyboard-owner";
-import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
 import { inspect } from "@/features/saves/state/inspect";
-import { selection } from "@/features/saves/state/selection";
 import { openSources } from "@/features/sources/lib/open";
 import { getAppRouter } from "@/shared/lib/app-router";
-import { isEditableTarget } from "@/shared/lib/editable-target";
+import {
+  appHotkeyBlockedByEditable,
+  isEditableTarget,
+} from "@/shared/lib/editable-target";
 import { openSettings } from "@/shared/lib/open-settings";
 import {
   bindingKeys,
@@ -45,6 +45,7 @@ import {
   patchPrefsSection,
   usePrefs,
 } from "@/shared/state/prefs";
+import { handleNativeMenuAction } from "./native-menu-actions";
 
 function scrollActiveViewport(position: "top" | "bottom"): void {
   const active = document.activeElement;
@@ -119,6 +120,7 @@ export function AppHotkeys() {
     ].map((binding) => ({
       ...binding,
       callback: () => {
+        if (isEditableTarget()) return;
         if (
           document.activeElement !== document.body &&
           !collectionOwnsKeyboard()
@@ -140,6 +142,11 @@ export function AppHotkeys() {
           commandMenu.toggle();
         },
         options: { ignoreInputs: false, preventDefault: false },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "library.find"),
+        callback: () => handleNativeMenuAction("find.search"),
+        options: { ignoreInputs: true },
       },
       {
         hotkey: bindingKeys(shortcuts, "app.settings"),
@@ -199,16 +206,7 @@ export function AppHotkeys() {
       },
       {
         hotkey: bindingKeys(shortcuts, "view.inspector"),
-        callback: () => {
-          const pathname = getAppRouter()?.state.location.pathname ?? "";
-          const openId = saveIdFromPath(pathname);
-          if (openId || fishIdFromPath(pathname)) {
-            libraryChrome.toggleDetails();
-            return;
-          }
-          const anchor = selection.getCursor();
-          if (anchor) openSave(anchor);
-        },
+        callback: () => libraryChrome.toggleDetails(),
         options: { ignoreInputs: true },
       },
       {
@@ -327,6 +325,7 @@ export function AppHotkeys() {
       ...binding,
       callback: (event: KeyboardEvent) => {
         if (event.defaultPrevented || event.isComposing) return;
+        if (appHotkeyBlockedByEditable(event)) return;
         const active = document.activeElement;
         const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
         if (

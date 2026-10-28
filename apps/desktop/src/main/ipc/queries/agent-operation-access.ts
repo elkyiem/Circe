@@ -18,6 +18,7 @@ export const queryOperationAccess = {
   "agent.keys": "read",
   "agent.listAvailableModels": "read",
   "agent.listModels": "read",
+  "agent.mcpClients": "hidden",
   "agent.mcpSnippet": "read",
   "agent.messages": "read",
   "agent.newChat": "hidden",

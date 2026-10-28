@@ -4,3 +4,8 @@
   z-index: 2147483647;
   pointer-events: none;
 }
+
+/* Portaled pickers are siblings of the dialog, so they must opt back into hits. */
+.layer [data-type] {
+  pointer-events: auto;
+}

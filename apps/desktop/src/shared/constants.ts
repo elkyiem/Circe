@@ -45,6 +45,8 @@ export const IPC = {
   eagleImportProgress: "pond:eagle-import-progress",
   syncRunNow: "pond:sync-run-now",
   syncStatus: "pond:sync-status",
+  machinePace: "pond:machine-pace",
+  machinePaceChanged: "pond:machine-pace-changed",
   syncRunAll: "pond:sync-run-all",
   syncCancel: "pond:sync-cancel",
   governorSetPaused: "pond:governor-set-paused",

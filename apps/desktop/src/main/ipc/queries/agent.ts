@@ -184,6 +184,11 @@ export const agentQueries = {
     return { ...pondMcpSnippet(), app: app.getName() };
   }),
 
+  "agent.mcpClients": query(Params, async () => {
+    const { mcpClientStatus } = await import("../../core/agent/mcp-hosts");
+    return { clients: await mcpClientStatus() };
+  }),
+
   "agent.openMcpInstall": query(
     z.object({ id: z.enum(["cursor", "vscode"]) }),
     async ({ id }): Promise<QueryResult<"agent.openMcpInstall">> => {

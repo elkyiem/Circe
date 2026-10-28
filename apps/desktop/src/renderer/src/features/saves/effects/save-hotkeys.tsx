@@ -51,6 +51,7 @@ import {
 import { tumbleToTrash } from "@/features/saves/state/trash-tumble";
 import type { Save } from "@/features/saves/types";
 import { getAppRouter } from "@/shared/lib/app-router";
+import { appHotkeyBlockedByEditable } from "@/shared/lib/editable-target";
 import {
   bindingKeys,
   RATING_COMMANDS,
@@ -323,6 +324,7 @@ export function SaveHotkeys() {
     ].map((binding) => ({
       ...binding,
       callback: (event: KeyboardEvent) => {
+        if (appHotkeyBlockedByEditable(event)) return;
         if (!saveOwnsKeyboard(event)) return;
         if (
           !("preventDefault" in binding.options) ||

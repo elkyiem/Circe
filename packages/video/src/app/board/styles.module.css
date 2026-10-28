@@ -1,0 +1,29 @@
+.board {
+  --canvas-selection: 1.5px solid var(--ds-accent-9);
+  --canvas-shadow-rest:
+    0 0 0 0.5px var(--ds-shadow-faint), 0 1px 2px var(--ds-shadow-faint),
+    0 6px 16px -6px var(--ds-shadow-soft);
+  --canvas-shadow-lift:
+    0 0 0 0.5px var(--ds-shadow-faint), 0 2px 6px var(--ds-shadow-faint),
+    0 18px 40px -12px var(--ds-shadow-soft);
+  --canvas-shadow-float:
+    0 0 0 1px var(--ds-gray-a3), 0 1px 3px var(--ds-shadow-faint),
+    0 10px 30px -8px var(--ds-shadow-soft);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ds-gray-2);
+}
+
+.dots {
+  position: absolute;
+  inset: 0;
+}
+
+.world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}

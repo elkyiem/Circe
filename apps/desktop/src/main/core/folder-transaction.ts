@@ -12,12 +12,20 @@ export async function writeFolderMemberships(
   directory = saveDir(saveId),
 ): Promise<void> {
   const path = join(directory, "info.json");
-  const info = StoredInfoDocSchema.parse(
-    JSON.parse(await readFile(path, "utf8")),
-  );
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    /** Filing can race enqueue, and a missing sidecar is not a gone pin. */
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return;
+    throw error;
+  }
+  const info = StoredInfoDocSchema.parse(JSON.parse(raw));
   info.folderIds = [...new Set(folderIds)];
   await writeFile(path, JSON.stringify(info, null, 2));
 }
+
 export function replaceFolderMemberships(
   db: Db,
   saveId: string,

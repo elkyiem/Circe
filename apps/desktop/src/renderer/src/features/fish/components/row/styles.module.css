@@ -11,6 +11,11 @@
   min-width: 0;
 }
 
+/* The fish swims past its 16px box; the row still clips it at its own edge. */
+.row .item .icon {
+  overflow: visible;
+}
+
 .time {
   flex: none;
   margin-left: 8px;
@@ -20,10 +25,19 @@
   color: var(--ds-gray-9);
 }
 
-.unread {
-  position: absolute;
-  top: 1px;
-  right: 0;
+.status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  animation: pop var(--ds-duration-bounce) var(--ds-easing-bounce);
+}
+
+.failed {
+  color: var(--ds-red-9);
 }
 
 .more {
@@ -43,8 +57,8 @@
   opacity: 1;
 }
 
-.row:hover .time,
-.row:focus-within .time {
+.row:hover :is(.time, .status),
+.row:focus-within :is(.time, .status) {
   visibility: hidden;
 }
 
@@ -65,6 +79,13 @@
   }
 }
 
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
 @media (hover: none) {
   .more {
     pointer-events: auto;
@@ -73,7 +94,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .row,
+  .status {
     animation: none;
   }
 
@@ -82,7 +104,7 @@
   }
 }
 
-:global(html[data-reduce-motion="true"]) .row {
+:global(html[data-reduce-motion="true"]) :is(.row, .status) {
   animation: none;
 }
 

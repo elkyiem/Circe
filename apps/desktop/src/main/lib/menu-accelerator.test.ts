@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveShortcuts, SHORTCUT_PLATFORM } from "../../shared/shortcuts";
-import { menuAccelerator } from "./menu-accelerator";
+import { isTypingMenuAccelerator, menuAccelerator } from "./menu-accelerator";
 
 describe("native menu shortcut presentation", () => {
   it("uses effective overrides for native-owned commands", () => {
@@ -32,7 +32,7 @@ describe("native menu shortcut presentation", () => {
   });
   it("tracks Eagle profile changes and restores defaults after resetting overrides", () => {
     const eagle = resolveShortcuts({ profile: "eagle", overrides: {} });
-    expect(menuAccelerator(eagle["save.add-tag"])).toBe("T");
+    expect(menuAccelerator(eagle["save.add-tag"])).toBeUndefined();
     expect(menuAccelerator(eagle["save.reveal"])).toBe("CommandOrControl+R");
     expect(menuAccelerator(eagle["view.layout-grid"])).toBe("Alt+2");
     const pond = resolveShortcuts({ profile: "pond", overrides: {} });
@@ -42,7 +42,25 @@ describe("native menu shortcut presentation", () => {
     expect(menuAccelerator(pond["view.grayscale"])).toBe(
       "CommandOrControl+Alt+G",
     );
-    expect(menuAccelerator(pond["nav.library"])).toBe("G L");
-    expect(menuAccelerator(pond["save.reveal"])).toBe("F");
+    expect(menuAccelerator(pond["nav.library"])).toBeUndefined();
+    expect(menuAccelerator(pond["save.reveal"])).toBeUndefined();
+  });
+
+  it("omits typing keys so macOS cannot steal them from fields", () => {
+    expect(isTypingMenuAccelerator("1")).toBe(true);
+    expect(isTypingMenuAccelerator("V")).toBe(true);
+    expect(isTypingMenuAccelerator("Shift+Y")).toBe(true);
+    expect(isTypingMenuAccelerator("G L")).toBe(true);
+    expect(isTypingMenuAccelerator("Backspace")).toBe(true);
+    expect(isTypingMenuAccelerator("CommandOrControl+K")).toBe(false);
+    expect(isTypingMenuAccelerator("Ctrl+K")).toBe(false);
+    expect(isTypingMenuAccelerator("Alt+1")).toBe(false);
+    const pond = resolveShortcuts({ profile: "pond", overrides: {} });
+    expect(menuAccelerator(pond["view.layout-waterfall"])).toBeUndefined();
+    expect(menuAccelerator(pond["view.sidebar"])).toBeUndefined();
+    expect(menuAccelerator(pond["view.options"])).toBeUndefined();
+    expect(menuAccelerator(pond["save.copy-id"])).toBeUndefined();
+    expect(menuAccelerator(pond["save.trash"])).toBeUndefined();
+    expect(menuAccelerator(pond["library.search"])).toBe("CommandOrControl+K");
   });
 });

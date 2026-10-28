@@ -279,7 +279,7 @@ export function ThemeContrastRow({
       <Settings.ItemDetails>
         <Settings.ItemTitle>Contrast</Settings.ItemTitle>
         <Settings.ItemDescription>
-          Separation of surfaces, borders, and text.
+          Surfaces, borders, and text.
         </Settings.ItemDescription>
       </Settings.ItemDetails>
       <Settings.ItemControl>

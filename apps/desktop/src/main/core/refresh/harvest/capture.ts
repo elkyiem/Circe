@@ -7,7 +7,18 @@ import {
   TerminalError,
   TransientError,
 } from "../../pipeline/extractors/errors";
-import { harvestUrl } from "../harvest-window/harvest";
+import { partitionForIngest } from "../../sync/accounts";
+import {
+  type HarvestArgs,
+  type HarvestResult,
+  harvestUrl,
+} from "../harvest-window/harvest";
+import {
+  fetchPinterestCapture,
+  type PinterestCaptureResult,
+  type PinterestGet,
+  pinterestSessionGet,
+} from "./pinterest/api";
 
 interface CaptureArgs {
   url: string;
@@ -18,19 +29,33 @@ interface CaptureArgs {
   isSignedIn?: (source: Source, partition: string) => Promise<boolean>;
 }
 
-export async function captureFromSource(args: CaptureArgs): Promise<Capture> {
+interface CaptureDeps {
+  harvest?: (args: HarvestArgs) => Promise<HarvestResult>;
+  fetchPinterest?: (args: {
+    sourceId: string;
+    get?: PinterestGet;
+  }) => Promise<PinterestCaptureResult>;
+  anonymousGet?: PinterestGet;
+  signedGet?: PinterestGet;
+  partition?: string;
+}
+
+export async function captureFromSource(
+  args: CaptureArgs,
+  deps: CaptureDeps = {},
+): Promise<Capture> {
   if (args.source === "web" || args.source === "local") {
     throw new TerminalError(
       `${args.source} does not harvest via captureFromSource`,
     );
   }
 
-  let removedAtSource = false;
+  const harvest = deps.harvest ?? harvestUrl;
+  const fetchPin = deps.fetchPinterest ?? fetchPinterestCapture;
+
   if (args.source === "pinterest" && args.sourceId) {
-    const { fetchPinterestCapture } = await import("./pinterest/api");
-    const result = await fetchPinterestCapture({ sourceId: args.sourceId });
-    if (result.ok) return result.capture;
-    removedAtSource = result.reason === "not_found";
+    const recovered = await capturePinterestPin(args, deps, harvest, fetchPin);
+    if (recovered) return recovered;
   }
 
   if (args.source === "arena" && args.sourceId) {
@@ -92,23 +117,79 @@ export async function captureFromSource(args: CaptureArgs): Promise<Capture> {
     }
   }
 
-  const result = await harvestUrl(args);
-  /** A signed-in session can still open a secret-board pin, but an empty page shell means the pin is gone. */
-  if (removedAtSource && (result.capture?.media.length ?? 0) === 0) {
-    throw new TerminalError(`${args.source} item no longer exists`);
-  }
+  const result = await harvest(args);
   if (result.ok && result.capture) return result.capture;
-  switch (result.reason) {
+  throw harvestFailure(args.source, result.reason);
+}
+
+/** Logged-out PinNotFound is not deletion; only a signed-in pin page that still says PinNotFound is terminal. */
+async function capturePinterestPin(
+  args: CaptureArgs,
+  deps: CaptureDeps,
+  harvest: (args: HarvestArgs) => Promise<HarvestResult>,
+  fetchPin: (args: {
+    sourceId: string;
+    get?: PinterestGet;
+  }) => Promise<PinterestCaptureResult>,
+): Promise<Capture | null> {
+  const sourceId = args.sourceId;
+  if (!sourceId) return null;
+
+  const anonymous = await fetchPin({ sourceId, get: deps.anonymousGet });
+  if (anonymous.ok && hasMedia(anonymous.capture)) return anonymous.capture;
+
+  const partition =
+    deps.partition ?? (await partitionForIngest("pinterest", args.accountId));
+  const signedIn = args.isSignedIn
+    ? await args.isSignedIn("pinterest", partition)
+    : deps.signedGet !== undefined;
+
+  let signed: PinterestCaptureResult | null = null;
+  if (signedIn) {
+    signed = await fetchPin({
+      sourceId,
+      get: deps.signedGet ?? pinterestSessionGet(partition),
+    });
+    if (signed.ok && hasMedia(signed.capture)) return signed.capture;
+  }
+
+  const result = await harvest(args);
+  if (result.ok && result.capture && hasMedia(result.capture)) {
+    return result.capture;
+  }
+  if (
+    signedIn &&
+    signed?.ok === false &&
+    signed.reason === "not_found" &&
+    result.reason === "harvest_failed"
+  ) {
+    throw new TerminalError("pinterest item no longer exists");
+  }
+  if (result.reason === "harvest_failed" || result.reason === undefined) {
+    throw new TransientError("pinterest harvest returned no data");
+  }
+  throw harvestFailure(args.source, result.reason);
+}
+
+function hasMedia(capture: Capture): boolean {
+  return capture.media.length > 0;
+}
+
+function harvestFailure(
+  source: Source,
+  reason: HarvestResult["reason"],
+): AuthRequiredError | TransientError | TerminalError {
+  switch (reason) {
     case "auth_required":
-      throw new AuthRequiredError(
-        `Connect ${sourceLabel(args.source)} with the Pond extension`,
-        args.source,
+      return new AuthRequiredError(
+        `Connect ${sourceLabel(source)} with the Pond extension`,
+        source,
       );
     case "navigate_failed":
-      throw new TransientError("navigate failed");
+      return new TransientError("navigate failed");
     case "timeout":
-      throw new TransientError("scrape timeout");
+      return new TransientError("scrape timeout");
     default:
-      throw new TerminalError("scrape returned no data");
+      return new TerminalError("scrape returned no data");
   }
 }

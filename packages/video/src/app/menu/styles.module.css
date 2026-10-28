@@ -1,0 +1,24 @@
+.popup {
+  composes: popup from "../../../../ui/src/shared/styles/popup/styles.module.css";
+  position: absolute;
+  z-index: 40;
+  min-width: 0;
+  max-width: none;
+  transform-origin: top left;
+}
+
+.item {
+  composes: item from "../../../../ui/src/shared/styles/popup/styles.module.css";
+
+  &[data-pressed]::before {
+    background: var(--ds-gray-a4);
+  }
+}
+
+.item-icon {
+  composes: item-icon from "../../../../ui/src/shared/styles/popup/styles.module.css";
+}
+
+.item-label {
+  composes: item-label from "../../../../ui/src/shared/styles/popup/styles.module.css";
+}

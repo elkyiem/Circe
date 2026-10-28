@@ -56,6 +56,14 @@ function itemTitle(item: Item): string | undefined {
   return item.title;
 }
 
+function itemDescription(item: Item): string | undefined {
+  const description =
+    "description" in item ? asText(item.description) : undefined;
+  const tooltip = "tooltip" in item ? item.tooltip : undefined;
+  const text = [description, tooltip].filter(Boolean).join(" ");
+  return text || undefined;
+}
+
 function itemEntries(
   section: SectionDef,
   group: GroupConfig,
@@ -67,8 +75,7 @@ function itemEntries(
     if (isStaticallyHidden(item.visible)) continue;
     const title = itemTitle(item);
     if (!title) continue;
-    const description =
-      "description" in item ? asText(item.description) : undefined;
+    const description = itemDescription(item);
     entries.push({
       id: `${section.id}:${item.key}`,
       sectionId: section.id,

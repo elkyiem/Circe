@@ -1,11 +1,7 @@
+import type { ThermalState } from "../../../shared/machine-pace";
 import type { MediaIndexPauseReason } from "../../../shared/media-index";
 
-export type ThermalState =
-  | "unknown"
-  | "nominal"
-  | "fair"
-  | "serious"
-  | "critical";
+export type { ThermalState };
 
 export interface MediaWarmSignals {
   idleSeconds: number;

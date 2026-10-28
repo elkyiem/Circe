@@ -17,6 +17,7 @@ import {
 } from "@/features/saves/state/aspect";
 import { rememberCardThumbnail } from "@/features/saves/state/card-thumbnails";
 import type { Save } from "@/features/saves/types";
+import { useMachineMotionPaused } from "@/shared/lib/use-machine-motion";
 import { usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
 
@@ -39,6 +40,7 @@ export function CardImage({
   onReady?: () => void;
 }) {
   const [viewer] = usePrefs("viewer");
+  const motionPaused = useMachineMotionPaused();
   const { w, h } = aspectDimsFor(save, pickOptions, unit);
   const thumbnail = unit.requiresGeneratedPreview
     ? previewThumbUrlFor(unit.url, width)
@@ -52,7 +54,7 @@ export function CardImage({
   );
   const animated = viewer.gifAutoplay && /\.gif(?:$|[?#])/i.test(unit.key);
   const [visible, setVisible] = useState(false);
-  const src = animated && visible ? unit.url : qualitySrc;
+  const src = animated && visible && !motionPaused ? unit.url : qualitySrc;
   const reportReady = useCallback(
     (image: HTMLImageElement) => {
       recordAspect(save.id, image.naturalWidth, image.naturalHeight, {

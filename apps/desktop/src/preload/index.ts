@@ -20,6 +20,10 @@ import {
 } from "../shared/constants";
 import { FilterQuery } from "../shared/filter-query";
 import type { FishEvent, FishOpen } from "../shared/fish-contracts";
+import {
+  type MachinePaceWire,
+  MachinePaceWireSchema,
+} from "../shared/machine-pace";
 import type {
   PreviewNeighborRequest,
   PreviewWindowConfigure,
@@ -367,6 +371,20 @@ const api = {
       cb(payload);
     ipcRenderer.on(IPC.sessionImportFailed, listener);
     return () => ipcRenderer.off(IPC.sessionImportFailed, listener);
+  },
+
+  machinePace(): Promise<MachinePaceWire> {
+    return ipcRenderer
+      .invoke(IPC.machinePace)
+      .then((payload) => MachinePaceWireSchema.parse(payload));
+  },
+
+  onMachinePace(cb: (pace: MachinePaceWire) => void): () => void {
+    const listener = (_: IpcRendererEvent, payload: MachinePaceWire) => {
+      cb(MachinePaceWireSchema.parse(payload));
+    };
+    ipcRenderer.on(IPC.machinePaceChanged, listener);
+    return () => ipcRenderer.off(IPC.machinePaceChanged, listener);
   },
 
   onSyncStatus(cb: (update: WireSyncStatusUpdate) => void): () => void {

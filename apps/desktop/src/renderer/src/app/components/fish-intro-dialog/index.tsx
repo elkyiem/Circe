@@ -12,6 +12,7 @@ import {
   fishIntroDialog,
   useFishIntroDialogOpen,
 } from "@/shared/state/fish-intro";
+import { promptDialog } from "@/shared/state/prompts";
 import { setupFlow } from "@/shared/state/setup";
 import { supportDialog } from "@/shared/state/support";
 import { readWhatsNewSeen, whatsNewDialog } from "@/shared/state/whats-new";
@@ -50,7 +51,10 @@ const FACTS = [
 
 function anotherDialogOpen(): boolean {
   return (
-    setupFlow.isOpen() || whatsNewDialog.isOpen() || supportDialog.isOpen()
+    setupFlow.isOpen() ||
+    whatsNewDialog.isOpen() ||
+    supportDialog.isOpen() ||
+    promptDialog.isOpen()
   );
 }
 

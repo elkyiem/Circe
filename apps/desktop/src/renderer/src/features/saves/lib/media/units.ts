@@ -67,6 +67,23 @@ export function buildMediaUnits(
   save: Save,
   opts: MediaPickOptions = {},
 ): MediaUnit[] {
+  const units = buildOriginalMediaUnits(save);
+  if (units.length > 0) return units;
+
+  const screenshot = pickTweetScreenshot(save, opts.theme);
+  return screenshot
+    ? [
+        {
+          key: screenshot.path,
+          url: buildPondUrl(save.id, screenshot),
+          isVideo: false,
+        },
+      ]
+    : [];
+}
+
+/** The Save's own photos and videos, without the rendered post card that stands in for text-only posts. */
+export function buildOriginalMediaUnits(save: Save): MediaUnit[] {
   const allFiles = save.files ?? [];
   const posters = allFiles.filter((f) => f.kind === "poster");
   const files = allFiles.filter(
@@ -123,19 +140,6 @@ export function buildMediaUnits(
       units.push(unit);
     }
   }
-  if (units.length > 0) return units;
-
-  const screenshot = pickTweetScreenshot(save, opts.theme);
-  if (screenshot) {
-    return [
-      {
-        key: screenshot.path,
-        url: buildPondUrl(save.id, screenshot),
-        isVideo: false,
-      },
-    ];
-  }
-
   return units;
 }
 

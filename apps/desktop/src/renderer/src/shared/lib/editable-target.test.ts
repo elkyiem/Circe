@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appHotkeyBlockedByEditable,
   eventFromEditable,
   isEditableTarget,
   stopAppHotkeysFromEditable,
@@ -44,6 +45,9 @@ describe("editable target", () => {
   });
 
   it("stops app hotkeys from an editable surface except search", () => {
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.focus();
     let stopped = 0;
     const stopPropagation = () => {
       stopped += 1;
@@ -61,5 +65,32 @@ describe("editable target", () => {
       stopPropagation,
     });
     expect(stopped).toBe(1);
+    field.remove();
+  });
+
+  it("blocks unmodified typing keys and leaves unhandled search available", () => {
+    const field = document.createElement("textarea");
+    document.body.append(field);
+    field.focus();
+    const typing = new KeyboardEvent("keydown", { key: "v", bubbles: true });
+    Object.defineProperty(typing, "target", { value: field });
+    expect(appHotkeyBlockedByEditable(typing)).toBe(true);
+    const search = new KeyboardEvent("keydown", {
+      key: "k",
+      metaKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(search, "target", { value: field });
+    expect(appHotkeyBlockedByEditable(search)).toBe(false);
+    const handled = new KeyboardEvent("keydown", {
+      key: "k",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    handled.preventDefault();
+    Object.defineProperty(handled, "target", { value: field });
+    expect(appHotkeyBlockedByEditable(handled)).toBe(true);
+    field.remove();
   });
 });

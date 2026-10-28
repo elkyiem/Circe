@@ -46,14 +46,20 @@
   justify-content: stretch;
   overflow: hidden;
   border-radius: inherit;
-  transition:
-    filter var(--ds-duration-normal) var(--ds-easing-standard),
-    transform var(--ds-duration-fast) var(--ds-easing-standard);
+  transition: transform var(--ds-duration-fast) var(--ds-easing-standard);
 }
 
 .thumb[data-sensitive] .visual {
-  filter: blur(18px);
-  transform: scale(1.08);
+  isolation: isolate;
+
+  /* A backdrop overlay stays inside the clip; `filter` on the media bleeds past the card edge. */
+  &::after {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    content: "";
+    backdrop-filter: blur(24px);
+  }
 }
 
 .thumb[data-hover-zoom]:hover .visual {

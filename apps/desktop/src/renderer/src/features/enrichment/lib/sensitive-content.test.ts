@@ -5,19 +5,22 @@ import {
 } from "./sensitive-content";
 
 describe("sensitive content scores", () => {
-  it("converts paired NSFW and SFW logits into stable probabilities", () => {
-    expect(sensitiveProbabilitiesFromLogits([2, 0, -1000, -1000])).toEqual([
-      0.8807970779778823, 0.5,
+  it("sums hentai, porn, and sexy into one stable probability per image", () => {
+    const [suggestive, neutral, even] = sensitiveProbabilitiesFromLogits([
+      -1000, -1000, -1000, -1000, 1000, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0,
     ]);
+    expect(suggestive).toBe(1);
+    expect(neutral).toBeCloseTo(0);
+    expect(even).toBeCloseTo(0.6);
   });
 
   it("rejects malformed model output", () => {
-    expect(() => sensitiveProbabilitiesFromLogits([1])).toThrow(
-      "Expected paired sensitive-content logits",
+    expect(() => sensitiveProbabilitiesFromLogits([1, 2])).toThrow(
+      "Expected sensitive-content logits for every label",
     );
-    expect(() => sensitiveProbabilitiesFromLogits([Number.NaN, 1])).toThrow(
-      "Sensitive-content logits must be finite",
-    );
+    expect(() =>
+      sensitiveProbabilitiesFromLogits([Number.NaN, 0, 0, 0, 0]),
+    ).toThrow("Sensitive-content logits must be finite");
   });
 
   it("uses the strongest finite visual result for a Save", () => {

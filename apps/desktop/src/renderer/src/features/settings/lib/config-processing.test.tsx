@@ -10,18 +10,19 @@ const processingItems = () =>
   );
 
 describe("sensitive-content processing settings", () => {
-  it("shows blur controls only while classification is enabled", () => {
+  it("keeps blur visible but disabled until classification is enabled", () => {
     const blur = processingItems().find(
       (item) => item?.key === "blurSensitiveThumbnails",
     );
-    expect(blur).toBeDefined();
-    expect(blur?.visible?.(DEFAULT_PREFS.ai)).toBe(false);
+    if (blur?.control !== "switch") throw new Error("Missing blur switch");
+    expect(blur.visible).toBeUndefined();
+    expect(blur.disabled?.(DEFAULT_PREFS.ai)).toBe(true);
     expect(
-      blur?.visible?.({
+      blur.disabled?.({
         ...DEFAULT_PREFS.ai,
         enableSensitiveContent: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("does not expose implementation model choices", () => {
@@ -39,8 +40,7 @@ describe("sensitive-content processing settings", () => {
     expect(fallback).toMatchObject({
       control: "switch",
       title: "Image Processing Fallback",
-      description:
-        "Use the built-in model when the local model can't process an image.",
+      description: "Uses the built-in model if this one fails.",
     });
     expect(fallback?.visible?.(DEFAULT_PREFS.ai)).toBe(false);
     expect(

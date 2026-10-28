@@ -28,6 +28,8 @@ export function embedSearchQueries(texts: string[]): Promise<Float32Array[]> {
   return inferEmbedTexts(texts.map(embeddingSearchQuery));
 }
 
+export const SAVE_EMBEDDING_CHAR_LIMIT = 2000;
+
 export function saveEmbeddingBody(save: {
   description: string | null;
   notes: string | null;
@@ -42,5 +44,23 @@ export function saveEmbeddingBody(save: {
   ]
     .filter((s) => s.trim().length > 0)
     .join(" \u2014 ")
-    .slice(0, 2000);
+    .slice(0, SAVE_EMBEDDING_CHAR_LIMIT);
+}
+
+export function saveEmbeddingText(save: {
+  description: string | null;
+  notes: string | null;
+  author: string | null;
+  tags: string[];
+  caption?: string | null;
+  ocrText?: string | null;
+  transcript?: string | null;
+}): string {
+  const extra = [save.caption, save.ocrText, save.transcript]
+    .filter((s): s is string => !!s && s.trim().length > 0)
+    .join(" \u2014 ")
+    .slice(0, SAVE_EMBEDDING_CHAR_LIMIT);
+  return [saveEmbeddingBody(save), extra]
+    .filter((s) => s.trim().length > 0)
+    .join(" \u2014 ");
 }

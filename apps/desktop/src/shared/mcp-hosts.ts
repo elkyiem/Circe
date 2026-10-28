@@ -10,6 +10,17 @@ export const MCP_HOST_IDS = [
 
 export type McpHostId = (typeof MCP_HOST_IDS)[number];
 
+export const MCP_DETECTED_CLIENTS = ["cursor", "claude-desktop"] as const;
+
+export type McpDetectedClient = (typeof MCP_DETECTED_CLIENTS)[number];
+
+export interface McpClientStatus {
+  id: McpDetectedClient;
+  installed: boolean;
+  /** Whether the client's config already lists a Pond server. */
+  connected: boolean;
+}
+
 export const MCP_DEEPLINK_HOSTS = ["cursor", "vscode"] as const;
 
 export type McpDeeplinkHost = (typeof MCP_DEEPLINK_HOSTS)[number];

@@ -121,7 +121,7 @@ export function inPagePinterestNormalize() {
     }
 
     const mainImg = document.querySelector<HTMLImageElement>(
-      '[data-test-id="pin-closeup-image"] img, [data-test-id="pinImg"]',
+      '[data-test-id="pin-closeup-image"] img, [data-test-id="pinImg"], img[src*="pinimg.com"]',
     );
     const domImgSrc = mainImg?.src ?? mainImg?.currentSrc;
     const ogImage = getMeta([

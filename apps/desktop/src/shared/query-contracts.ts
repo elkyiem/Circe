@@ -307,6 +307,7 @@ export interface QueryInputs
   "agent.chats": { fishId?: string };
   "agent.newChat": { fishId?: string };
   "agent.mcpSnippet": EmptyInput;
+  "agent.mcpClients": EmptyInput;
   "agent.openMcpInstall": { id: "cursor" | "vscode" };
   "library.info": EmptyInput;
   "library.rescan": EmptyInput;

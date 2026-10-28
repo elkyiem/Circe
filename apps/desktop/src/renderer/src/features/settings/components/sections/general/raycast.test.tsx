@@ -1,3 +1,4 @@
+import { Tooltip } from "@pond/ui";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
@@ -19,9 +20,17 @@ it("copies the Local API Token without rendering it", async () => {
   document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<RaycastRow />));
+    await act(async () =>
+      root.render(
+        <Tooltip.Provider>
+          <RaycastRow />
+        </Tooltip.Provider>,
+      ),
+    );
     expect(host.textContent).not.toContain("secret-token");
-    const button = host.querySelector<HTMLButtonElement>("button");
+    const button = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (candidate) => candidate.textContent === "Copy Token",
+    );
     if (!button) throw new Error("Missing copy token button");
     await act(async () => button.click());
     expect(copied).toEqual(["secret-token"]);

@@ -1,4 +1,4 @@
-import { Button, Dialog, Settings } from "@pond/ui";
+import { Button, Dialog, Settings, Tooltip } from "@pond/ui";
 import { useState } from "react";
 import { errorCopy } from "@/shared/lib/error-copy";
 
@@ -52,10 +52,15 @@ export function RaycastRow() {
   return (
     <>
       <Settings.ItemDetails>
-        <Settings.ItemTitle>Raycast</Settings.ItemTitle>
+        <Settings.ItemTitle>
+          Raycast
+          <Tooltip.Info
+            label="It connects the Raycast extension to Pond's local API."
+            aria-label="About Raycast"
+          />
+        </Settings.ItemTitle>
         <Settings.ItemDescription>
-          Connect the Raycast extension to Pond's local API. Treat this token
-          like a password.
+          Treat the token like a password.
           {error ? (
             <>
               <br />

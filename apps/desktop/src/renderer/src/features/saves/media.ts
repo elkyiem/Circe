@@ -2,8 +2,9 @@
 
 export { saveDuration } from "./lib/duration";
 export {
-  buildMediaUnits,
+  buildOriginalMediaUnits,
   deriveTypeKind,
+  type MediaUnit,
   pickCardUnit,
   pickPrimaryFile,
   pickPrimaryUnit,

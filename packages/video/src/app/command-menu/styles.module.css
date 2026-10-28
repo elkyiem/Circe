@@ -1,0 +1,272 @@
+/* Sizes mirror the desktop command menu's RESULTS_LAYOUT, so heights match the app row for row. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--ds-black-a4);
+}
+
+.popup {
+  position: absolute;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ds-gray-12);
+  background: var(--ds-gray-1);
+  border-radius: var(--ds-radius-xl);
+  box-shadow: var(--ds-shadow-fullscreen);
+  transform-origin: top center;
+}
+
+.search {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: 0 14px;
+}
+
+.crumbs {
+  display: flex;
+  padding-top: 12px;
+  margin-left: -4px;
+}
+
+.context {
+  flex: none;
+  color: var(--ds-gray-9);
+}
+
+.field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+}
+
+.magnifier {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ds-gray-9);
+}
+
+.input {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  height: 46px;
+  font-size: var(--ds-text-md);
+  font-weight: var(--ds-weight-md);
+  white-space: pre;
+}
+
+.query {
+  color: var(--ds-gray-12);
+
+  &[data-selected] {
+    background: color-mix(in oklab, var(--ds-blue-9) 24%, transparent);
+  }
+}
+
+.caret {
+  flex: none;
+  width: 1.5px;
+  height: 17px;
+  margin-left: 0.5px;
+  background: var(--ds-gray-12);
+}
+
+.placeholder {
+  position: absolute;
+  left: 0;
+  color: var(--ds-gray-9);
+}
+
+.results {
+  flex: none;
+  overflow: hidden;
+}
+
+.content {
+  padding-block: 6px;
+}
+
+.group {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding-inline: 14px;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-lg);
+  color: var(--ds-gray-9);
+
+  &[data-divided] {
+    height: 42px;
+    padding-top: 12px;
+  }
+}
+
+.item {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding-inline: 14px;
+  color: var(--ds-gray-11);
+  isolation: isolate;
+
+  &::before {
+    position: absolute;
+    inset: 0 6px;
+    z-index: -1;
+    content: "";
+    background: var(--ds-gray-a3);
+    border-radius: var(--ds-radius-md);
+    opacity: 0;
+  }
+
+  &[data-tall] {
+    height: 48px;
+  }
+
+  &[data-active] {
+    color: var(--ds-gray-12);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+.icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  min-width: 16px;
+  min-height: 16px;
+  color: var(--ds-gray-9);
+
+  .item[data-active] & {
+    color: var(--ds-gray-12);
+  }
+}
+
+.copy {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--ds-text-md);
+  font-weight: var(--ds-weight-lg);
+  white-space: nowrap;
+
+  &[data-matched] {
+    color: var(--ds-gray-10);
+  }
+}
+
+.match {
+  color: var(--ds-gray-12);
+  background: none;
+}
+
+.detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--ds-text-md);
+  color: var(--ds-gray-9);
+  white-space: nowrap;
+}
+
+.shortcut {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-weight-lg);
+  font-feature-settings: "cv08" on;
+  color: var(--ds-gray-10);
+}
+
+.sequence {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.then {
+  font-size: var(--ds-text-xxs);
+  color: var(--ds-gray-9);
+  text-transform: lowercase;
+}
+
+.hint {
+  flex: none;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-gray-10);
+}
+
+.indicator {
+  flex: none;
+  color: var(--ds-gray-8);
+
+  .item[data-active] & {
+    color: var(--ds-gray-11);
+  }
+}
+
+.footer {
+  flex: none;
+  padding-block: 6px;
+}
+
+.slot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(32px * var(--thumb-width, 1));
+  height: calc(32px * var(--thumb-height, 1));
+  overflow: hidden;
+  background: var(--ds-gray-a2);
+  border-radius: var(--ds-radius-xs);
+
+  &::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px var(--ds-gray-a3);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}

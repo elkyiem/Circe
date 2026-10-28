@@ -173,15 +173,15 @@ function ratingValue(id: MenuActionId): number | null {
   return Number.isInteger(value) && value >= 0 && value <= 5 ? value : null;
 }
 
-export function shouldIgnoreMenuAction(source: MenuActionSource): boolean {
-  return source === "accelerator" && isEditableTarget();
+export function shouldIgnoreMenuAction(
+  source: MenuActionSource,
+  id?: MenuActionId,
+): boolean {
+  if (source !== "accelerator" || !isEditableTarget()) return false;
+  return id !== "library.search";
 }
 
-export function handleNativeMenuAction(
-  id: MenuActionId,
-  source: MenuActionSource = "menu",
-): boolean {
-  if (shouldIgnoreMenuAction(source)) return true;
+export function handleNativeMenuAction(id: MenuActionId): boolean {
   const field = findField(id);
   if (field) {
     openFilter(field);

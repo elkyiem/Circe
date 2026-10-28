@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreBinaries": ["iconutil", "cl", "lipo"],
+  "ignoreBinaries": ["iconutil", "cl", "lipo", "ffmpeg", "ffprobe"],
   "workspaces": {
     "apps/desktop": {
       "entry": [
@@ -39,6 +39,16 @@
         "tests/*.test.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "scripts/*.mjs", "tests/**/*.ts"]
+    },
+    "packages/video": {
+      "entry": [
+        "src/index.ts",
+        "cli/*.{mjs,cjs}",
+        "stage/main.tsx",
+        "videos/*/index.tsx"
+      ],
+      "project": ["**/*.{ts,tsx,mjs,cjs}"],
+      "ignoreDependencies": ["@pond/theme"]
     },
     "packages/schema": {
       "entry": ["scripts/*.ts"]

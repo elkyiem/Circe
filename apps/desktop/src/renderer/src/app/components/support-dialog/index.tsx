@@ -1,21 +1,12 @@
 import { IconCircleCheckFill } from "@pond/icons";
 import { Button, Dialog } from "@pond/ui";
-import { useEffect } from "react";
-import { fishIntroDialog } from "@/shared/state/fish-intro";
 import { supportDialog, useSupportDialogOpen } from "@/shared/state/support";
-import {
-  firstSeenAt,
-  hasAskedForSupport,
-  markAskedForSupport,
-  shouldAskForSupport,
-} from "./eligibility";
 import styles from "./styles.module.css";
 import { SupportVisual } from "./visual";
 
 const BUY_ME_A_COFFEE = "https://buymeacoffee.com/raphaelsalaja";
 const GITHUB = "https://github.com/raphaelsalaja/pond";
 const X = "https://x.com/raphaelsalaja";
-const CHECK_DELAY_MS = 60_000;
 
 const PROMISES = [
   "Free and open source",
@@ -23,38 +14,8 @@ const PROMISES = [
   "Free of ads and tracking",
 ] as const;
 
-/** Asks once per install, after real use, so the ask follows value instead of preceding it. */
-function useAskOnce(): void {
-  useEffect(() => {
-    if (hasAskedForSupport()) return;
-    const since = firstSeenAt(Date.now());
-    let active = true;
-    const timer = setTimeout(async () => {
-      try {
-        const counts = await window.pond.query("saves.sidebarCounts", {});
-        if (!active || hasAskedForSupport() || fishIntroDialog.isOpen()) return;
-        if (
-          !shouldAskForSupport({
-            saves: counts.library,
-            firstSeenAt: since,
-            now: Date.now(),
-          })
-        )
-          return;
-        markAskedForSupport();
-        supportDialog.open();
-      } catch {}
-    }, CHECK_DELAY_MS);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, []);
-}
-
 export function SupportDialog() {
   const open = useSupportDialogOpen();
-  useAskOnce();
 
   function visit(url: string) {
     void window.pond.openExternal(url);

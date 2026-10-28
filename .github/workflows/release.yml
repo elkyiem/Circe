@@ -109,6 +109,28 @@ jobs:
           process.stdout.write(`**${title}**\n\n${summary}\n\n${body.trim()}\n`);
           NODE
 
+      # Lives only in the GitHub notes: the in-app changelog parser rejects
+      # sections other than Important, New, Improved, and Fixed.
+      - name: Credit contributors
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          PREVIOUS="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)"
+          if [ -z "$PREVIOUS" ] || [ "$PREVIOUS" = "$GITHUB_REF_NAME" ]; then
+            exit 0
+          fi
+          LOGINS="$(gh api --paginate "repos/$GITHUB_REPOSITORY/compare/$PREVIOUS...$GITHUB_REF_NAME" \
+            --jq '.commits[] | select(.author.type == "User") | .author.login' \
+            | grep -Fvx "$OWNER" | sort -fu || true)"
+          if [ -z "$LOGINS" ]; then
+            exit 0
+          fi
+          {
+            printf '\n## Contributors\n\n'
+            while read -r login; do printf -- '- @%s\n' "$login"; done <<<"$LOGINS"
+          } >> "$RUNNER_TEMP/release-notes.md"
+
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

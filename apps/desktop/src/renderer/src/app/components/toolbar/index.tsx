@@ -34,7 +34,10 @@ import {
   useHasActiveSearch,
 } from "@/features/library/state/view-store";
 import { useSave } from "@/features/saves/hooks/use-saves";
-import { getLastListPath } from "@/features/saves/lib/list-path";
+import {
+  getLastListPath,
+  isSaveCollectionPath,
+} from "@/features/saves/lib/list-path";
 import { saveIdFromPath } from "@/features/saves/lib/save-nav";
 import {
   useResultIndex,
@@ -301,12 +304,12 @@ function Breadcrumbs() {
 export function Toolbar() {
   const sidebarOpen = useSidebarOpen();
   const detailsOpen = useDetailsOpen();
-  const viewingSave = useRouterState({
-    select: (state) => saveIdFromPath(state.location.pathname) !== null,
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
   });
-  const viewingFish = useRouterState({
-    select: (state) => fishIdFromPath(state.location.pathname) !== null,
-  });
+  const viewingSave = saveIdFromPath(pathname) !== null;
+  const viewingFish = fishIdFromPath(pathname) !== null;
+  const viewingLibrary = isSaveCollectionPath(pathname);
   return (
     <div className={styles.bar}>
       <div className={styles.chrome}>
@@ -314,15 +317,13 @@ export function Toolbar() {
         <ChromeHistoryNav />
       </div>
       <div className={styles.main}>{viewingFish ? null : <Breadcrumbs />}</div>
-      {viewingSave ? (
+      {viewingSave || viewingFish || viewingLibrary ? (
         <div className={styles.actions}>
-          <SidebarToggle side="right" open={detailsOpen} />
-        </div>
-      ) : viewingFish ? (
-        <div className={styles.actions}>
-          <Suspense fallback={null}>
-            <FishChatActions />
-          </Suspense>
+          {viewingFish ? (
+            <Suspense fallback={null}>
+              <FishChatActions />
+            </Suspense>
+          ) : null}
           <SidebarToggle side="right" open={detailsOpen} />
         </div>
       ) : null}

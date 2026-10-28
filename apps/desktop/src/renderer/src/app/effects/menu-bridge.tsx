@@ -3,7 +3,7 @@ import { Dialog } from "@pond/ui";
 import { isBlankDocumentKind } from "@shared/blank-documents";
 import { DEFAULT_FISH_ID } from "@shared/fish-contracts";
 import { useEffect } from "react";
-import { fishIdFromPath, fishPath } from "@/features/fish";
+import { fishPath } from "@/features/fish";
 import {
   createBlankDocument,
   createNote,
@@ -58,7 +58,6 @@ import {
   untrashSave,
 } from "@/features/saves/lib/actions";
 import { confirmEmptyTrash } from "@/features/saves/lib/empty-trash";
-import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
 import { trashSelection } from "@/features/saves/lib/selection";
 import { inspect } from "@/features/saves/state/inspect";
 import { pool } from "@/features/saves/state/pool";
@@ -70,7 +69,10 @@ import { pickWatchedFolder } from "@/features/sources/lib/watched-folder";
 import { getAppRouter } from "@/shared/lib/app-router";
 import { openSettings } from "@/shared/lib/open-settings";
 import { usePrefs } from "@/shared/state/prefs";
-import { handleNativeMenuAction } from "./native-menu-actions";
+import {
+  handleNativeMenuAction,
+  shouldIgnoreMenuAction,
+} from "./native-menu-actions";
 
 export function MenuBridge() {
   const [, patchPreferences] = usePrefs("preferences");
@@ -86,7 +88,8 @@ export function MenuBridge() {
 
   useEffect(() => {
     return window.pond.onMenuAction(({ id, source }) => {
-      if (handleNativeMenuAction(id, source)) return;
+      if (shouldIgnoreMenuAction(source, id)) return;
+      if (handleNativeMenuAction(id)) return;
       if (id.startsWith("library.new-blank-")) {
         const kind = id.slice("library.new-blank-".length);
         if (isBlankDocumentKind(kind)) {
@@ -121,17 +124,9 @@ export function MenuBridge() {
           patchSaveRecents({ entries: [] });
           return;
 
-        case "view.inspector.toggle": {
-          const pathname = getAppRouter()?.state.location.pathname ?? "";
-          const openId = saveIdFromPath(pathname);
-          if (openId || fishIdFromPath(pathname)) {
-            libraryChrome.toggleDetails();
-          } else {
-            const anchor = selection.getAnchor();
-            if (anchor) openSave(anchor);
-          }
+        case "view.inspector.toggle":
+          libraryChrome.toggleDetails();
           return;
-        }
 
         case "view.layout.cycle":
           cycleLayout();

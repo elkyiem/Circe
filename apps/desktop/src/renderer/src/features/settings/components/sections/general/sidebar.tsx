@@ -15,7 +15,7 @@ export function SidebarPreferences() {
           <Settings.ItemDetails>
             <Settings.ItemTitle>App Sidebar</Settings.ItemTitle>
             <Settings.ItemDescription>
-              Choose which items the sidebar shows and whether they show counts.
+              Which items appear, and whether they show counts.
             </Settings.ItemDescription>
           </Settings.ItemDetails>
           <Settings.ItemControl>
@@ -33,7 +33,7 @@ export function SidebarPreferences() {
           <Settings.ItemDetails>
             <Settings.ItemTitle>Folder Double-Click</Settings.ItemTitle>
             <Settings.ItemDescription>
-              Choose whether a folder opens or expands when you double-click it.
+              Open the folder, or expand and collapse it.
             </Settings.ItemDescription>
           </Settings.ItemDetails>
           <Settings.ItemControl>

@@ -44,6 +44,35 @@ describe("sensitive content enricher", () => {
     ).toBe(false);
   });
 
+  it("never scores the rendered card of a text-only post", async () => {
+    const textOnly: Save = {
+      ...imageSave(),
+      source: "twitter",
+      files: [
+        {
+          kind: "tweet_screenshot_light",
+          path: "tweet-light.png",
+          sha256: "hash",
+          size: 1,
+          mimeType: "image/png",
+        },
+      ],
+    };
+    expect(sensitiveContentEnricher.eligible(textOnly)).toBe(false);
+
+    const scored = {
+      ...textOnly,
+      sensitiveScore: 0.4,
+      sensitiveModel: "retired-model",
+    };
+    expect(sensitiveContentEnricher.eligible(scored)).toBe(true);
+    const cleared = { sensitiveScore: null, sensitiveModel: null };
+    await expect(sensitiveContentEnricher.run(scored)).resolves.toEqual({
+      derived: cleared,
+      optimistic: cleared,
+    });
+  });
+
   it("only runs when sensitive-content processing is enabled", () => {
     expect(
       sensitiveContentEnricher.enabled({

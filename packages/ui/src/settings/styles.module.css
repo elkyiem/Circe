@@ -169,6 +169,9 @@
 }
 
 .item-title {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   font-size: var(--ds-text-md);
   font-weight: var(--ds-weight-lg);
   color: var(--ds-gray-12);

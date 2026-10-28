@@ -43,6 +43,11 @@ interface ImportFixture {
   saves: Map<string, ManualSaveInput>;
 }
 
+function csvCell(value: string): string {
+  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
 function createImportFixture(): ImportFixture {
   const links = new Map<string, { id: string; metadata: Partial<NewSave> }>();
   const saves = new Map<string, ManualSaveInput>();
@@ -186,6 +191,38 @@ describe("importMymindExport", () => {
       url: null,
       tags: ["research"],
     });
+  });
+
+  it("does not apply dumped binary fields as tags", async () => {
+    const directory = join(root, "binary-tags");
+    await mkdir(directory);
+    const encodedBlob = `${"A+B/".repeat(1000)}==`;
+    const controlBlob = Array.from({ length: 2400 }, (_, index) =>
+      String.fromCharCode((index % 30) + 1),
+    ).join("");
+    await writeFile(
+      join(directory, "cards.csv"),
+      [
+        "id,type,title,url,content,note,tags,created",
+        `dump-1,Note,Encoded dump,,body,,${csvCell(encodedBlob)},2024-03-01T12:00:00.000Z`,
+        `dump-2,Note,Control dump,,body,,${csvCell(controlBlob)},2024-03-02T12:00:00.000Z`,
+        'ok-1,Note,Fine note,,body,,"research, café, work in progress, 日本語, C++",2024-03-03T12:00:00.000Z',
+      ].join("\n"),
+    );
+    const fixture = createImportFixture();
+
+    await expect(
+      importMymindExport(directory, fixture.dependencies),
+    ).resolves.toEqual({ ok: true, imported: 3, skipped: 0 });
+    expect(fixture.saves.get("mymind:dump-1")?.tags).toEqual([]);
+    expect(fixture.saves.get("mymind:dump-2")?.tags).toEqual([]);
+    expect(fixture.saves.get("mymind:ok-1")?.tags).toEqual([
+      "research",
+      "café",
+      "work in progress",
+      "日本語",
+      "C++",
+    ]);
   });
 
   it("rejects a cards.csv that is not a mymind export", async () => {

@@ -18,6 +18,7 @@ import {
 import {
   embeddingClassificationLabel,
   normalizedEmbeddingVector,
+  tokenizeEmbeddingTexts,
 } from "@shared/embeddings";
 import {
   EMBEDDING_MODEL,
@@ -250,7 +251,10 @@ export async function coreEmbedText(text: string): Promise<Float32Array> {
 export async function coreEmbedTexts(texts: string[]): Promise<Float32Array[]> {
   if (texts.length === 0) return [];
   return embeddingProfiles.use("text-image", async ({ model, tokenizer }) => {
-    const inputs = tokenizer(texts, { padding: true, truncation: true });
+    const inputs = tokenizeEmbeddingTexts(
+      (batch, options) => tokenizer(batch, options),
+      texts,
+    );
     return sentenceEmbeddingRows(await model(inputs), texts.length);
   });
 }

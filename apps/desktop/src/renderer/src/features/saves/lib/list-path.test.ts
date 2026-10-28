@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getLastListPath,
   getLastListSearch,
+  isSaveCollectionPath,
   listPathForLocation,
   rememberListPath,
 } from "./list-path";
@@ -34,6 +35,17 @@ describe("list-path", () => {
     rememberListPath("/trash");
     expect(listPathForLocation("/save/xyz")).toBe("/trash");
     expect(listPathForLocation("/trash")).toBe("/trash");
+  });
+
+  it("treats library modes as save-collection surfaces", () => {
+    expect(isSaveCollectionPath("/")).toBe(true);
+    expect(isSaveCollectionPath("/untagged")).toBe(true);
+    expect(isSaveCollectionPath("/recents")).toBe(true);
+    expect(isSaveCollectionPath("/trash")).toBe(true);
+    expect(isSaveCollectionPath("/save/demo")).toBe(false);
+    expect(isSaveCollectionPath("/settings")).toBe(false);
+    expect(isSaveCollectionPath("/sources")).toBe(false);
+    expect(isSaveCollectionPath("/fish/default")).toBe(false);
   });
 
   it("remembers list search with the path", () => {

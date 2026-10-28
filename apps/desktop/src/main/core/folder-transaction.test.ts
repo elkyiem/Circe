@@ -102,4 +102,14 @@ describe.skipIf(!nativeAvailable())("folder membership transactions", () => {
       ).folderIds,
     ).toEqual(["a"]);
   });
+
+  it("skips a save whose info.json is not on disk yet", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pond-folder-tx-missing-"));
+    roots.push(root);
+    const directory = join(root, "items", "save.info");
+    await mkdir(directory, { recursive: true });
+    await expect(
+      writeFolderMemberships("save", ["b"], directory),
+    ).resolves.toBeUndefined();
+  });
 });

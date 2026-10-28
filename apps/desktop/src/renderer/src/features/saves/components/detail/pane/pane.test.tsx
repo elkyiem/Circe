@@ -359,7 +359,6 @@ it("shows enrichment output and applies suggested tags", async () => {
     captionModel: "florence",
     ocrText: "Revenue 42%",
     ocrModel: "florence",
-    aesthetic: ["Minimal"],
     suggestedTags: ["Dashboard", "One"],
     sensitiveScore: 0.99,
   });
@@ -368,7 +367,6 @@ it("shows enrichment output and applies suggested tags", async () => {
   expect(host.textContent).toContain("Likely sensitive content");
   expect(host.textContent).toContain("A dashboard with charts");
   expect(host.textContent).toContain("Revenue 42%");
-  expect(host.textContent).toContain("Minimal");
   expect(host.querySelector('[aria-label="Copy Caption"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Add tag Dashboard"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Add tag One"]')).toBeNull();

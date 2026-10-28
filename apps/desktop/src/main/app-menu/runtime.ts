@@ -14,6 +14,10 @@ import { routeCombineImagesZoom } from "../core/combine-images-window";
 import { reconcileLibrary } from "../core/scan";
 import { menuAccelerator } from "../lib/menu-accelerator";
 import { libraryRoot } from "../paths";
+import {
+  menuActionSourceFromClick,
+  shouldOpenLibraryForMenuAction,
+} from "./menu-action";
 import type { AppMenuContext } from "./types";
 
 export interface AppMenuRuntimeDeps {
@@ -42,11 +46,16 @@ export function createAppMenuContext(deps: AppMenuRuntimeDeps): AppMenuContext {
   const sendMenuAction: AppMenuContext["sendMenuAction"] =
     (id: MenuActionId) => async (_item, _window, event) => {
       if (routeCombineImagesZoom(id)) return;
+      const source = menuActionSourceFromClick(event);
+      if (!shouldOpenLibraryForMenuAction(source)) {
+        const focused = BrowserWindow.getFocusedWindow();
+        if (!focused || focused.isDestroyed()) return;
+        const action: MenuActionEvent = { id, source };
+        focused.webContents.send(IPC.menuAction, action);
+        return;
+      }
       await deps.openLibraryWindow();
-      const action: MenuActionEvent = {
-        id,
-        source: event.triggeredByAccelerator ? "accelerator" : "menu",
-      };
+      const action: MenuActionEvent = { id, source };
       deps.focusedOrMain()?.webContents.send(IPC.menuAction, action);
     };
 

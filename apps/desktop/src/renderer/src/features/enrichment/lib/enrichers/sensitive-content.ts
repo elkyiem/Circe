@@ -1,5 +1,8 @@
 import type { RawImage } from "@huggingface/transformers";
-import { buildMediaUnits } from "@/features/saves/media";
+import {
+  buildOriginalMediaUnits,
+  type MediaUnit,
+} from "@/features/saves/media";
 import type { Save } from "@/features/saves/types";
 import { loadImage } from "../image";
 import {
@@ -8,6 +11,8 @@ import {
   SENSITIVE_CONTENT_MODEL_VERSION,
 } from "../sensitive-content";
 import type { Enricher } from "../types";
+
+const CLEARED = { sensitiveScore: null, sensitiveModel: null };
 
 async function loadSample(
   bytes: Uint8Array,
@@ -19,8 +24,7 @@ async function loadSample(
   );
 }
 
-async function visualScores(save: Save): Promise<number[]> {
-  const units = buildMediaUnits(save);
+async function visualScores(units: MediaUnit[]): Promise<number[]> {
   const imageUrls = new Set<string>();
   for (const unit of units) {
     if (unit.isVideo) {
@@ -67,11 +71,16 @@ export const sensitiveContentEnricher: Enricher = {
   enabled: (prefs) => prefs?.ai?.enableSensitiveContent === true,
   eligible(save: Save) {
     if (save.status !== "complete" || save.deletedAt != null) return false;
-    if (buildMediaUnits(save).length === 0) return false;
+    /** A rendered post card is not the Save's media, so text-only posts carry no result. */
+    if (buildOriginalMediaUnits(save).length === 0) {
+      return save.sensitiveModel != null;
+    }
     return save.sensitiveModel !== SENSITIVE_CONTENT_MODEL_VERSION;
   },
   async run(save: Save) {
-    const sensitiveScore = aggregateSensitiveScores(await visualScores(save));
+    const units = buildOriginalMediaUnits(save);
+    if (units.length === 0) return { derived: CLEARED, optimistic: CLEARED };
+    const sensitiveScore = aggregateSensitiveScores(await visualScores(units));
     if (sensitiveScore == null) return null;
     const fields = {
       sensitiveScore,

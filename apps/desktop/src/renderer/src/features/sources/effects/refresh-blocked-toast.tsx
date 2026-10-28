@@ -1,7 +1,7 @@
 import { sourceLabel } from "@pond/schema/sources";
 import type { WireSyncAction } from "@shared/wire";
 import { useEffect } from "react";
-import { loadedSaveSource } from "@/features/saves/lookup";
+import { pool } from "@/features/saves/pool";
 import { startConnect } from "@/features/sources/lib/create";
 import { connectFlow } from "@/features/sources/state/connect-flow";
 import { sourceFlow } from "@/features/sources/state/source-flow";
@@ -44,7 +44,7 @@ export function notifyRefreshBlocked(
   if (action.modelName !== "save") return;
   if (action.actorReason !== "pipeline:refresh-blocked") return;
   const saveId = action.modelId;
-  const source = loadedSaveSource(saveId);
+  const source = pool.get(saveId)?.source;
   if (!source) return;
   // The connect dialog takes over, and the toast timer pauses while the
   // app is in the background during sign-in, so close it here.

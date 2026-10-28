@@ -20,6 +20,7 @@ export const WEB_QUERY_ACCESS = {
   "agent.listAvailableModels": "read",
   "agent.listModels": "read",
   "agent.mcpSnippet": "read",
+  "agent.mcpClients": "browser",
   "agent.messages": "read",
   "agent.newChat": "write",
   "agent.openMcpInstall": "host",

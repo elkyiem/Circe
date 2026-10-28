@@ -78,7 +78,19 @@ app
       else setTimeout(check, 100);
     }; check();
   })`);
+    const startupPrompt = `Array.from(document.querySelectorAll('[role="dialog"]')).some(dialog => {
+      const title = dialog.querySelector('h2, [role="heading"]')?.textContent?.trim() ?? '';
+      return /^(Meet Your Fish|What's New)/.test(title) || Array.from(dialog.querySelectorAll('button')).some(button => button.textContent?.trim() === 'Not Now');
+    })`;
+    const dismissStartupPrompt = async () => {
+      if (!(await run(startupPrompt))) return;
+      await snapshot("startup-prompt");
+      win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+      win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+      await waitFor(`!(${startupPrompt})`);
+    };
     const click = async (selector, clickCount = 1) => {
+      await dismissStartupPrompt();
       app.focus({ steal: true });
       win.focus();
       const point = await run(`new Promise((resolve,reject) => {

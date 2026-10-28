@@ -117,6 +117,10 @@ export const selection = {
   },
 };
 
+export function useSelectedIds(): readonly string[] {
+  return useSelector(selectionStore, (s) => s.snapshot);
+}
+
 export function useSelectionSize(): number {
   return useSelector(selectionStore, (s) => s.ids.size);
 }
@@ -144,6 +148,10 @@ export const primarySelection = {
     primarySelectionStore.setState((s) => (s.id === next ? s : { id: next }));
   },
 };
+
+export function usePrimarySelection(): string | null {
+  return useSelector(primarySelectionStore, (s) => s.id);
+}
 
 export function useIsPrimary(id: string): boolean {
   return useSelector(primarySelectionStore, (s) => s.id === id);

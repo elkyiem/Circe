@@ -77,6 +77,30 @@ describe("standalone harvest validation", () => {
     });
   });
 
+  it("falls back to any pinimg still when closeup selectors are missing", async () => {
+    const imageUrl = "https://i.pinimg.com/736x/story.jpg";
+    const expression = buildItemExpression(
+      inPagePinterestNormalize,
+      (_arg, norm) => norm.extractPinPageMeta(),
+      "",
+    );
+    const result = await runInNewContext(expression, {
+      URL,
+      location: { origin: "https://www.pinterest.com" },
+      document: {
+        documentElement: { lang: "" },
+        querySelector: (selector: string) =>
+          selector.includes("pinimg.com")
+            ? { src: imageUrl, currentSrc: imageUrl }
+            : null,
+      },
+    });
+    expect(result).toMatchObject({
+      mediaUrl: imageUrl,
+      mediaUrls: [{ url: imageUrl, type: "image" }],
+    });
+  });
+
   it("preserves valid TikTok fields and drops malformed optional metrics", () => {
     const result = runInNewContext(
       `${browserValidationSource}\nPondHarvestValidation.browserValidators.tiktokItem.parse({ id: '1', createTime: 123, author: { verified: false }, stats: { playCount: 7, diggCount: 'many', shareCount: '1e3' }, video: { duration: 'bad' } });`,

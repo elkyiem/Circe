@@ -1,0 +1,64 @@
+import { expect, it } from "vitest";
+import {
+  enrichmentCooldownFactor,
+  enrichmentRestMs,
+  enrichmentSuspended,
+  type MachinePace,
+  motionPaused,
+  THERMAL_RELIEF_MS,
+} from "./machine-pace";
+
+function pace(patch: Partial<MachinePace> = {}): MachinePace {
+  return {
+    hidden: false,
+    focused: true,
+    onBattery: false,
+    thermal: "nominal",
+    reliefAt: null,
+    ...patch,
+  };
+}
+
+const now = 1_000_000;
+
+it("pauses decorative motion while hidden, unfocused, or hot", () => {
+  expect(motionPaused(pace(), now)).toBe(false);
+  expect(motionPaused(pace({ hidden: true }), now)).toBe(true);
+  expect(motionPaused(pace({ focused: false }), now)).toBe(true);
+  expect(motionPaused(pace({ thermal: "fair" }), now)).toBe(true);
+  expect(motionPaused(pace({ thermal: "serious" }), now)).toBe(true);
+  expect(motionPaused(pace({ thermal: "critical" }), now)).toBe(true);
+});
+
+it("stops enrichment while hidden or hot, and keeps going in a background window", () => {
+  expect(enrichmentSuspended(pace(), now)).toBe(false);
+  expect(enrichmentSuspended(pace({ focused: false }), now)).toBe(false);
+  expect(enrichmentSuspended(pace({ thermal: "fair" }), now)).toBe(false);
+  expect(enrichmentSuspended(pace({ hidden: true }), now)).toBe(true);
+  expect(enrichmentSuspended(pace({ thermal: "serious" }), now)).toBe(true);
+  expect(
+    enrichmentSuspended(pace({ reliefAt: now - THERMAL_RELIEF_MS + 1 }), now),
+  ).toBe(true);
+  expect(
+    enrichmentSuspended(pace({ reliefAt: now - THERMAL_RELIEF_MS }), now),
+  ).toBe(false);
+});
+
+it("rests longer on battery, in the background, and under fair heat", () => {
+  expect(enrichmentCooldownFactor(pace())).toBe(1);
+  expect(enrichmentCooldownFactor(pace({ onBattery: true }))).toBe(2.5);
+  expect(enrichmentCooldownFactor(pace({ focused: false }))).toBe(2.5);
+  expect(enrichmentCooldownFactor(pace({ thermal: "fair" }))).toBe(2);
+  expect(
+    enrichmentCooldownFactor(
+      pace({ onBattery: true, focused: false, thermal: "fair" }),
+    ),
+  ).toBe(4);
+});
+
+it("caps the rest between runs so a long inference still yields the CPU", () => {
+  expect(enrichmentRestMs(100, 1)).toBe(400);
+  expect(enrichmentRestMs(2_000, 1)).toBe(1_000);
+  expect(enrichmentRestMs(20_000, 1)).toBe(3_000);
+  expect(enrichmentRestMs(20_000, 4)).toBe(12_000);
+});

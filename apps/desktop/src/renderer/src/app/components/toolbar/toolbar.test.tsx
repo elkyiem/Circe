@@ -336,15 +336,27 @@ describe("breadcrumb toolbar", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
-  it("offers the details toggle only while viewing a Save", async () => {
+  it("offers the details toggle on the library and while viewing a Save", async () => {
     const labels = () =>
       [...host.querySelectorAll("button")].map((node) =>
         node.getAttribute("aria-label"),
       );
     const router = await mount("/");
-    expect(labels()).not.toContain("Toggle Details");
+    expect(labels()).toContain("Toggle Details");
     await act(async () => router.history.push("/save/demo"));
     expect(labels()).toContain("Toggle Details");
     expect(labels()).not.toContain("Fish");
+    await act(async () => router.history.push("/settings"));
+    expect(labels()).not.toContain("Toggle Details");
+  });
+
+  it("toggles the details column from the library toolbar", async () => {
+    libraryChrome.setDetailsOpen(true);
+    await mount("/");
+    expect(libraryChrome.getState().detailsOpen).toBe(true);
+    await act(async () => button("Toggle Details").click());
+    expect(libraryChrome.getState().detailsOpen).toBe(false);
+    await act(async () => button("Toggle Details").click());
+    expect(libraryChrome.getState().detailsOpen).toBe(true);
   });
 });

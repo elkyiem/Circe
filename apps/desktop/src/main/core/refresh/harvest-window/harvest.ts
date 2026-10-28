@@ -29,7 +29,7 @@ export {
 } from "./harvest-list";
 export { harvestThreadsLikes, harvestThreadsSaved } from "./harvest-saved";
 
-interface HarvestArgs {
+export interface HarvestArgs {
   url: string;
   source: Source;
   sourceId?: string;
@@ -38,7 +38,7 @@ interface HarvestArgs {
   isSignedIn?: (source: Source, partition: string) => Promise<boolean>;
 }
 
-interface HarvestResult {
+export interface HarvestResult {
   ok: boolean;
   capture?: Capture;
   sourceId?: string;

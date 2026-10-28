@@ -1,3 +1,4 @@
+import { Tooltip } from "@pond/ui";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
@@ -77,6 +78,38 @@ it("associates setting titles and descriptions with controls rather than their v
         ).toBe(field.description);
       }
     }
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("shows an info button when a setting keeps a second fact in a tooltip", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const item: FieldItem = {
+    key: "retina",
+    title: "Full Resolution",
+    description: "Saves every pixel on a high-density display.",
+    tooltip: "The page can look smaller than the saved image.",
+    control: "switch",
+  };
+  try {
+    await act(async () =>
+      root.render(
+        <Tooltip.Provider>
+          <ItemView
+            item={item}
+            binding={{ loaded: true, values: { retina: true }, patch() {} }}
+          />
+        </Tooltip.Provider>,
+      ),
+    );
+    expect(
+      host.querySelector('[aria-label="About Full Resolution"]'),
+    ).toBeTruthy();
+    expect(host.textContent).toContain(item.description);
   } finally {
     await act(async () => root.unmount());
     host.remove();

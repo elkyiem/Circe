@@ -54,10 +54,18 @@ export function eventFromEditable(event: KeyboardEvent): boolean {
   return event.composedPath().some((node) => isEditableTarget(node));
 }
 
+/** Typing in a field owns unmodified keys and other chords; Search stays available unless the field already handled it. */
+export function appHotkeyBlockedByEditable(event: KeyboardEvent): boolean {
+  if (!eventFromEditable(event)) return false;
+  if (event.defaultPrevented) return true;
+  return !matchesShortcut(event, "library.search");
+}
+
 export function stopAppHotkeysFromEditable(event: {
   nativeEvent: KeyboardEvent;
   stopPropagation: () => void;
 }): void {
-  if (matchesShortcut(event.nativeEvent, "library.search")) return;
+  if (!appHotkeyBlockedByEditable(event.nativeEvent)) return;
   event.stopPropagation();
+  event.nativeEvent.stopImmediatePropagation();
 }

@@ -24,6 +24,7 @@ interface ItemBase {
   key: string;
   title: string;
   description?: ReactNode;
+  tooltip?: string;
   keywords?: string[];
   visible?: (values: SettingsValues) => boolean;
   disabled?: (values: SettingsValues) => boolean;
@@ -64,6 +65,7 @@ export interface ButtonItem {
   key: string;
   title: string;
   description?: ReactNode;
+  tooltip?: string;
   keywords?: string[];
   label: ReactNode;
   variant?: "secondary" | "destructive";
@@ -135,6 +137,7 @@ type FieldControl =
 interface FieldMeta {
   title: string;
   description?: ReactNode;
+  tooltip?: string;
   keywords?: string[];
   visible?: (values: SettingsValues) => boolean;
   disabled?: (values: SettingsValues) => boolean;

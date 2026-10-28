@@ -5,7 +5,7 @@ import {
   mcpHostConfigPath,
   pondLaunchLine,
 } from "../../../shared/mcp-hosts";
-import { mcpInstallUrl, pondMcpSnippet } from "./mcp-hosts";
+import { configListsPond, mcpInstallUrl, pondMcpSnippet } from "./mcp-hosts";
 
 describe("mcp hosts", () => {
   it("builds Claude Code setup commands from the Pond launch", () => {
@@ -50,5 +50,24 @@ describe("mcp hosts", () => {
 
   it("serializes the Pond stdio snippet", () => {
     expect(pondMcpSnippet("/bin/pond", ["--mcp"]).json).toContain("--mcp");
+  });
+
+  it("finds Pond in a client config by name or launch path", () => {
+    expect(configListsPond(pondMcpSnippet("/bin/pond").json)).toBe(true);
+    expect(
+      configListsPond(
+        JSON.stringify({
+          mcpServers: {
+            library: {
+              command: "/Applications/Pond.app/Contents/MacOS/Pond",
+            },
+          },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      configListsPond(JSON.stringify({ mcpServers: { linear: {} } })),
+    ).toBe(false);
+    expect(configListsPond("")).toBe(false);
   });
 });

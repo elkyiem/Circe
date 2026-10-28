@@ -14,7 +14,7 @@ export const extensionSection = defineSection("extension", {
           control: "select",
           key: "toolbar",
           title: "Toolbar Button",
-          description: "Save Page skips the panel and saves in one click.",
+          description: "Save Page stores the page without the panel.",
           options: [
             { value: "popup", label: "Open Panel" },
             { value: "save", label: "Save Page" },
@@ -24,8 +24,7 @@ export const extensionSection = defineSection("extension", {
           control: "select",
           key: "theme",
           title: "Theme",
-          description:
-            "Match Library uses the colors of the Pond Library you have open.",
+          description: "Match Library follows the open library.",
           options: [
             { value: "library", label: "Match Library" },
             { value: "system", label: "System" },
@@ -37,8 +36,7 @@ export const extensionSection = defineSection("extension", {
           control: "switch",
           key: "confirmations",
           title: "Show Confirmations",
-          description:
-            "When off, the Pond icon shows a badge instead of a notice on the page.",
+          description: "When off, a badge replaces the page notice.",
         },
       ],
     },
@@ -49,16 +47,15 @@ export const extensionSection = defineSection("extension", {
           control: "switch",
           key: "askDetails",
           title: "Ask Where to Save",
-          description:
-            "Pick a name, rating, tags, and folders on the page before each save.",
+          description: "Asks for a name, rating, tags, and folders.",
           keywords: ["details", "rating", "folders", "tags"],
         },
         {
           control: "switch",
           key: "altClick",
           title: "Alt-Right-Click to Save",
-          description:
-            "Hold Alt, or Option on a Mac, and right-click an image or link to save it.",
+          description: "Right-click an image or link while holding Alt.",
+          tooltip: "On a Mac, hold Option.",
           keywords: ["option", "gesture", "right click"],
         },
       ],
@@ -70,7 +67,7 @@ export const extensionSection = defineSection("extension", {
           control: "select",
           key: "screenshotFormat",
           title: "Screenshot Format",
-          description: "PNG keeps text sharp, and JPEG makes smaller files.",
+          description: "PNG keeps text sharp, and JPEG is smaller.",
           options: [
             { value: "png", label: "PNG" },
             { value: "jpeg", label: "JPEG" },
@@ -80,8 +77,8 @@ export const extensionSection = defineSection("extension", {
           control: "switch",
           key: "retina",
           title: "Full Resolution",
-          description:
-            "Saves every pixel a high-density display shows, not just the size the page appears.",
+          description: "Saves every pixel on a high-density display.",
+          tooltip: "The page can look smaller than the saved image.",
           keywords: ["retina", "2x", "density"],
         },
       ],

@@ -19,6 +19,7 @@ import type {
   AssistantSendResult,
 } from "./assistant";
 import type { LibraryMarkSource } from "./library-mark";
+import type { McpClientStatus } from "./mcp-hosts";
 import type { ProviderModelsResult } from "./provider-models";
 import type {
   CancellableResult,
@@ -216,6 +217,7 @@ export interface SystemQueryResults {
     json: string;
     app: string;
   };
+  "agent.mcpClients": { clients: McpClientStatus[] };
   "agent.openMcpInstall": OkResult;
   "saves.understandMedia": MediaUnderstandResult;
   "saves.retrieve": { hits: RetrievalHit[]; saves: RetrievalSave[] };

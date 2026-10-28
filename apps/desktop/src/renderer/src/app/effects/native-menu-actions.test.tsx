@@ -15,21 +15,44 @@ afterEach(() => {
   editor.remove();
 });
 
-it("ignores a native accelerator while the Assistant editor owns the keyboard", () => {
+it("ignores a native accelerator while the fish composer owns the keyboard", () => {
   editor.focus();
   expect(document.activeElement).toBe(editor);
 
-  expect(shouldIgnoreMenuAction("accelerator")).toBe(true);
+  expect(shouldIgnoreMenuAction("accelerator", "view.sidebar.toggle")).toBe(
+    true,
+  );
+  expect(shouldIgnoreMenuAction("accelerator", "view.layout.waterfall")).toBe(
+    true,
+  );
+});
+
+it("ignores a native accelerator while a native input is focused", () => {
+  const input = document.createElement("input");
+  document.body.append(input);
+  input.focus();
+  expect(shouldIgnoreMenuAction("accelerator", "save.open-with-default")).toBe(
+    true,
+  );
+  input.remove();
+});
+
+it("allows Search from a field when the field did not handle it", () => {
+  editor.focus();
+
+  expect(shouldIgnoreMenuAction("accelerator", "library.search")).toBe(false);
 });
 
 it("allows a native accelerator outside an editor", () => {
   document.body.focus();
 
-  expect(shouldIgnoreMenuAction("accelerator")).toBe(false);
+  expect(shouldIgnoreMenuAction("accelerator", "view.sidebar.toggle")).toBe(
+    false,
+  );
 });
 
 it("allows an explicit menu command while an editor has focus", () => {
   editor.focus();
 
-  expect(shouldIgnoreMenuAction("menu")).toBe(false);
+  expect(shouldIgnoreMenuAction("menu", "view.sidebar.toggle")).toBe(false);
 });

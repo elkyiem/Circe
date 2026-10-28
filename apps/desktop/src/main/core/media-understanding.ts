@@ -74,11 +74,17 @@ export class MediaUnderstandingError extends Error {
   }
 }
 
+type LocalReasoningOptions = {
+  ollama?: { reasoningEffort: "none" };
+  lmstudio?: { reasoningEffort: "none" };
+};
+
 export interface MediaUnderstandingGenerationInput {
   model: LanguageModel;
   messages: ModelMessage[];
   maxOutputTokens: number;
   abortSignal: AbortSignal;
+  providerOptions?: LocalReasoningOptions;
 }
 
 export type MediaUnderstandingOperationalMetric =
@@ -152,6 +158,14 @@ function failure(
   task: MediaUnderstandingTask,
 ): MediaUnderstandingError {
   return new MediaUnderstandingError(reason, task);
+}
+
+/** Ollama puts the caption in reasoning and leaves content empty when thinking uses the token budget. */
+function localReasoningOptions(
+  provider: LocalMediaModelConnection["provider"],
+): LocalReasoningOptions {
+  if (provider === "ollama") return { ollama: { reasoningEffort: "none" } };
+  return { lmstudio: { reasoningEffort: "none" } };
 }
 
 function validateRequest(
@@ -278,6 +292,7 @@ async function executeTask(
       ],
       maxOutputTokens: config.maxOutputTokens,
       abortSignal: input.signal,
+      providerOptions: localReasoningOptions(connection.provider),
     });
     text = result.text;
   } catch {

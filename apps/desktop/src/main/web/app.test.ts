@@ -205,6 +205,7 @@ describe("browser host boundary", () => {
     for (const name of [
       "settings.ingestToken",
       "agent.readKey",
+      "agent.mcpClients",
       "saves.createManual",
       "library.switchTo",
       "saves.filePath",

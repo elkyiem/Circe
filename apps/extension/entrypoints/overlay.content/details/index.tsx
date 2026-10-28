@@ -113,6 +113,8 @@ export function Details({ draft, library, container, onFinish }: DetailsProps) {
   return (
     <Dialog.Root
       open
+      /** Tag and fish pickers portal onto the overlay layer, outside this popup. */
+      modal="trap-focus"
       disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onFinish(null);

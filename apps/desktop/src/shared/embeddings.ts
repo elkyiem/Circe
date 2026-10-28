@@ -2,6 +2,24 @@ import { EMBEDDING_MODEL } from "./on-device-models";
 
 const EMBEDDING_DIMENSIONS = 768 as const;
 
+/** EmbeddingGemma context is 2048 tokens; the ONNX tokenizer's model_max_length is ~1e30, so truncation needs this explicit cap. */
+export const EMBEDDING_TOKEN_MAX_LENGTH = 2048;
+
+export const EMBEDDING_TOKENIZER_OPTIONS = {
+  padding: true,
+  truncation: true,
+  max_length: EMBEDDING_TOKEN_MAX_LENGTH,
+} as const;
+
+export type EmbeddingTokenizerOptions = typeof EMBEDDING_TOKENIZER_OPTIONS;
+
+export function tokenizeEmbeddingTexts<T>(
+  tokenizer: (texts: string[], options: EmbeddingTokenizerOptions) => T,
+  texts: string[],
+): T {
+  return tokenizer(texts, EMBEDDING_TOKENIZER_OPTIONS);
+}
+
 const TEXT_PREPROCESSING_VERSION = 4;
 const MEDIA_PREPROCESSING_VERSION = 4;
 const MEDIA_PREPROCESSING =

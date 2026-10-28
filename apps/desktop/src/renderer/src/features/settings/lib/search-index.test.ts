@@ -37,6 +37,11 @@ describe("settings search index", () => {
     }
   });
 
+  it("indexes setting tooltips with their row", () => {
+    expect(entry("extension:altClick").description).toContain("Option");
+    expect(entry("videos:maxHeight").description).toContain("bigger files");
+  });
+
   it("indexes semantic search under processing", () => {
     expect(entry("processing:semanticSearch").sectionLabel).toBe("Processing");
     expect(entry("processing:enableClip").sectionLabel).toBe("Processing");

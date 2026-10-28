@@ -1,5 +1,6 @@
 .positioner {
   z-index: 9999999999;
+  pointer-events: auto;
   -webkit-user-select: none;
   user-select: none;
   outline: none;

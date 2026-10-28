@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Save, SaveFile } from "@/features/saves/types";
 import {
   buildMediaUnits,
+  buildOriginalMediaUnits,
   deriveTypeKind,
   deriveTypeLabel,
   pickCardUnit,
@@ -138,6 +139,10 @@ describe("pickPrimaryUnit Threads post cover", () => {
     expect(
       buildMediaUnits(textOnly, { theme: "light" }).map((u) => u.key),
     ).toEqual(["tweet-light.png"]);
+    expect(buildOriginalMediaUnits(textOnly)).toEqual([]);
+    expect(buildOriginalMediaUnits(quoted).map((u) => u.key)).toEqual([
+      "photo.jpg",
+    ]);
   });
 
   it("falls back to the card PNG for a text-only Threads post", () => {

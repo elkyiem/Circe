@@ -22,6 +22,7 @@ import {
 } from "./core/global-shortcuts";
 import { syncLibraryRootMetadata } from "./core/library-ops";
 import { stopLibraryTransfers } from "./core/library-transfers";
+import { startMachinePace } from "./core/machine-pace";
 import { flushGovernor } from "./core/pipeline/rate-governor";
 import {
   resumeReconcilerAfterSuspend,
@@ -91,7 +92,6 @@ import {
   markStartup,
   watchMainThreadStalls,
 } from "./startup-timing";
-import { registerAutoUpdater } from "./updater";
 import {
   beginQuit,
   createWindow,
@@ -284,7 +284,11 @@ app.whenReady().then(async () => {
   }
 
   registerIpc();
-  if (!process.env.POND_SANDBOX) registerAutoUpdater();
+  startMachinePace();
+  if (!process.env.POND_SANDBOX) {
+    const { registerAutoUpdater } = await import("./updater");
+    registerAutoUpdater();
+  }
   subscribePrefs((prefs) => broadcast(IPC.prefsChanged, prefs));
   registerCombineImagesWindowIpc();
   const menuPrefs = await getPrefs();

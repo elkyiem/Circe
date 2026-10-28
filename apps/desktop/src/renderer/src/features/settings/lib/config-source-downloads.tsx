@@ -19,8 +19,7 @@ export function sourceDownloadsSection(source: ExternalSource): SectionConfig {
             control: "switch",
             key: "useGlobal",
             title: "Use Global Settings",
-            description:
-              "Off lets this source use its own image and video quality.",
+            description: "Off uses this source's own download settings.",
           },
         ],
       }),

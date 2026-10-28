@@ -12,7 +12,10 @@ import {
   libraryHeader,
   useViewPopover,
 } from "@/features/library/state/library-header";
-import { getViewState } from "@/features/library/state/view-store";
+import {
+  getViewState,
+  setSearchScope,
+} from "@/features/library/state/view-store";
 import type { ShortcutId } from "../../../../shared/shortcuts";
 import { AppHotkeys } from "./app-hotkeys";
 import { EditableHotkeyGuard } from "./editable-hotkey-guard";
@@ -129,6 +132,66 @@ describe("app hotkeys in text fields", () => {
     expect(libraryChrome.getState().sidebarOpen).toBe(open);
   });
 
+  it("does not run layout or view keys from a nested fish composer node", async () => {
+    const field = document.createElement("div");
+    field.setAttribute("role", "textbox");
+    field.tabIndex = 0;
+    const span = document.createElement("span");
+    field.append(span);
+    await mount(field);
+    span.focus();
+    const open = libraryChrome.getState().sidebarOpen;
+    const layout = getViewState().layout;
+    await act(async () => {
+      press("1", span);
+      press("v", span);
+      press("d", span);
+      press("y", span);
+      press("o", span);
+      press("i", span);
+      press("x", span);
+      press("g", span);
+      press("l", span);
+    });
+    expect(libraryChrome.getState().sidebarOpen).toBe(open);
+    expect(getViewState().layout).toBe(layout);
+    expect(attr("popover")).toBe("closed");
+  });
+
+  it("stops typing keys before window bubble listeners", async () => {
+    const input = document.createElement("input");
+    await mount(input);
+    const seen: string[] = [];
+    const onBubble = (event: KeyboardEvent) => {
+      seen.push(event.key);
+    };
+    window.addEventListener("keydown", onBubble);
+    await act(async () => press("[", input));
+    window.removeEventListener("keydown", onBubble);
+    expect(seen).toEqual([]);
+  });
+
+  it("preserves field and document widget handlers while blocking app hotkeys", async () => {
+    const input = document.createElement("input");
+    await mount(input);
+    const fieldKeys: string[] = [];
+    const widgetKeys: string[] = [];
+    input.addEventListener("keydown", (event) => fieldKeys.push(event.key));
+    const onWidgetKey = (event: KeyboardEvent) => widgetKeys.push(event.key);
+    document.addEventListener("keydown", onWidgetKey);
+    try {
+      await act(async () => {
+        press("Enter", input);
+        press("Escape", input);
+        press("[", input);
+      });
+      expect(fieldKeys).toEqual(["Enter", "Escape", "["]);
+      expect(widgetKeys).toEqual(["Enter", "Escape", "["]);
+    } finally {
+      document.removeEventListener("keydown", onWidgetKey);
+    }
+  });
+
   it("opens search from a field", async () => {
     const input = document.createElement("input");
     await mount(input);
@@ -143,6 +206,26 @@ describe("app hotkeys in text fields", () => {
       );
     });
     expect(attr("search")).toBe("open");
+  });
+
+  it("focuses current-view search on Mod+F", async () => {
+    const focusSearch = vi.spyOn(libraryHeader, "focusSearch");
+    setSearchScope("all");
+    await mount();
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "f",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(focusSearch).toHaveBeenCalledOnce();
+    expect(getViewState().searchScope).toBe("current");
+    expect(attr("search")).toBe("closed");
+    focusSearch.mockRestore();
   });
 
   it("leaves search to a field that handled the shortcut", async () => {
@@ -186,6 +269,23 @@ describe("app hotkeys in text fields", () => {
     const layout = getViewState().layout;
     await act(async () => shortcutAction?.("view.layout-cycle"));
     expect(getViewState().layout).toBe(layout);
+  });
+
+  it("toggles details on the library without opening a save", async () => {
+    await mount();
+    libraryChrome.setDetailsOpen(true);
+    const open = libraryChrome.getState().detailsOpen;
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "i",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(libraryChrome.getState().detailsOpen).toBe(!open);
   });
 
   it("runs a global shortcut command outside an input", async () => {

@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import * as ort from "onnxruntime-web";
 import sharp from "sharp";
 
-const REVISION = "b2d8f0c3abe6e05062288460ecf58e42ea690e84";
+const REVISION = "6626debca038a8f7aa1729b1eaee3bd4eb929ad6";
 const SHA256 =
-  "7b81155313d894bba3a3b9bace059a6da2a0c509d10cea43fcb0b3c5a4edd26d";
-const URL = `https://huggingface.co/Marqo/nsfw-image-detection-384/resolve/${REVISION}/onnx/model.onnx`;
-const SIZE = 384;
+  "adf6ed161bbccb7a1b5d189760658043a11932b8f17b7bc399209778c7e96aa2";
+const URL = `https://huggingface.co/onnx-community/nsfw-image-detector-ONNX/resolve/${REVISION}/onnx/model_q4f16.onnx`;
+const SIZE = 224;
+const LABELS = 5;
 
 function toTensor(rgb) {
   const plane = SIZE * SIZE;
@@ -42,12 +43,12 @@ async function main() {
       background: { r: 120, g: 160, b: 200 },
     },
   })
-    .resize(SIZE, SIZE, { fit: "cover", position: "centre", kernel: "cubic" })
+    .resize(SIZE, SIZE, { fit: "fill", kernel: "cubic" })
     .raw()
     .toBuffer();
   const input = toTensor(rgb);
   const output = (await session.run({ [inputName]: input }))[outputName];
-  if (output?.data.length !== 2) {
+  if (output?.data.length !== LABELS) {
     throw new Error("Model returned an unexpected output");
   }
   const logits = Array.from(output.data, Number);

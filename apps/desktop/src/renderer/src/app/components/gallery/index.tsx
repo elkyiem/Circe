@@ -23,6 +23,7 @@ import {
   UncategorizedEmpty,
 } from "@/features/library/components/empty";
 import { MatchesEmpty } from "@/shared/components/matches-empty";
+import { FishGallery } from "./fish";
 import {
   LONG_OPTIONS,
   QUESTION,
@@ -348,6 +349,7 @@ export function Gallery() {
 
       <Frames value={{ themes, width: WIDTHS[width] }}>
         <div className={styles.scroll}>
+          <FishGallery themes={themes} />
           <EmptyStates />
 
           <section className={styles.section}>

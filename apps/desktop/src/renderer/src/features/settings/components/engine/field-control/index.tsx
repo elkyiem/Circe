@@ -11,6 +11,7 @@ import {
   Slider,
   Stepper,
   Switch,
+  Tooltip,
 } from "@pond/ui";
 import { type ReactNode, useId } from "react";
 import { z } from "zod";
@@ -50,7 +51,15 @@ export function ItemView({ item, binding }: { item: Item; binding: Binding }) {
   return (
     <>
       <Settings.ItemDetails>
-        <Settings.ItemTitle id={titleId}>{item.title}</Settings.ItemTitle>
+        <Settings.ItemTitle id={titleId}>
+          {item.title}
+          {item.tooltip ? (
+            <Tooltip.Info
+              label={item.tooltip}
+              aria-label={`About ${item.title}`}
+            />
+          ) : null}
+        </Settings.ItemTitle>
         {item.description ? (
           <Settings.ItemDescription id={descriptionId}>
             {item.description}

@@ -17,6 +17,7 @@ import { savedViews } from "@/features/library/state/saved-views";
 import { DuplicateImportReviewHost } from "@/features/saves/components/duplicate-import-review";
 import { SaveHotkeys } from "@/features/saves/effects/save-hotkeys";
 import { ViewerPreload } from "@/features/saves/effects/viewer-preload";
+import { isSaveCollectionPath } from "@/features/saves/lib/list-path";
 import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
 import { SourceFlowHost } from "@/features/sources/components/flow";
 import { SourceDetailSidebar } from "@/features/sources/components/inspector";
@@ -52,6 +53,7 @@ export function RootShell() {
   });
   const sourceDetail = parseSourceDetailPath(pathname, detailPage);
   const viewingFish = fishIdFromPath(pathname) !== null;
+  const viewingLibrary = isSaveCollectionPath(pathname);
   useEffect(() => {
     return window.pond.onNavigate((path) => {
       const pathname = path.split("?")[0] ?? "";
@@ -103,7 +105,9 @@ export function RootShell() {
             <SaveDetails />
           )
         }
-        rightOpen={viewingFish || saveIdFromPath(pathname) !== null}
+        rightOpen={
+          viewingFish || viewingLibrary || saveIdFromPath(pathname) !== null
+        }
         left={
           isSettings ? (
             <Suspense fallback={null}>

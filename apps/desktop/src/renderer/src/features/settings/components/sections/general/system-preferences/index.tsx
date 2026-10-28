@@ -23,7 +23,7 @@ export function SystemPreferences() {
           }}
         />
       </Input.Root>
-      <span>Use an HTTP or SOCKS proxy for Pond's main-process requests.</span>
+      <span>An HTTP or SOCKS address for Pond's requests.</span>
     </label>
   );
 }

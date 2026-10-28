@@ -11,6 +11,7 @@ import {
   mediaEmbeddingVersion,
   normalizedEmbeddingVector,
   textEmbeddingVersion,
+  tokenizeEmbeddingTexts,
 } from "../../shared/embeddings";
 import { EMBEDDING_MODEL } from "../../shared/on-device-models";
 import { appDataRoot } from "../paths";
@@ -197,10 +198,10 @@ export async function encodeQueryEmbeddings(
   if (!channels.text && !channels.media) return {};
 
   const { model, tokenizer } = await embeddingTextBundle();
-  const inputs = tokenizer([embeddingQueryText(task, trimmed)], {
-    padding: true,
-    truncation: true,
-  });
+  const inputs = tokenizeEmbeddingTexts(
+    (batch, options) => tokenizer(batch, options),
+    [embeddingQueryText(task, trimmed)],
+  );
   const vector = sentenceVector(await model(inputs));
   const result: QueryEmbeddings = {};
   if (channels.text) {
@@ -217,10 +218,10 @@ export async function encodeClassificationLabelEmbeddings(
 ): Promise<number[][]> {
   if (texts.length === 0) return [];
   const { model, tokenizer } = await embeddingTextBundle();
-  const inputs = tokenizer(texts, {
-    padding: true,
-    truncation: true,
-  });
+  const inputs = tokenizeEmbeddingTexts(
+    (batch, options) => tokenizer(batch, options),
+    texts,
+  );
   const output = await model(inputs);
   const tensor = output.sentence_embedding;
   if (tensor?.dims.length !== 2 || tensor.dims[0] !== texts.length) {

@@ -79,8 +79,7 @@ export const generalSection = defineCustomSection({
           control: "select",
           key: "proxyMode",
           title: "Proxy",
-          description:
-            "Choose how Pond's main-process requests reach the network.",
+          description: "How Pond reaches the network.",
           options: [
             { value: "system", label: "System Settings" },
             { value: "direct", label: "Direct" },
@@ -99,8 +98,7 @@ export const generalSection = defineCustomSection({
           control: "select",
           key: "displayColorSpace",
           title: "Display Color Space",
-          description:
-            "Choose the color space Pond requests for viewer surfaces.",
+          description: "Color space for the viewer.",
           options: [
             { value: "auto", label: "Automatic" },
             { value: "srgb", label: "sRGB" },
@@ -118,7 +116,7 @@ export const generalSection = defineCustomSection({
           control: "select",
           key: "dockVisibility",
           title: "Dock Visibility",
-          description: "Keep Pond in the Dock or hide it with closed windows.",
+          description: "Stay visible, or hide when windows close.",
           visible: () => IS_MAC,
           options: [
             { value: "automatic", label: "Automatic" },
@@ -149,7 +147,7 @@ export const generalSection = defineCustomSection({
           control: "range",
           key: "interfaceZoom",
           title: "Interface Zoom",
-          description: "Scale Pond's interface without changing media zoom.",
+          description: "Doesn't change photo or video zoom.",
           min: 50,
           max: 200,
           step: 5,
@@ -176,7 +174,7 @@ export const generalSection = defineCustomSection({
           control: "select",
           key: "layout",
           title: "Layout",
-          description: "Choose a list or grid when you add tags to Saves.",
+          description: "A list or grid for tagging Saves.",
           options: [
             { value: "list", label: "List" },
             { value: "grid", label: "Grid" },
@@ -212,7 +210,7 @@ export const generalSection = defineCustomSection({
           control: "switch",
           key: "showRecommended",
           title: "Recommended Tags",
-          description: "Show local tag recommendations for the selected Saves.",
+          description: "Local suggestions for the selected Saves.",
         },
         {
           control: "switch",
@@ -224,7 +222,7 @@ export const generalSection = defineCustomSection({
           control: "switch",
           key: "pinned",
           title: "Keep Tag Picker Open",
-          description: "Keep the picker visible while you tag multiple Saves.",
+          description: "Stays open while you tag more than one Save.",
         },
       ],
     }),

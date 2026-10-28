@@ -1,4 +1,4 @@
-import { IconDotsFill } from "@pond/icons";
+import { IconDotsFill, IconTriangleWarningFill } from "@pond/icons";
 import { Badge, Menu, Sidebar } from "@pond/ui";
 import type { FishSummary } from "@shared/fish-contracts";
 import {
@@ -39,25 +39,29 @@ export function FishRow({
           onClick={() => fishStore.open(fish.id)}
           onDoubleClick={() => fishStore.startEditing(fish.id)}
         >
-          <Sidebar.Icon>
+          <Sidebar.Icon className={styles.icon}>
             <FishMark
               color={fish.color}
               species={fish.species}
               activity={fish.activity}
               mood={mood}
             />
-            {mood === "worried" || mood === "pleased" ? (
-              <Badge.Dot
-                className={styles.unread}
-                tone={mood === "worried" ? "negative" : "inverted"}
-              />
-            ) : null}
           </Sidebar.Icon>
           <Sidebar.ItemLabel>{fish.name}</Sidebar.ItemLabel>
           {at ? (
             <time className={styles.time} dateTime={new Date(at).toISOString()}>
               {rowTime(at, new Date())}
             </time>
+          ) : null}
+          {mood === "worried" ? (
+            <span className={styles.status}>
+              <IconTriangleWarningFill className={styles.failed} size={12} />
+            </span>
+          ) : null}
+          {mood === "pleased" ? (
+            <span className={styles.status}>
+              <Badge.Dot tone="accent" />
+            </span>
           ) : null}
         </Sidebar.Item>
         <SpecMenu

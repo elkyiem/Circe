@@ -6,8 +6,6 @@ export interface SpeciesArt {
   /** Overlapping circles that union into one lumpy silhouette; each wobbles on its own beat. */
   lobes: readonly Lobe[];
   fins?: string;
-  /** Clipped to the lobes, so bands end exactly at the silhouette while it wobbles. */
-  stripes?: string;
   /** Whiskers and lure stalks, drawn as lines beside the body. */
   strokes?: string;
   bulb?: readonly [number, number];
@@ -90,7 +88,6 @@ export const SPECIES_ART = {
       [17, 15.2, 3.6],
       [11.6, 6, 2.4],
     ],
-    stripes: "M7.2 2H8.4V22H7.2ZM10.2 2H11.2V22H10.2Z",
     eyes: [
       [14.6, 11.2],
       [19, 11.2],

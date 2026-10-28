@@ -162,8 +162,15 @@ The app composition layer passes the Library's full selection and folder members
 
 ## Circé browser transport
 
-The Saves feature exposes `saves/lookup.ts` for reading a loaded Save's Source.
-Source sign-in notices use that entry without accessing the mutable Save pool.
+Source sign-in notices use the Saves feature's existing `saves/pool.ts` entry
+for loaded Save reads, following the upstream feature boundary.
+
+The browser's machine pacing uses visiting-device visibility and focus, with
+unknown thermal state and a default battery value where those signals are not
+available. Native MCP-client detection resolves locally to an empty client list;
+it does not inspect the host's installed apps. This keeps shared prompt selection
+working without exposing native desktop operations. The native updater module
+loads at app readiness only outside an isolated sandbox.
 
 The Circé browser entrypoint installs an HTTP implementation of the renderer
 capability boundary before loading the shared application. A separate, opt-in

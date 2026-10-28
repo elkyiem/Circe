@@ -1,6 +1,6 @@
 # Feature parity ledger
 
-Baseline: Pond 2.0.0 plus upstream `main` through `d949c928` (2026-10-28).
+Baseline: Pond 2.0.1 plus upstream `main` through `029bfcb1` (2026-10-28).
 Long-term objective: every Pond workflow from desktop and mobile browsers.
 Full parity is **in progress**. An exposed operation is not verification evidence.
 
@@ -52,8 +52,8 @@ for the remaining phases.
 
 ## Pond 2.0 integration
 
-`main` mirrors upstream. `web` includes that history through `d949c928`, including
-the 12 commits after the original Pond 2 integration. This is an explicit sync;
+`main` mirrors upstream. `web` includes that history through `029bfcb1`, including
+the 19 commits bringing Pond 2.0.1 after the previous sync. This is an explicit sync;
 no scheduled upstream updater is configured. See the [sync process](sync.md).
 
 - All 18 Source descriptors, harvesters and settings come from the shared Pond 2
@@ -70,6 +70,11 @@ no scheduled upstream updater is configured. See the [sync process](sync.md).
   Refresh sign-in notices travel over the authenticated browser event stream.
 - Safari extension status and settings remain native desktop operations. The
   visiting browser does not show controls for the host's Safari installation.
+- Fish prompts and 3D marks, the revised sensitive-content model, keyboard
+  fixes, Pinterest harvesting, and import/tagging repairs use the shared 2.0.1
+  implementation. Browser pacing follows local visibility/focus; browser thermal
+  telemetry and native MCP-client detection remain unavailable. Browser app
+  information derives its version from the desktop package.
 - Circé's Portless launcher supports `https://circe.elkyiem` locally and through
   shared tailnet DNS and HTTPS. Visiting devices trust the Mac's CA once; no
   client proxy is required. Exact-origin validation, session cookies, uploads

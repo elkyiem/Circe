@@ -36,7 +36,6 @@ import { SaveIdentity } from "./identity";
 import { SaveNote } from "./note";
 import { SavePreviews } from "./previews";
 import { SourceCard } from "./source-card";
-import { StyleSection } from "./style-section";
 import styles from "./styles.module.css";
 import { SuggestedTags } from "./suggested-tags";
 
@@ -419,7 +418,6 @@ export function SaveInspector({
                   <SaveFacts save={single} />
                 </>
               }
-              propertiesTrail={<StyleSection labels={single.aesthetic ?? []} />}
             />
           ) : (
             <Section title="Properties">

@@ -1,0 +1,19 @@
+.zoom {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 4px;
+  background: var(--ds-gray-1);
+  border-radius: calc(var(--ds-radius-md) + 4px);
+  box-shadow: var(--canvas-shadow-float);
+  translate: -50% 0;
+}
+
+.level {
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}

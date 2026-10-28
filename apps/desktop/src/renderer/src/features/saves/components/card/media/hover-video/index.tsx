@@ -5,6 +5,7 @@ import type { MediaUnit } from "@/features/saves/lib/media/units";
 import { thumbUrlFor } from "@/features/saves/lib/media/url";
 import { aspectCoverKey, recordAspect } from "@/features/saves/state/aspect";
 import { rememberCardThumbnail } from "@/features/saves/state/card-thumbnails";
+import { useMachineMotionPaused } from "@/shared/lib/use-machine-motion";
 import { usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
 
@@ -38,8 +39,11 @@ export function HoverVideo({
   hasVideoDims?: boolean;
 }) {
   const [prefs] = usePrefs("viewer");
+  const motionPaused = useMachineMotionPaused();
   const hoverEnabled = prefs.hoverVideo !== false;
   const internalRef = useRef<HTMLVideoElement | null>(null);
+  const seekRatio = useRef(0);
+  const seekFrame = useRef(0);
   const [hoverPrimed, setHoverPrimed] = useState(false);
   const [active, setActive] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -71,9 +75,35 @@ export function HoverVideo({
     const el = internalRef.current;
     if (!el) return;
     /** Autoplay rejections are expected, and some Chromium builds return undefined here. */
-    el.play()?.catch(() => {});
-    return () => el.pause();
-  }, [active, primed, hoverEnabled]);
+    const play = (): void => {
+      el.play()?.catch(() => {});
+    };
+    const pause = (): void => {
+      el.pause();
+    };
+    const onVisibility = (): void => {
+      if (document.hidden) pause();
+      else if (document.hasFocus()) play();
+    };
+    if (motionPaused) {
+      pause();
+      return () => pause();
+    }
+    if (!document.hidden && document.hasFocus()) play();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", pause);
+    window.addEventListener("focus", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", pause);
+      window.removeEventListener("focus", onVisibility);
+      if (seekFrame.current) {
+        cancelAnimationFrame(seekFrame.current);
+        seekFrame.current = 0;
+      }
+      pause();
+    };
+  }, [active, primed, hoverEnabled, motionPaused]);
 
   const onEnter = useCallback(() => {
     if (!hoverEnabled || document.body.dataset.saveDragging) return;
@@ -153,17 +183,24 @@ export function HoverVideo({
         onMouseLeave={onLeave}
         onMouseMove={(event) => {
           if (!hoverEnabled || document.body.dataset.saveDragging) return;
-          const el = internalRef.current;
-          if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
           if (rect.width === 0) return;
-          const ratio = Math.min(
+          seekRatio.current = Math.min(
             1,
             Math.max(0, (event.clientX - rect.left) / rect.width),
           );
-          try {
-            el.currentTime = ratio * el.duration;
-          } catch {}
+          if (seekFrame.current) return;
+          seekFrame.current = requestAnimationFrame(() => {
+            seekFrame.current = 0;
+            const el = internalRef.current;
+            if (!el || !Number.isFinite(el.duration) || el.duration <= 0)
+              return;
+            const next = seekRatio.current * el.duration;
+            if (Math.abs(el.currentTime - next) < 0.04) return;
+            try {
+              el.currentTime = next;
+            } catch {}
+          });
         }}
         onFocus={onEnter}
         onBlur={onLeave}

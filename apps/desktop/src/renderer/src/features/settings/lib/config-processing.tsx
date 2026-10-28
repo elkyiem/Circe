@@ -21,7 +21,7 @@ function MediaModelIdControl({ binding }: { binding: Binding }) {
       <Settings.ItemDetails>
         <Settings.ItemTitle id={titleId}>Local Model ID</Settings.ItemTitle>
         <Settings.ItemDescription id={descriptionId}>
-          Enter the exact installed model ID for captions and text recognition.
+          The exact ID from Ollama or LM Studio.
         </Settings.ItemDescription>
       </Settings.ItemDetails>
       <Settings.ItemControl>
@@ -82,8 +82,7 @@ export const processingSection = defineSection("ai", {
           control: "select",
           key: "mediaUnderstandingMode",
           title: "Image Understanding",
-          description:
-            "Choose which on-device model adds captions and reads text.",
+          description: "Adds captions and reads text.",
           keywords: ["gemma", "florence", "vision", "benchmark"],
           options: [
             { value: "florence", label: "Built-In Model" },
@@ -114,8 +113,7 @@ export const processingSection = defineSection("ai", {
           control: "switch",
           key: "mediaUnderstandingFallbackToFlorence",
           title: "Image Processing Fallback",
-          description:
-            "Use the built-in model when the local model can't process an image.",
+          description: "Uses the built-in model if this one fails.",
           keywords: ["gemma", "florence", "fallback", "vision"],
           visible: (v) => v.mediaUnderstandingMode === "gemma4",
         },
@@ -149,8 +147,7 @@ export const processingSection = defineSection("ai", {
           control: "switch",
           key: "enableClip",
           title: "Visual Similarity",
-          description:
-            "Find images that look alike from a Save or a dropped picture.",
+          description: "Match a Save or a dropped picture.",
           keywords: ["clip", "embeddings", "look alike", "visual match"],
         },
         {
@@ -165,7 +162,7 @@ export const processingSection = defineSection("ai", {
           control: "switch",
           key: "enableSensitiveContent",
           title: "Sensitive Content",
-          description: "Check images and sampled video frames on your device.",
+          description: "Images and sampled video, on your device.",
           keywords: ["sensitive", "nsfw", "safety", "blur"],
         },
         {
@@ -174,7 +171,7 @@ export const processingSection = defineSection("ai", {
           title: "Blur Sensitive Thumbnails",
           description: "Blur thumbnails with a likely-sensitive result.",
           keywords: ["sensitive", "nsfw", "blur", "thumbnail"],
-          visible: (v) => v.enableSensitiveContent === true,
+          disabled: (v) => v.enableSensitiveContent !== true,
         },
         {
           control: "switch",

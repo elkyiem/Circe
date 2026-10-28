@@ -1,28 +1,41 @@
-const MODEL_ID = "Marqo/nsfw-image-detection-384";
+const MODEL_REPO = "onnx-community/nsfw-image-detector-ONNX";
+const MODEL_FILE = "onnx/model_q4f16.onnx";
 
-export const SENSITIVE_CONTENT_MODEL_REVISION =
-  "b2d8f0c3abe6e05062288460ecf58e42ea690e84" as const;
+const SENSITIVE_CONTENT_MODEL_REVISION =
+  "6626debca038a8f7aa1729b1eaee3bd4eb929ad6" as const;
 export const SENSITIVE_CONTENT_MODEL_SHA256 =
-  "7b81155313d894bba3a3b9bace059a6da2a0c509d10cea43fcb0b3c5a4edd26d" as const;
-export const SENSITIVE_CONTENT_MODEL_VERSION = `${MODEL_ID}@${SENSITIVE_CONTENT_MODEL_REVISION}:preprocess-1:sampling-1:max-1`;
+  "adf6ed161bbccb7a1b5d189760658043a11932b8f17b7bc399209778c7e96aa2" as const;
+export const SENSITIVE_CONTENT_MODEL_URL = `https://huggingface.co/${MODEL_REPO}/resolve/${SENSITIVE_CONTENT_MODEL_REVISION}/${MODEL_FILE}`;
+export const SENSITIVE_CONTENT_MODEL_VERSION = `${MODEL_REPO}@${SENSITIVE_CONTENT_MODEL_REVISION}:q4f16:preprocess-2:sampling-1:max-1`;
+
+const LABELS = ["drawings", "hentai", "neutral", "porn", "sexy"] as const;
+const SENSITIVE_LABELS = new Set<(typeof LABELS)[number]>([
+  "hentai",
+  "porn",
+  "sexy",
+]);
 
 export function sensitiveProbabilitiesFromLogits(
   logits: ArrayLike<number>,
 ): number[] {
-  if (logits.length === 0 || logits.length % 2 !== 0) {
-    throw new Error("Expected paired sensitive-content logits");
+  if (logits.length === 0 || logits.length % LABELS.length !== 0) {
+    throw new Error("Expected sensitive-content logits for every label");
   }
   const probabilities: number[] = [];
-  for (let i = 0; i < logits.length; i += 2) {
-    const nsfw = logits[i];
-    const sfw = logits[i + 1];
-    if (!Number.isFinite(nsfw) || !Number.isFinite(sfw)) {
+  for (let row = 0; row < logits.length; row += LABELS.length) {
+    const values = Array.from(LABELS, (_, index) => logits[row + index] ?? 0);
+    if (!values.every(Number.isFinite)) {
       throw new Error("Sensitive-content logits must be finite");
     }
-    const offset = Math.max(nsfw ?? 0, sfw ?? 0);
-    const nsfwExp = Math.exp((nsfw ?? 0) - offset);
-    const sfwExp = Math.exp((sfw ?? 0) - offset);
-    probabilities.push(nsfwExp / (nsfwExp + sfwExp));
+    const offset = Math.max(...values);
+    const exps = values.map((value) => Math.exp(value - offset));
+    const total = exps.reduce((sum, value) => sum + value, 0);
+    const sensitive = LABELS.reduce(
+      (sum, label, index) =>
+        SENSITIVE_LABELS.has(label) ? sum + (exps[index] ?? 0) : sum,
+      0,
+    );
+    probabilities.push(sensitive / total);
   }
   return probabilities;
 }

@@ -158,7 +158,10 @@ describe("media-understanding router", () => {
           mediaUnderstandingFallbackToFlorence: true,
         },
       }),
-    ).resolves.toEqual({ text: "Florence caption", model: "florence:v2" });
+    ).resolves.toEqual({
+      text: "Florence caption",
+      model: "ollama/gemma4:e2b:caption:v1",
+    });
     expect(runFlorence).toHaveBeenCalledOnce();
     expect(operationalRecords).toEqual([
       {
@@ -227,6 +230,46 @@ describe("media-understanding router", () => {
       }),
     ).rejects.toThrow("Florence failed");
     expect(operationalRecords).toEqual([]);
+  });
+
+  it("finishes unreadable media so the sweep does not retry it", async () => {
+    const { router, runFlorence } = setup({
+      ok: false,
+      reason: "unsupported_media",
+    });
+
+    await expect(
+      router.run({
+        saveId: "save-1",
+        imageUrl: "pond://save-1/clip.mp4",
+        task: "caption",
+        prefs: ai("gemma4"),
+      }),
+    ).resolves.toEqual({ text: "", model: "ollama/gemma4:e2b:caption:v1" });
+    expect(runFlorence).not.toHaveBeenCalled();
+  });
+
+  it("uses Florence for unreadable media when fallback is on", async () => {
+    const { router, runFlorence } = setup({
+      ok: false,
+      reason: "too_large",
+    });
+
+    await expect(
+      router.run({
+        saveId: "save-1",
+        imageUrl: "pond://save-1/image.png",
+        task: "ocr",
+        prefs: {
+          ...ai("gemma4"),
+          mediaUnderstandingFallbackToFlorence: true,
+        },
+      }),
+    ).resolves.toEqual({
+      text: "Florence caption",
+      model: "ollama/gemma4:e2b:ocr:v1",
+    });
+    expect(runFlorence).toHaveBeenCalledOnce();
   });
 
   it("stamps eligibility with the active primary model", () => {

@@ -25,6 +25,38 @@ const FILE_CARD_TYPES = new Set([
   "video",
 ]);
 
+/** Suggested-tags already skip names longer than this; import must not create them. */
+const MAX_MYMIND_TAG_LENGTH = 100;
+const CONTROL_CHARS = /\p{Cc}/u;
+const ENCODED_BLOB = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/** A mis-parsed tags cell can be file bytes or a base64 dump instead of short labels. */
+function isPlausibleMymindTag(tag: string): boolean {
+  if (tag.length === 0 || tag.length > MAX_MYMIND_TAG_LENGTH) return false;
+  if (CONTROL_CHARS.test(tag) || tag.includes("\uFFFD")) return false;
+  if (looksLikeEncodedBlob(tag)) return false;
+  return true;
+}
+
+function looksLikeEncodedBlob(tag: string): boolean {
+  if (tag.length < 32 || /\s/.test(tag)) return false;
+  if (/^data:[^,]*,/i.test(tag)) return true;
+  if (!ENCODED_BLOB.test(tag)) return false;
+  return /[+/=]/.test(tag) || tag.length >= 64;
+}
+
+function parseMymindTags(cell: string): string[] {
+  const trimmed = cell.trim();
+  if (!trimmed) return [];
+  if (CONTROL_CHARS.test(trimmed)) return [];
+  if (trimmed.length > MAX_MYMIND_TAG_LENGTH && !trimmed.includes(","))
+    return [];
+  return trimmed
+    .split(",")
+    .map((tag) => tag.trim().replace(/^#/, ""))
+    .filter(isPlausibleMymindTag);
+}
+
 interface MymindCard {
   id: string;
   type: string;
@@ -65,10 +97,7 @@ function parseMymindCards(csv: string): MymindCard[] | null {
         url: /^https?:\/\//i.test(url) ? url : "",
         content,
         note,
-        tags: value("tags")
-          .split(",")
-          .map((tag) => tag.trim().replace(/^#/, ""))
-          .filter(Boolean),
+        tags: parseMymindTags(value("tags")),
         created: Number.isNaN(created) ? null : new Date(created),
       },
     ];

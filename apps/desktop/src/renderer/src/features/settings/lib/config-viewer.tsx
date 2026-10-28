@@ -12,7 +12,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "spaceBehavior",
           title: "Spacebar Preview",
-          description: "Choose how the preview opens and closes.",
+          description: "How the preview opens and closes.",
           options: [
             { value: "toggle", label: "Press to Open or Close" },
             { value: "hold", label: "Hold to Preview" },
@@ -22,7 +22,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "spaceAction",
           title: "Space Action",
-          description: "Choose what Space opens for the selected Save.",
+          description: "What Space opens for the selected Save.",
           options: [
             { value: "preview", label: "Quick Preview" },
             ...(IS_MAC
@@ -38,7 +38,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "doubleClickAction",
           title: "Double-Click Action",
-          description: "Choose what opens when you double-click a Save.",
+          description: "What opens when you double-click a Save.",
           options: [
             { value: "open", label: "Save Details" },
             { value: "preview", label: "Quick Preview" },
@@ -51,7 +51,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "middleClickAction",
           title: "Middle-Click Action",
-          description: "Choose what opens when you middle-click a Save.",
+          description: "What opens when you middle-click a Save.",
           options: [
             { value: "open", label: "Save Details" },
             { value: "preview", label: "Quick Preview" },
@@ -64,7 +64,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "wheelBehavior",
           title: "Image Scrolling",
-          description: "Pinch and Alt-scroll always zoom at the pointer.",
+          description: "Pinch and Alt-scroll still zoom.",
           options: [
             { value: "scroll", label: "Pan Image" },
             { value: "zoom", label: "Zoom Image" },
@@ -80,7 +80,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "defaultImageSize",
           title: "Default Image Size",
-          description: "Open images fitted to the viewer or at actual size.",
+          description: "Fit the viewer, or open at actual size.",
           options: [
             { value: "fit", label: "Fit" },
             { value: "actual", label: "Actual Size" },
@@ -90,14 +90,13 @@ export const viewerSection = defineCustomSection({
           control: "switch",
           key: "rememberImagePosition",
           title: "Remember Image Position",
-          description:
-            "Restore the last zoom and position when you reopen an image.",
+          description: "Restores zoom and position for each image.",
         },
         {
           control: "select",
           key: "imageRendering",
           title: "Image Rendering",
-          description: "Show smooth edges or individual pixels when zoomed in.",
+          description: "Smooth edges, or pixels when zoomed in.",
           options: [
             { value: "smooth", label: "Smooth" },
             { value: "pixelated", label: "Pixelated" },
@@ -107,7 +106,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "transparentBackground",
           title: "Transparent Areas",
-          description: "Choose the background behind transparent images.",
+          description: "Background behind transparent images.",
           options: [
             { value: "none", label: "Theme" },
             { value: "checkerboard", label: "Checkerboard" },
@@ -124,7 +123,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "galleryFit",
           title: "Thumbnail Fit",
-          description: "Fit the full image or fill each gallery card.",
+          description: "Show the full image, or fill the card.",
           options: [
             { value: "fit", label: "Fit" },
             { value: "fill", label: "Fill" },
@@ -134,7 +133,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "thumbnailBehavior",
           title: "Thumbnail Behavior",
-          description: "Keep the cover still or scrub gallery images on hover.",
+          description: "Scrub images on hover, or keep them still.",
           options: [
             { value: "still", label: "Still" },
             { value: "scrub", label: "Scrub on Hover" },
@@ -144,7 +143,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "thumbnailSpeed",
           title: "Thumbnail Scrub Speed",
-          description: "Control how quickly pointer movement advances images.",
+          description: "How fast pointer movement advances frames.",
           options: [
             { value: "slow", label: "Slow" },
             { value: "normal", label: "Normal" },
@@ -155,8 +154,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "thumbnailQuality",
           title: "Thumbnail Quality",
-          description:
-            "Upgrade enlarged cards to original media in Quality mode.",
+          description: "Loads the original when enlarged.",
           options: [
             { value: "fast", label: "Fast" },
             { value: "balanced", label: "Balanced" },
@@ -179,8 +177,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "thumbnailBackground",
           title: "Thumbnail Background",
-          description:
-            "Fill behind gallery thumbnails, including transparent images.",
+          description: "Fills behind transparent images.",
           options: [
             { value: "none", label: "None" },
             { value: "black", label: "Black" },
@@ -204,7 +201,7 @@ export const viewerSection = defineCustomSection({
           control: "switch",
           key: "hoverVideo",
           title: "Hover Preview",
-          description: "Play and scrub video thumbnails with the pointer.",
+          description: "Play and scrub thumbnails with the pointer.",
         },
         {
           control: "switch",
@@ -222,7 +219,7 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "videoWheelBehavior",
           title: "Video Scrolling",
-          description: "Use the wheel to seek, change volume, or do nothing.",
+          description: "Seek, change volume, or ignore the wheel.",
           options: [
             { value: "progress", label: "Seek Video" },
             { value: "volume", label: "Change Volume" },

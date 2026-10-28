@@ -634,3 +634,52 @@ and iPad acceptance of these new application changes was not repeated. Source
 sign-ins and external network harvests remain separate from these offline checks.
 The [sync process](sync.md) records the repeatable commands and a proposed sync-PR
 workflow; no automatic updater or deployment was enabled.
+
+## Pond 2.0.1 sync — 2026-10-28
+
+Merged 19 new upstream commits through `029bfcb1`, including release `v2.0.1`.
+The browser retains its transport and Circé branding. Refresh sign-in notices
+now use upstream's public Saves pool entry, replacing the temporary lookup
+helper added during the previous sync.
+
+- The new browser adapter regression first failed because `machinePace` was
+  missing. It now verifies unavailable thermal telemetry, local native-client
+  detection, prompt-signal loading without a host app probe, and the version
+  derived from the desktop package. Host boundary tests reject the native MCP
+  client query over HTTP.
+- The real browser run exposed an upstream keyboard regression: the global
+  capture handler swallowed field and widget keys, so Escape did not close the
+  Folder picker. A test reproduced the lost Enter/Escape events. The guard now
+  stops propagation at the document bubble phase, allowing local field and
+  document widget handlers to run before blocking window app shortcuts. All
+  14 focused app-hotkey tests pass, retaining typing and search coverage.
+- The smoke runner dismisses first-launch prompts through the actual Escape
+  interaction and captures them as evidence. It does not suppress the product's
+  prompt logic or follow external voting/share actions.
+- `pnpm install --frozen-lockfile` passed, including the new video workspace.
+- Final `pnpm check` passed all 28 tasks: desktop 678 files passed, 4,693 tests
+  passed and 5 skipped.
+- `pnpm build` passed all 12 tasks and the upstream performance budgets. The
+  initial build exceeded the main startup budget; the optional native updater
+  now loads at app readiness outside the sandbox, retaining the 3,200,000-byte
+  limit. The final main static graph is 3,120.6 KiB against a 3,125.0 KiB limit.
+- The browser and Circé extension builds passed. The extension manifest retains
+  the Circé name and signing identity, with version 2.0.1.
+- Native database/vector checks passed both files and all 8 tests. The protocol
+  network smoke passed with the accented display name and ASCII HTTP headers.
+  The final desktop startup/preload/preview smoke passed with a temporary
+  isolated Library and mock keychain.
+- React Doctor changed-scope scans before and after the compatibility fixes
+  both scored 84/100 and reported no new diagnostics.
+- The designated owner restarted the shared host with its existing sandbox.
+  Authenticated restart retention, media ranges, pagination, search and Folder
+  operations passed. The actual browser workflow passed at 1280×900 and 390×844
+  through the Mac's Tailscale IP, including Folder assignment/removal, Escape
+  dismissal, image rendering, video seeking, navigation and reload persistence.
+- Circé and Nono both returned trusted HTTPS 200 through `100.88.201.56`.
+  The full Tailscale Serve configuration before and after the update was
+  identical. DNS, certificate trust and the shared gateway were retained.
+
+Local logs use `/tmp/circe-201-*.log`. Live Source sign-ins, the new sensitive
+model's network download/inference smoke, and physical iPad/Windows acceptance
+were not repeated. The sync automation proposal remains unimplemented.
