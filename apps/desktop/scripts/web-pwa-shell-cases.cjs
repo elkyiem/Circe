@@ -716,10 +716,25 @@ exports.verifyBrowserPwaShell = async function verifyBrowserPwaShell({
         "The disposable production profile must have only the offline explanation cache.",
       );
       assert.match(record.caches[0].name, /^circe-offline-/);
-      assert.deepEqual(record.caches[0].paths, [
-        "/app-icon-192.png",
-        "/offline.html",
-      ]);
+      const workerSource = await run(
+        "fetch('/app-sw.js',{cache:'no-store'}).then(response=>response.text())",
+      );
+      const assetList = workerSource.match(/const ASSETS=(\[[^;]+\]);/);
+      assert.ok(
+        assetList,
+        "The worker must declare its static offline assets.",
+      );
+      const offlineAssets = JSON.parse(assetList[1]);
+      assert.deepEqual(record.caches[0].paths, offlineAssets);
+      assert.ok(offlineAssets.includes("/offline.html"));
+      assert.ok(offlineAssets.includes("/app-icon-192.png"));
+      assert.ok(offlineAssets.some((path) => path.endsWith(".js")));
+      assert.ok(offlineAssets.some((path) => path.endsWith(".css")));
+      for (const path of offlineAssets)
+        assert.match(
+          path,
+          /^\/(offline\.html|app-icon-192\.png|assets\/[\w-]+\.(js|css))$/,
+        );
       await prove("activated-worker-cache-excludes-library-data");
 
       if (!connectionOnly) {
@@ -1005,7 +1020,7 @@ exports.verifyBrowserPwaShell = async function verifyBrowserPwaShell({
       await win.loadURL(origin);
       record.offlineNavigation = record.navigations.at(-1);
       await waitFor(
-        "document.querySelector('h1')?.textContent==='Reconnect to your Library'",
+        "document.querySelector('h2')?.textContent==='Reconnect to your Library' && document.querySelector('img')?.naturalWidth>0",
       );
       record.offlineNavigatorOnLine = await run("navigator.onLine");
       assert.ok(
@@ -1029,7 +1044,7 @@ exports.verifyBrowserPwaShell = async function verifyBrowserPwaShell({
       );
       assert.match(
         await run("document.body.innerText"),
-        /Your Library stays on that computer/,
+        /Your Library stays on your Mac/,
       );
       assert.equal(
         await run(
@@ -1044,7 +1059,19 @@ exports.verifyBrowserPwaShell = async function verifyBrowserPwaShell({
         true,
         "The actual navigation must be served by the active service worker.",
       );
-      const retry = await mark("a", "node.textContent.trim()==='Try again'");
+      const retry = await mark(
+        "button",
+        "node.textContent.trim()==='Try again'",
+      );
+      record.offlineButton = await run(
+        `(()=>{const button=document.querySelector(${JSON.stringify(retry)}),style=getComputedStyle(button);return{variant:button.dataset.variant,background:style.backgroundColor,color:style.color,fontSize:style.fontSize,radius:style.borderRadius,icon:document.querySelector('img').src.startsWith('data:')}})()`,
+      );
+      assert.equal(record.offlineButton.variant, "primary");
+      assert.equal(
+        record.offlineButton.icon,
+        true,
+        "The offline icon must be self-contained.",
+      );
       await control(retry, "Offline Try again", true);
       await prove("actual-network-offline-explanation");
       await networkOnline(true);

@@ -1,0 +1,30 @@
+html {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ds-gray-12);
+  color-scheme: dark;
+  background: var(--ds-gray-1);
+}
+
+body {
+  min-block-size: 100dvh;
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+}
+
+.empty {
+  min-block-size: calc(
+    100dvh -
+    env(safe-area-inset-top, 0px) -
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+
+.icon {
+  inline-size: 48px;
+  block-size: 48px;
+}
+
+.retry {
+  min-inline-size: 88px;
+  min-block-size: 44px;
+}

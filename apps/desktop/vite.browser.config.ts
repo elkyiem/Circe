@@ -22,6 +22,7 @@ export default defineConfig({
           import.meta.dirname,
           "src/renderer/browser-preview.html",
         ),
+        offline: resolve(import.meta.dirname, "src/renderer/offline.html"),
       },
     },
   },

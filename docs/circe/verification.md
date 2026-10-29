@@ -1,5 +1,28 @@
 # Circé verification record
 
+## Reconnect page component consistency — 2026-10-29
+
+The offline fallback now builds the shared Empty and Button components instead
+of a separate HTML/CSS approximation. Its primary button follows the shared
+neutral theme, and its inline app icon remains available when the host returns
+an error. The worker caches only the offline entry's static dependency allowlist;
+authenticated Library responses and media remain uncached.
+
+`pnpm --filter @pond/desktop build:web`, followed from `apps/desktop` by
+`env -u ELECTRON_RUN_AS_NODE pnpm exec electron scripts/smoke-web-offline.cjs`,
+passed a real server shutdown with the HTTP cache cleared, icon decoding at four
+widths (320, 390, 768, 1280), shared primary-button geometry, unavailable private
+session requests, keyboard focus and Space-to-reconnect after the server returned.
+The production `--pwa-shell --pwa-shell-connection-only` suite passed seven checks
+and restored the original Library, preferences and browser state.
+
+The repository check passed all 28 tasks and 4,940 tests; the production build
+passed all 12 tasks and existing budgets. React Doctor reported no findings in
+the changed React code (93/100). Runtime recovery restored the existing HTTPS
+proxy and host; trusted requests through the Mac's Tailnet IP returned 200 for
+Circé and Nono. This verification does not establish the still-unreproduced
+post-dragging issue reported separately.
+
 ## Library administration and file actions — 2026-10-29
 
 The complete Library administration browser probe passed create, backup checksums,

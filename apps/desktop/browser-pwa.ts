@@ -3,12 +3,36 @@ import { resolve } from "node:path";
 import sharp from "sharp";
 import type { Plugin } from "vite";
 
-/** Only the offline explanation and app icons are cached; Library data stays on the host. */
+/** Only the offline UI and its static dependencies are cached; Library data stays on the host. */
 export function browserPwa(): Plugin {
   return {
     name: "circe-pwa",
+    enforce: "post",
     async generateBundle(_options, bundle) {
+      const offline = bundle["offline.html"];
+      if (offline?.type !== "asset")
+        throw new Error("The offline entry was not built");
+      const html = String(offline.source);
+      const offlineAssets = new Set(["/offline.html", "/app-icon-192.png"]);
+      const collect = (fileName: string) => {
+        const path = `/${fileName}`;
+        if (offlineAssets.has(path)) return;
+        const asset = bundle[fileName];
+        if (!asset) throw new Error(`Missing offline dependency: ${fileName}`);
+        offlineAssets.add(path);
+        if (asset.type === "chunk") {
+          for (const dependency of asset.imports) collect(dependency);
+          for (const css of asset.viteMetadata?.importedCss ?? []) collect(css);
+        }
+      };
+      for (const match of html.matchAll(
+        /(?:src|href)="\/(assets\/[^"?#]+)"/g,
+      )) {
+        const fileName = match[1];
+        if (fileName) collect(fileName);
+      }
       const revision = createHash("sha256")
+        .update(html)
         .update(Object.keys(bundle).sort().join("\n"))
         .digest("hex")
         .slice(0, 16);
@@ -48,15 +72,12 @@ export function browserPwa(): Plugin {
         }),
       );
       emit(
-        "offline.html",
-        `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a0a0a"><title>Circé · Reconnect</title><style>html{color-scheme:dark;background:#0a0a0a;color:#eee;font:16px/1.6 system-ui}body{min-height:100dvh;margin:0;display:grid;place-items:center}main{max-width:28rem;padding:32px}img{border-radius:24px}h1{font-size:28px;line-height:1.2}p{color:#bbb}a{display:inline-block;padding:12px 20px;color:#fff;background:#2563eb;border-radius:12px;text-decoration:none}a:focus-visible{outline:3px solid #fff;outline-offset:4px}</style></head><body><main><img src="/app-icon-192.png" width="80" height="80" alt=""><h1>Reconnect to your Library</h1><p>Connect to Tailscale and make sure the computer hosting Circé is awake and running.</p><p>Your Library stays on that computer. Reconnect to continue.</p><a href="/">Try again</a></main></body></html>`,
-      );
-      emit(
         "app-sw.js",
         `const CACHE="circe-offline-${revision}";
-self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/offline.html","/app-icon-192.png"]))));
+const ASSETS=${JSON.stringify([...offlineAssets].sort())};
+self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("circe-offline-")&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",event=>{const url=new URL(event.request.url);if(url.origin!==self.location.origin||event.request.method!=="GET")return;if(event.request.mode==="navigate")event.respondWith(fetch(event.request).then(response=>response.status>=500?caches.match("/offline.html").then(page=>page||response):response).catch(()=>caches.match("/offline.html").then(page=>page||Response.error())));else if(url.pathname==="/app-icon-192.png")event.respondWith(fetch(event.request).catch(()=>caches.match(event.request).then(icon=>icon||Response.error())));});`,
+self.addEventListener("fetch",event=>{const url=new URL(event.request.url);if(url.origin!==self.location.origin||event.request.method!=="GET")return;if(event.request.mode==="navigate")event.respondWith(fetch(event.request).then(response=>response.status>=500?caches.match("/offline.html").then(page=>page||response):response).catch(()=>caches.match("/offline.html").then(page=>page||Response.error())));else if(ASSETS.includes(url.pathname))event.respondWith(caches.match(event.request).then(asset=>asset||fetch(event.request)));});`,
       );
     },
   };
