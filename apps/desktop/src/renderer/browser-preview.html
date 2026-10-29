@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'" />
+    <title>Circé Preview</title>
+  </head>
+  <body>
+    <div id="preview-ui"></div>
+    <main id="preview" aria-label="Media preview">
+      <img id="image" alt="" draggable="false" hidden />
+      <!-- biome-ignore lint/a11y/useMediaCaption: User-owned preview media has no guaranteed caption sidecar. -->
+      <video id="video" controls playsinline preload="metadata" hidden></video>
+      <div id="media-error" role="alert" hidden>
+        <p>This preview could not be rendered. You can still download the original.</p>
+        <button id="retry" type="button">Try Again</button>
+      </div>
+    </main>
+    <p id="preview-message" role="status" hidden></p>
+    <script type="module" src="/src/browser/preview.ts"></script>
+  </body>
+</html>

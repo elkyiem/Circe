@@ -7,7 +7,7 @@ import { DEFAULT_APP_ICON } from "../shared/app-icons";
 import { IPC, type RecentMenuEntry } from "../shared/constants";
 import type { ShortcutId } from "../shared/shortcuts";
 import { fishMcp } from "./core/agent/fish-mcp/live";
-import { startAutoImport, stopAutoImport } from "./core/auto-import";
+import { shutdownAutoImport, startAutoImport } from "./core/auto-import";
 import { captures } from "./core/captures";
 import {
   closeCombineImagesWindow,
@@ -58,7 +58,10 @@ import {
 } from "./deep-link";
 import { markSaveLinksReady } from "./deep-link-save";
 import { registerIpc } from "./ipc";
-import { waitForLibraryLocationChanges } from "./ipc/queries/library-locations";
+import {
+  isWebHostRelaunchPending,
+  waitForLibraryLocationChanges,
+} from "./ipc/queries/library-locations";
 import { ensureIngestToken } from "./keychain";
 import { broadcast } from "./lib/broadcast";
 import { rotateBundleBackups } from "./lib/library-config";
@@ -355,6 +358,10 @@ async function openActiveLibrary(): Promise<PondPaths | null> {
 }
 
 async function postLaunchInit(): Promise<void> {
+  const { startEnrichmentOwner } = await import("./core/enrichment-owner");
+  void startEnrichmentOwner().catch((error) =>
+    log.error("[pond] enrichment owner failed", error),
+  );
   if (webHostRequested) {
     const { startWebHost } = await import("./web");
     webServer = await startWebHost();
@@ -381,7 +388,7 @@ async function postLaunchInit(): Promise<void> {
   void startDeferredMaintenance();
 
   try {
-    if (!process.env.POND_SANDBOX) await runtimeControls.startHttpServer();
+    await runtimeControls.startHttpServer();
   } catch (err) {
     log.error("[pond] http server failed to start", err);
   }
@@ -591,10 +598,18 @@ app.on("before-quit", async (event) => {
   quitPreparing = true;
   beginQuit();
   stopMediaWarmer?.();
+  try {
+    const { stopEnrichmentOwner } = await import("./core/enrichment-owner");
+    stopEnrichmentOwner(true);
+  } catch (error) {
+    log.error("[pond] enrichment shutdown failed", error);
+  }
   globalShortcut.unregisterAll();
   try {
     await waitForLibraryLocationChanges();
-    await stopAutoImport();
+    const { stopLibraryRepairs } = await import("./core/library-repair-jobs");
+    await stopLibraryRepairs();
+    await shutdownAutoImport();
     await stopLibraryTransfers();
   } catch (error) {
     log.warn("[pond] auto import shutdown failed", error);
@@ -605,7 +620,7 @@ app.on("before-quit", async (event) => {
     log.warn("[pond] tags.json flush failed", err);
   }
   try {
-    stopStorageWatcher();
+    await stopStorageWatcher(true);
   } catch (err) {
     log.warn("[pond] storage watcher stop failed", err);
   }
@@ -641,6 +656,14 @@ app.on("before-quit", async (event) => {
   } catch (err) {
     log.warn("[pond] native host close failed", err);
   }
+  try {
+    await withDeadline(
+      webServer?.closeReplay() ?? Promise.resolve(),
+      SERVER_CLOSE_MS,
+    );
+  } catch (err) {
+    log.warn("[circe] archive close failed", err);
+  }
   webServer?.close();
   try {
     await withDeadline(runtimeControls.closeHttpServer(), SERVER_CLOSE_MS);
@@ -654,6 +677,10 @@ app.on("before-quit", async (event) => {
   }
   log.info("[pond] quit prepared");
   quitPrepared = true;
+  if (isWebHostRelaunchPending()) {
+    app.exit(75);
+    return;
+  }
   /** Everything is flushed by now; a window that refuses to close must not keep Pond running. */
   setTimeout(() => {
     log.warn("[pond] quit stalled; exiting");

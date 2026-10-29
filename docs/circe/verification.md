@@ -1,4 +1,39 @@
-# Kickoff verification record
+# Circé verification record
+
+## Library administration and file actions — 2026-10-29
+
+The complete Library administration browser probe passed create, backup checksums,
+fresh-ID restore, identity-preserving move, recent/open, active no-op, merge and
+repeat-merge deduplication, and cancellation. Each run restored the original
+Library and verified its identity and pointer before deleting only owned fixtures.
+The eleven dead recent-history entries left by earlier test runs were hidden
+through the native history operation after strict ownership validation.
+
+The file-action probe passed seventeen real HTTPS checkpoints. It verified
+thumbnail selection/cancel/corruption and useful feedback, visiting clipboard
+denial/empty feedback, replacement bytes/name, both second-GIF-frame actions with
+a nonzero file index and encoded filename, an actual video subtitle cue, valid and
+invalid dotLottie export, decoded WebP output, and a redacted debug ZIP. It purged
+only its five owned Saves and checked that the original Library was unchanged.
+
+The shared toolbar layout review found and fixed two action-blocking defects:
+
+| Severity | Location | Before | After | Why |
+| --- | --- | --- | --- | --- |
+| HIGH | `image-inspector/controls` | GIF controls inherited disabled pointer input and clicks hit the image | Existing interactive HUD pill contains the controls | Controls stay distinct from content and receive input |
+| HIGH | `viewers/hud` and `media-viewer/chrome` | Narrow grid tracks made slide navigation overlap GIF Frames | Container-driven wrapping preserves DOM order; the header grows with its controls | Hold structure until it breaks; critical actions remain reachable |
+
+Fit, hit tests and real touch stepping passed at 320, 390, 768 and 1280 CSS-pixel
+coarse-pointer layouts, 1280-pixel desktop at 200% zoom, and the 390-pixel RTL
+mirror. Coarse control targets measured at least 44 pixels. Approve this tested
+Chromium toolbar coverage. Not verified: physical Windows/iPad Safari, successful
+OS clipboard transfer, and translated UI text beyond the application's current
+English labels.
+
+Full offline verification before the newest watched-folder/history changes passed
+28 tasks and 4,753 desktop tests (five skipped). Later focused checks cover the
+new importer ownership, configuration rollback/quit, history, keyboard and
+authority boundaries. Final full verification remains required for completion.
 
 ## Circé extension transport — 2026-10-26
 
@@ -683,3 +718,220 @@ helper added during the previous sync.
 Local logs use `/tmp/circe-201-*.log`. Live Source sign-ins, the new sensitive
 model's network download/inference smoke, and physical iPad/Windows acceptance
 were not repeated. The sync automation proposal remains unimplemented.
+
+
+## Native bridge lifetime and resident processing — 2026-10-29
+
+This implementation continues on `web` from `57ee6186` (Pond 2.0.1). Full browser
+parity remains in progress. The immediate usage target is one active client at a
+time, switching between Mac desktop and a Windows browser.
+
+- The finite real browser identity suite passed visiting-device image upload and
+  reset, icon and emoji selection, Cancel, invalid-image retry, name-only and
+  combined name/mark rename, Settings Enter commit/Escape discard, bundle rename,
+  managed host replacement and real key-file reauthentication. Original Library
+  name/path/logo/mark were restored. File-input cancellation uses the DOM cancel
+  notification; this does not claim physical OS-picker cancellation coverage.
+- Shared Canvas tests exercise stale saves in both desktop/browser directions,
+  rapid writes, an uncertain transport result, fresh-read recovery and concurrent
+  rename preservation. Portable Canvas JSON remains unchanged. Broader real board
+  interaction and device handoff acceptance is still pending.
+- `pnpm --filter @pond/desktop smoke:enrichment` is a separate opt-in live-model
+  check. It starts the built native application in a disposable profile, runs the
+  pinned sensitive-content model through the real renderer/Worker, closes the
+  visible client during processing and checks database/sidecar agreement. It then
+  accepts a retry, crashes the owner before its scheduled scan, recreates it and
+  verifies completion with one owner and no orphan window. Normal quit completes.
+  The profile is removed by its parent after Electron closes; test keychain mode
+  avoids accessing the user's keychain. This test passed.
+- That model evidence covers images. Hidden-owner Florence, Whisper, audio/video
+  decoding and each other model are not individually demonstrated by that probe.
+  The unpackaged test reports single-threaded WASM fallback because production
+  COOP/COEP headers are applied only to packaged native builds.
+- Transport regressions cover a full-resolution 6000×4000 RGB photo as binary,
+  vocabulary batches of 64/64/9, nine frame uploads within host admission limits,
+  partial-upload cleanup, and acknowledged durable model invalidation.
+- The repository check passed 28 tasks with 685 desktop test files and 4,718 tests before
+  the final upload cleanup/Settings draft adjustments; final current-tree checks
+  are recorded in local `/tmp/circe-parity-*` logs while this work continues.
+
+Independent read-only review checked sender/Library/generation fences, request
+settlement, restart/quit admission, cancellation and manual-retry durability.
+Physical Windows acceptance and the remaining Library administration, archive,
+preview, Source and OS workflows remain open. No remote-device result is inferred
+from macOS Chromium.
+
+
+## Native-backed browser acceptance — 2026-10-29
+
+The implementation keeps one resident Mac owner and the shared Pond renderer.
+The intended handoff is one active device at a time, with stale-tab guards retained.
+These are actual finite Chromium/Electron interactions against the shared Circé
+host, distinct from unit tests and physical Windows/iPad acceptance. Each fixture
+run checked the original Library identity, pointer and full preferences before
+cleanup; only explicitly owned test content was removed.
+
+| Probe | Result and evidence |
+| --- | --- |
+| Identity | Real file chooser, icon/emoji/name/reset, invalid input, Cancel, combined mark/name and Settings rename passed; host restart and key-file reauthentication retained the result |
+| Library administration | 12 groups passed create, checksummed backup, independently editable restore with a fresh Library ID, identity-preserving Move, recent/open/no-op, merge/repeat deduplication and cancellation |
+| Maintenance | 15 groups passed watched-folder cancellation/checkpoint/pause/resume/stop, real Rescan, four repair preview/apply/cancel/stale flows and keyboard Undo. Ordinary Library open stopped hashing every original; recorded open completed in milliseconds |
+| File actions | 17 checkpoints passed custom thumbnail, replacement, second GIF-frame actions, playable SRT, dotLottie validation, decoded WebP, redacted debug ZIP and visiting clipboard denial/empty feedback. Touch fit/hit checks covered 320/390/768/1280, 200% desktop zoom and 390 RTL |
+| Detached previews | 8 groups passed image transformations/navigation/slideshow/download/close, real popup denial with shared-dialog fallback, and playable 320/390 touch video controls |
+| Archive replay | 22 groups passed actual decoded page assets and nested frame/worker navigation, shared HUD, hostile-content and forged-message rejection, read-only collection configuration, worker stop/restart, trusted external-link confirmation, range semantics and revocation. A fresh TLS socket connected to the Mac Tailnet IP with the exact replay hostname and public CA; native archive SHA remained unchanged |
+| Copy and storage | 8 groups passed cancellation/no-write, byte-exact copy with notes/tags/fresh IDs, repeat/self-copy, destination open, immediate storage-limit behavior and reload. The owned sparse storage fixture and destination Libraries were removed |
+| Drag/history | Actual trusted CDP dragstart/data/drop changed Folder membership and survived reload. Trash, keyboard Undo and original checksum passed without a false native-only error |
+| Eagle | 5 groups passed actual folder selection/cancel, 2 Saves with 18 streamed files across two imports, zero-byte and Unicode files, native metadata/folders/tags/progress and repeat deduplication. Upstream repeat folder-tree behavior was preserved |
+| Settings/Quick Preview | 15 groups passed host-labelled Settings and source-build update guidance, device-local zoom/reload, 150% Canvas tile/camera math and persistence, Quick Look Space/Escape/hold/blur, 320/390/768 touch controls and constrained 200% dialogs. This earlier run measured the image zoom pill at 28px; the final PWA follow-up below verifies its corrected 44px target alongside Close/step controls |
+| Transfer recovery | 4 groups passed a real missing-original failure, physical Retry/Cancel, completed receipt and byte-identical automatic, explicit and reload downloads of a 268,471,644-byte ZIP containing 32 originals. Cancellation and subsequent retry settled correctly. Exactly two owned terminal records/checkpoints were retired while the host was stopped, retaining 24 unrelated history rows |
+| Large upload | A 314,572,800-byte streaming HTTP upload exceeded the former 256 MiB ceiling, matched staged size and Library binding, and was explicitly retired without importing a Save |
+| MCP context | Actual initialize, tools/list, query_library and list_folders used the intended native launch descriptor in an owned disposable profile. EOF/termination completed, temporary data and probe session were removed, and protected host files were unchanged |
+| Production handoff | A real same-Library host replacement preserved the existing cookie. Explicit logout returned 401 and removed its persisted digest. Fixture controls were disabled and the complete Tailscale Serve configuration stayed identical |
+
+Private evidence is retained under `.artifacts/web-verification/` and
+`.artifacts/research/browser-parity-implementation/`; logs use
+`/tmp/circe-parity-*.log`. Credentials, Source cookies and private keys are not
+part of those reported results. The production PWA and real host-font probes are
+recorded below once complete.
+
+The iOS device runner failed `xcodebuild build-for-testing` and failed again on
+its single prescribed retry. Device work stopped; Safari was left at the fresh
+simulator's untrusted-certificate warning. No CA trust or device setting was
+changed. Physical iPad installation/offline/media behavior, physical Windows
+clipboard/sharing and the complete new Windows feature matrix remain unverified.
+The owner's earlier confirmation that the short address loads on Windows is
+retained as a connectivity result, not expanded into feature coverage.
+
+
+## Production PWA — final real acceptance
+
+The clean final run passed all fifteen checks against one stable production
+build. No critical target failed the 44-pixel minimum. Real trusted input covered
+320/390/768-pixel coarse-pointer layouts, 390 RTL and 390 at 200% interface zoom:
+Library navigation, uniquely matched search, Save double-tap, useful image
+rendering, Fit, Back and Clear. Phone drawers started closed; opening one closed
+the other, and both the outer panel and inspector child fit and received input
+at 100% and 200%. Zoom Out, Zoom Ratio and Zoom In all met 44px at rest.
+
+Actual decoded 180/192/512 icons, manifest scope and activated root service worker
+passed. CacheStorage contained only offline.html and app-icon-192.png before and
+after visiting the Library. The protocol safe-area check verified real computed
+insets rather than replacing application CSS.
+
+Offline transport was applied to both the disposable page and its exact
+app-sw.js worker. Actual worker requests failed with ERR_INTERNET_DISCONNECTED;
+the real navigation came from the service worker and displayed reconnect
+guidance. An uncached authenticated session fetch failed. The browser reported
+navigator.onLine=true in this emulation; that advisory signal was recorded rather
+than substituted for transport evidence. Trusted Try again completed a new
+Document with an online 200 session response and the same Library ID.
+
+Settings Disconnect → Cancel sent no DELETE. Confirm sent exactly one DELETE
+and the revoked cookie returned 401. The phone login fields met 44px, and an
+actual file chooser plus FileReader reauthenticated to the same Library. The
+original identity, pointer, full host preferences, stable Save fields/original
+SHA, exact device storage, direction and window size were unchanged after
+restoration; the disposable session was revoked and cleanup completed.
+
+The tests caught and fixed real mobile defects: undersized controls, RTL drawer
+anchors, scaled drawer width and fixed inspector-child width, overlapping phone
+drawers, and native Mac traffic-light padding in a browser titlebar. Their other
+failed attempts remain recorded as harness issues: delayed native welcome
+dialogs, measuring transient press animation, applying offline only to the page,
+and retaining an old-Document JavaScript waiter across real navigation. The
+final run kept the physical input, byte/state and 44px assertions.
+
+
+## Host font activation — final real acceptance
+
+Four groups passed in 7.9 seconds. A newly generated, unique synthetic TTF was
+absent from CoreText before the run. Trusted FontViewer actions labelled
+“on your Mac host” copied it into the real OS user Fonts/Pond directory. Native
+activation state, the sidecar, file inode/checksum and browser reload agreed;
+fresh Swift processes resolved only that exact nonce PostScript name. The
+visiting browser's Download Original had the identical SHA.
+
+Native Deactivate removed the exact file and sidecar, cleared the native flag
+and made fresh-process CoreText lookup false again. Cleanup purged the owned
+Save and removed only the newly created, verified empty Pond font directory;
+the preexisting Fonts directory and all personal fonts were untouched. Original
+Library identity/pointer/full preferences were unchanged. The passed run revoked
+its exact session and verified 401.
+
+An earlier setup attempt stopped before activation after a delayed native welcome
+dialog interrupted text selection. It purged its Save and never installed an OS
+font. Its disposable profile was removed before explicit session revocation was
+added, so that attempt's server-side session cannot be claimed revoked; no raw
+cookie was retained or guessed for cleanup. It remains subject to normal expiry.
+
+This proves Mac host activation and visiting-device download, not silent font
+installation on Windows or iPad. Those devices use their own ordinary font
+installation facilities.
+
+
+## Bookmarks and Mymind — final real acceptance
+
+Four groups passed through the actual New menu and browser file-chooser
+selections. The probe used a fresh, account-empty, AI-disabled Library and paused
+the native reconciler before any import. Its bookmark URLs were confined to a
+forbidden loopback port; no live Source account or external request was used.
+
+HTML imported two bookmarks and Chromium JSON imported one. Dates, nested
+Folders/membership and repeat-import counts matched the native owner; existing
+edited notes and tags remained intact. Mymind ZIP imported three and skipped two,
+then repeated as zero imported/five skipped. Unicode/newline note content,
+source identities and original PNG SHA matched. Tags followed Pond's existing
+ASCII normalization policy rather than changing that policy in the adapter.
+An empty bookmark export returned the exact native message with HTTP 422 and no
+mutation. Browser reload retained the results.
+
+Cleanup removed exactly six Saves, their known folders/tags, seven validated
+uploads, the owned Library and its index. Original identity/full preferences,
+exact pointer/history snapshots and reconciler pause state were restored. All
+three current-run cookies were explicitly revoked and returned 401; no cleanup
+error remained. Earlier setup failures were recovered from their nonce/dev/inode
+ownership records before another run, and their captured cookies were revoked.
+
+Actual OS file-picker Cancel remains unverified. Empty CDP file selection does
+not itself emit native cancellation, and computer use could not uniquely
+distinguish the finite Electron picker from the resident host's application.
+The import probe therefore does not claim that cancellation passed. Earlier
+identity/Eagle/thumbnail fixtures exercise the browser cancel-event handler by
+dispatching DOM cancel; their successful selections, uploads and native outcomes
+remain real. Host-folder chooser Cancel and transfer Cancel are separate real
+in-app controls with actual trusted-input coverage.
+
+
+## Final repository and runtime gate
+
+- `pnpm check`: 28/28 tasks passed, 716 desktop test files passed/two skipped,
+  4,940 tests passed/five skipped. Biome, Oxlint, architecture, unused-code,
+  generated-file and type checks passed without weakening their rules.
+- `pnpm build`: 12/12 tasks and all five unchanged budgets passed. Main startup
+  measured 3,119.4/3,125.0 KiB; renderer initial JS/CSS measured 3,017.4/3,027.3 KiB.
+  The separate production browser build passed.
+- Real Electron ABI database/vector checks: two files/eight tests passed.
+- Real desktop smoke passed visible startup, preload queries and detached
+  preview creation/cleanup in its own temporary Library and mock keychain.
+- React Doctor final changed scope: 77/100, 26 advisories across 270 files. The
+  initial saved scan was 83/100 with 56 advisories across 157 files, so the raw
+  score did decrease as scope expanded. New actionable diagnostics introduced
+  during the work were fixed. Remaining groups are the previously reviewed
+  serial resource/transaction loops, 17 smoke response-status checks whose
+  existing assertions the tool does not recognize, and two unchanged upstream
+  announcement/extension findings. No suppression or rule change was added.
+- The designated owner replaced only the shared Circé host, retained its profile,
+  proved same-Library login persistence and durable logout, and compared the
+  complete Tailscale Serve configuration unchanged. Circé and Nono returned
+  trusted HTTPS 200 when connected directly to the Mac Tailnet IP.
+- Final authenticated health verified the original Library identity, all user
+  configuration and the original reconciler pause flag. Its existing Source
+  continued syncing, so its lastSyncedAt watermark advanced; it was preserved.
+  The health probe revoked its own session and verified 401. The unrelated
+  installed Pond process was not stopped or reconfigured.
+
+Final logs use `/tmp/circe-parity-release-{check,build,web-build,restart,
+desktop-smoke}.log`; native ABI and Doctor logs are separate. Runtime/PWA/
+font/import ownership evidence remains private under ignored `.artifacts`.
+This gate does not turn the explicitly unverified physical-device, OS-picker
+cancellation or live provider/Source variants into demonstrated coverage.

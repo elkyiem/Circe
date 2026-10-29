@@ -78,7 +78,8 @@ body {
   gap: 4px;
   align-items: center;
   justify-content: center;
-  max-width: calc(100vw - 96px);
+  width: max-content;
+  max-width: calc(100vw - 32px);
   padding: 4px;
   background: color-mix(in oklab, var(--ds-gray-1) 88%, transparent);
   border-radius: var(--ds-radius-lg);
@@ -93,7 +94,7 @@ body {
   background: color-mix(in oklab, var(--ds-gray-1) 96%, transparent);
 }
 
-body[data-media-type="video"] .preview-controls {
+:where(body[data-media-type="video"]) .preview-controls {
   top: 16px;
   bottom: auto;
 }
@@ -102,6 +103,28 @@ body[data-media-type="video"] .preview-controls {
   display: flex;
   gap: 2px;
   align-items: center;
+}
+
+:where(html[data-runtime="browser"] body[data-media-type="video"])
+  .preview-controls {
+  top: 84px;
+}
+
+#preview-message {
+  position: fixed;
+  inset: auto 16px 90px;
+  z-index: 30;
+  padding: 12px;
+  color: var(--ds-gray-12);
+  background: var(--ds-gray-2);
+  border-radius: var(--ds-radius-md);
+}
+
+@media (pointer: coarse) {
+  #preview-ui button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .preview-control-group + .preview-control-group {

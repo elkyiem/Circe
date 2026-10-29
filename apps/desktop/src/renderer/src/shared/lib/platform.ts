@@ -15,6 +15,32 @@ export const REVEAL_LABEL: string = (() => {
 
 export const IS_MAC: boolean = SHORTCUT_PLATFORM === "mac";
 
+/** Native setup paths follow the host OS, even from another visiting device. */
+export function hostNavigatorPlatform(): string {
+  switch (globalThis.document?.documentElement.dataset.hostPlatform) {
+    case "darwin":
+      return "MacIntel";
+    case "win32":
+      return "Win32";
+    case "linux":
+      return "Linux";
+    default:
+      return globalThis.navigator?.platform ?? "";
+  }
+}
+
+/** Provider execution and OS settings belong to the host, not the visiting browser. */
+export function isMacHost(): boolean {
+  const host = globalThis.document?.documentElement.dataset.hostPlatform;
+  return host ? host === "darwin" : IS_MAC;
+}
+
+export function hostDeviceName(): string {
+  if (isBrowserRuntime())
+    return isMacHost() ? "your Mac host" : "your host computer";
+  return THIS_DEVICE;
+}
+
 /** The device noun used in settings copy. */
 export const THIS_DEVICE: string = IS_MAC ? "this Mac" : "this computer";
 

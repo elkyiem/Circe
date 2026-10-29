@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-const DateValue = z.object({ $pondDate: z.iso.datetime() }).strict();
-const ByteValue = z
-  .object({ $pondBytes: z.array(z.number().int().min(0).max(255)) })
-  .strict();
+const DateValue = z.strictObject({ $pondDate: z.iso.datetime() });
+const ByteValue = z.strictObject({
+  $pondBytes: z.array(z.number().int().min(0).max(255)),
+});
 export type WebValue =
   | string
   | number

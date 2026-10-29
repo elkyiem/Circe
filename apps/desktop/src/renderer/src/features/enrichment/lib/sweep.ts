@@ -4,6 +4,7 @@ import {
   enrichmentSuspended,
 } from "@shared/machine-pace";
 import pLimit from "p-limit";
+import { z } from "zod";
 import { enrichmentMonitor } from "@/features/enrichment/state/enrichment-monitor";
 import { onPoolDirty, pool, upsertSave } from "@/features/saves/pool";
 import type { Save } from "@/features/saves/types";
@@ -143,19 +144,22 @@ async function persist(enricher: Enricher, save: Save): Promise<void> {
     failed.add(keyFor(enricher, save));
     return;
   }
-  if (result.optimistic) {
-    const current = pool.get(save.id);
-    if (current) upsertSave({ ...current, ...result.optimistic });
-  }
   if (result.derived && Object.keys(result.derived).length > 0) {
     try {
-      await window.pond.query("saves.patchDerived", {
+      const saved = await window.pond.query("saves.patchDerived", {
         id: save.id,
         patch: result.derived,
       });
+      z.object({ ok: z.literal(true) }).parse(saved);
     } catch (err) {
-      console.warn(`[enrichment] persist failed (${enricher.id})`, err);
+      throw new Error(
+        `Could not persist ${enricher.id}: ${err instanceof Error ? err.message : "host write failed"}`,
+      );
     }
+  }
+  if (result.optimistic) {
+    const current = pool.get(save.id);
+    if (current) upsertSave({ ...current, ...result.optimistic });
   }
 }
 
@@ -175,7 +179,14 @@ function schedule(enricher: Enricher, save: Save): void {
     const startedAt = performance.now();
     let elapsed = 0;
     try {
-      await persist(enricher, save);
+      const current = pool.get(save.id);
+      if (
+        !current ||
+        !enrichmentPreferenceAccess.eligible(enricher, current) ||
+        !enricher.enabled(getPrefsSnapshot())
+      )
+        return;
+      await persist(enricher, current);
     } catch (err) {
       failed.add(key);
       console.warn(`[enrichment] ${enricher.id} failed for ${save.id}`, err);
@@ -272,10 +283,13 @@ export function startEnrichmentSweep(): () => void {
       : [],
   );
   void Promise.all(hydrations).then(() => scheduleScan());
-  const detachPrefs = subscribeMediaUnderstandingRefresh({
-    getPrefs: getPrefsSnapshot,
-    subscribe: subscribePrefsSnapshot,
-    refresh: () => rescanEnrichment(),
+  let aiPreferences = JSON.stringify(getPrefsSnapshot()?.ai);
+  const detachPrefs = subscribePrefsSnapshot(() => {
+    const next = JSON.stringify(getPrefsSnapshot()?.ai);
+    if (next !== aiPreferences) {
+      aiPreferences = next;
+      rescanEnrichment();
+    }
   });
   const detachDirty = onPoolDirty((ids) => {
     mutationGeneration += 1;

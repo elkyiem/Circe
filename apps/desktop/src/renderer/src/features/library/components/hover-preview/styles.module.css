@@ -83,6 +83,16 @@
   min-height: 0;
 }
 
+.close {
+  position: absolute;
+  top: var(--ds-space-2);
+  right: var(--ds-space-2);
+  z-index: 2;
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--ds-gray-2);
+}
+
 .crop {
   position: absolute;
   pointer-events: none;

@@ -2,6 +2,7 @@ import {
   CheckNowRow,
   WhatsNewRow,
 } from "@/features/settings/components/sections/general";
+import { BrowserSessionRow } from "@/features/settings/components/sections/general/browser-session";
 import { NotificationPreferences } from "@/features/settings/components/sections/general/feedback";
 import { RaycastRow } from "@/features/settings/components/sections/general/raycast";
 import { SidebarPreferences } from "@/features/settings/components/sections/general/sidebar";
@@ -10,12 +11,14 @@ import {
   defineCustomSection,
   group,
 } from "@/features/settings/lib/engine-types";
-
+import { isBrowserRuntime, isMacHost } from "@/shared/lib/platform";
 import { SHORTCUT_PLATFORM } from "@/shared/lib/shortcuts";
 import { notify } from "@/shared/lib/toast";
 
-const IS_MAC = SHORTCUT_PLATFORM === "mac";
-const IS_WINDOWS = SHORTCUT_PLATFORM === "windows";
+const BROWSER = isBrowserRuntime();
+const IS_MAC = BROWSER ? isMacHost() : SHORTCUT_PLATFORM === "mac";
+const IS_WINDOWS = BROWSER ? !IS_MAC : SHORTCUT_PLATFORM === "windows";
+const HOST = IS_MAC ? "Mac host" : "host computer";
 
 function runApply(
   channel:
@@ -35,12 +38,14 @@ function runApply(
 
 export const generalSection = defineCustomSection({
   title: "Preferences",
-  description: IS_WINDOWS
-    ? "Window behavior, notification area, and updates."
-    : "Window behavior, menu bar, and updates.",
+  description: BROWSER
+    ? `Startup, networking, desktop windows and updates on your ${HOST}.`
+    : IS_WINDOWS
+      ? "Window behavior, notification area, and updates."
+      : "Window behavior, menu bar, and updates.",
   groups: [
     group.prefs("window", {
-      title: "Startup",
+      title: BROWSER ? "Host Startup" : "Startup",
       items: [
         {
           control: "select",
@@ -59,7 +64,9 @@ export const generalSection = defineCustomSection({
           control: "switch",
           key: "launchAtLogin",
           title: "Launch at Login",
-          description: "Start Pond when you sign in.",
+          description: BROWSER
+            ? `Start Circé when you sign in to your ${HOST}.`
+            : "Start Pond when you sign in.",
           prefsKey: "quickCapture",
           apply: () => runApply("quickCapture.applyPrefs"),
         },
@@ -67,19 +74,23 @@ export const generalSection = defineCustomSection({
           control: "switch",
           key: "launchHidden",
           title: "Launch in Background",
-          description: "Start Pond without opening its window.",
+          description: BROWSER
+            ? "Keep the host running without opening its desktop window."
+            : "Start Pond without opening its window.",
           apply: () => runApply("window.applyPrefs"),
         },
       ],
     }),
     group.prefs("system", {
-      title: "System",
+      title: BROWSER ? "Host System" : "System",
       items: [
         {
           control: "select",
           key: "proxyMode",
           title: "Proxy",
-          description: "How Pond reaches the network.",
+          description: BROWSER
+            ? `How your ${HOST} reaches Sources and providers.`
+            : "How Pond reaches the network.",
           options: [
             { value: "system", label: "System Settings" },
             { value: "direct", label: "Direct" },
@@ -109,7 +120,9 @@ export const generalSection = defineCustomSection({
           control: "switch",
           key: "hardwareAcceleration",
           title: "Hardware Acceleration",
-          description: "Use the GPU after you restart Pond.",
+          description: BROWSER
+            ? "Use the host GPU after restarting Circé on the host."
+            : "Use the GPU after you restart Pond.",
           apply: () => runApply("system.applyPrefs"),
         },
         {
@@ -127,27 +140,48 @@ export const generalSection = defineCustomSection({
       ],
     }),
     group.prefs("window", {
-      title: "Window",
+      title: BROWSER ? "Host Desktop Window" : "Window",
       items: [
         {
           control: "switch",
           key: "restorePosition",
           title: "Restore Window Position",
-          description: "Reopen Pond where you last left it.",
+          description: BROWSER
+            ? "Restore the desktop window position on the host."
+            : "Reopen Pond where you last left it.",
           apply: () => runApply("window.applyPrefs"),
         },
         {
           control: "switch",
           key: "closeToTray",
           title: "Keep Running When Closed",
-          description: "Fetch with the window closed, until you quit.",
+          description: BROWSER
+            ? "Keep your Library available when the host’s desktop window closes."
+            : "Fetch with the window closed, until you quit.",
           apply: () => runApply("window.applyPrefs"),
         },
         {
           control: "range",
           key: "interfaceZoom",
           title: "Interface Zoom",
+          visible: () => !BROWSER,
           description: "Doesn't change photo or video zoom.",
+          min: 50,
+          max: 200,
+          step: 5,
+          suffix: "%",
+        },
+      ],
+    }),
+    group.prefs("window", {
+      title: "Browser",
+      visible: () => BROWSER,
+      items: [
+        {
+          control: "range",
+          key: "interfaceZoom",
+          title: "Interface Zoom",
+          description: "Adjust this browser’s interface size.",
           min: 50,
           max: 200,
           step: 5,
@@ -240,16 +274,35 @@ export const generalSection = defineCustomSection({
       ],
     }),
     group.prefs("quickCapture", {
-      title: IS_WINDOWS ? "Notification Area" : "Menu Bar",
+      title: BROWSER
+        ? "Host Menu Bar"
+        : IS_WINDOWS
+          ? "Notification Area"
+          : "Menu Bar",
       items: [
         {
           control: "switch",
           key: "menuBarIcon",
           title: IS_WINDOWS ? "Notification Area Icon" : "Menu Bar Icon",
-          description: IS_WINDOWS
-            ? "Show Pond in the notification area."
-            : "Show Pond in the menu bar.",
+          description: BROWSER
+            ? `Show Circé in your ${HOST}’s ${IS_MAC ? "menu bar" : "notification area"}.`
+            : IS_WINDOWS
+              ? "Show Pond in the notification area."
+              : "Show Pond in the menu bar.",
           apply: () => runApply("quickCapture.applyPrefs"),
+        },
+      ],
+    }),
+    group.plain({
+      title: "Browser Connection",
+      visible: () => BROWSER,
+      items: [
+        {
+          control: "custom",
+          key: "browser-session",
+          title: "This Browser",
+          keywords: ["disconnect", "sign out", "session"],
+          render: () => <BrowserSessionRow />,
         },
       ],
     }),
@@ -267,13 +320,15 @@ export const generalSection = defineCustomSection({
       ],
     }),
     group.prefs("updates", {
-      title: "Updates",
+      title: BROWSER ? "Host Updates" : "Updates",
       items: [
         {
           control: "switch",
           key: "autoInstall",
           title: "Automatic Updates",
-          description: "Download in the background. Apply on next launch.",
+          description: BROWSER
+            ? "Download host updates in the background and apply when the host next launches."
+            : "Download in the background. Apply on next launch.",
           apply: () => runApply("updates.applyPrefs"),
         },
         {

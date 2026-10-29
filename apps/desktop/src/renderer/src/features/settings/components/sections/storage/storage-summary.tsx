@@ -1,10 +1,23 @@
 import { Button, Settings } from "@pond/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 const bytes = (value: number) =>
   `${(value / 1024 ** 3).toLocaleString(undefined, { maximumFractionDigits: 2 })} GB`;
 
 export function StorageSummary() {
+  const client = useQueryClient();
+  const guard = useQuery({
+    queryKey: ["storage-guard"],
+    queryFn: () => window.pond.query("storage.guardState", {}),
+  });
+  useEffect(
+    () =>
+      window.pond.onStorageStatus((status) => {
+        client.setQueryData(["storage-guard"], status);
+      }),
+    [client],
+  );
   const query = useQuery({
     queryKey: ["storage-snapshot"],
     queryFn: () => window.pond.query("storage.snapshot", {}),
@@ -33,6 +46,26 @@ export function StorageSummary() {
           </Button>
         </Settings.ItemControl>
       </Settings.Item>
+      {guard.data && guard.data.state !== "ok" ? (
+        <Settings.Item>
+          <Settings.ItemDetails>
+            <Settings.ItemTitle>
+              {guard.data.state === "exceeded"
+                ? "Library size limit reached"
+                : "Library is approaching its size limit"}
+            </Settings.ItemTitle>
+            <Settings.ItemDescription role="status">
+              {guard.data.state === "exceeded" &&
+              guard.data.action === "pauseSync"
+                ? "Fetching is paused. Increase the limit or free space to resume."
+                : guard.data.state === "exceeded" &&
+                    guard.data.action === "pauseVideo"
+                  ? "Automatic video downloads are paused. Increase the limit or free space to resume."
+                  : "Increase the limit or free space in the Library."}
+            </Settings.ItemDescription>
+          </Settings.ItemDetails>
+        </Settings.Item>
+      ) : null}
     </Settings.List>
   );
 }

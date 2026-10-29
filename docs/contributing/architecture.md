@@ -152,11 +152,11 @@ Collection interaction separates the focused cursor, range anchor, and selected 
 
 The Saves feature owns result navigation, the gallery cursor, and full-query selection resolution. Packed layouts register geometry with result navigation; the gallery keeps one focusable listbox and a mounted active descendant across virtualization. Native and keyboard Select All/Invert share the full-query operation, with stale-query cancellation. Keyboard effects gate commands by their focused collection or viewer; editable controls and overlays keep their own keys. Shared DataTable owns the same cursor/anchor distinction independently of desktop stores, including virtual reveal and focus return. Window receives current pane widths from composition and exposes keyboard separator operations. Spatial viewers consume their keys at the focused stage before application handlers. Optional dialog hosts retain their last payload while loading the body on first use; closing still completes the popup exit lifecycle. The dotLottie export handler loads ZIP support after the destination is chosen, keeping optional archive code out of the main startup graph.
 
-Bulk selection mutations cross IPC as explicit IDs through `saves.bulkEdit`. Main loads only the metadata needed to prepare rating, tag, trash, restore, and purge operations; the renderer pool is an optimistic projection and never determines mutation membership. Main validates the complete selection before committing one transaction batch. Purge remains permanent and does not add an unusable undo entry. Clipboard and external-open commands hydrate missing rows before resolving files or links; enrichment commands hydrate selected rows only when their renderer-owned model work needs them.
+Bulk selection mutations cross IPC as explicit IDs through `saves.bulkEdit`. Main loads only the metadata needed to prepare rating, tag, trash, restore, and purge operations; the renderer pool is an optimistic projection and never determines mutation membership. Main validates the complete selection before committing one transaction batch. Purge remains permanent and does not add an unusable undo entry. Clipboard and external-open commands hydrate missing rows before resolving files or links; enrichment commands run against the resident host owner, which hydrates the authoritative Library pool.
 
 ## Auxiliary window composition
 
-Settings has a dedicated renderer and scoped preload. Its singleton native window reuses the section registry, search and provider UI without booting Library selection, ingestion or enrichment effects. Main broadcasts committed preferences to every renderer; Settings delegates Processing rescans to the Library rather than starting a second enrichment loop. Settings deep links and native commands select the same window, while app activation explicitly creates or focuses the Library.
+Settings has a dedicated renderer and scoped preload. Its singleton native window reuses the section registry, search and provider UI without booting Library selection, ingestion or enrichment effects. Main broadcasts committed preferences to every renderer; Settings delegates Processing rescans to the resident enrichment owner rather than starting a second loop. Settings deep links and native commands select the same window, while app activation explicitly creates or focuses the Library.
 
 The app composition layer passes the Library's full selection and folder membership to the Save inspector; a full viewer continues to inspect one Save. Immediate folder assignments use deltas and notes/tag removal use main-owned bulk transactions with Undo. Inspector text drafts are keyed by target IDs and retain failures for retry.
 
@@ -175,9 +175,156 @@ loads at app readiness only outside an isolated sandbox.
 The Circé browser entrypoint installs an HTTP implementation of the renderer
 capability boundary before loading the shared application. A separate, opt-in
 Electron listener owns authenticated browser queries, media and SyncAction SSE.
-Its explicit allowlist excludes credentials, native dialogs and Library
-transitions. Electron remains the single persistence and queue owner. See the
+Its generic query allowlist excludes Source/provider credential reads, native dialogs and Library
+transitions. A dedicated Library transition endpoint currently bridges real bundle
+renames; visiting-device files use scoped binary uploads. Electron remains the
+single persistence and queue owner. See the
 [Circé architecture decision](../circe/architecture.md) and
 [local runbook](../circe/runbook.md) for isolation, origin/session policy and the
-remaining platform boundaries. The desktop preload and its clients retain their
-existing behavior.
+remaining platform boundaries. The desktop and browser retain separate transports into the same native owners.
+
+Authenticated Settings can explicitly copy or rotate the native local integration
+token for Raycast on the host. This is a host-wide credential: Raycast uses Library
+listing and switching operations that scoped search/export tokens cannot perform.
+Its existing rotation confirmation remains, and neither Source/provider secrets
+nor the general web access key have read endpoints. Bind addresses, CORS and
+native API authorization are unchanged. Replay origins cannot call these Settings
+operations or receive the integration token.
+
+
+## Resident enrichment owner
+
+`main/core/enrichment-owner.ts` owns one hidden, sandboxed renderer per active
+Library. Its scoped preload permits only the reads, derived writes, media decoding,
+progress and validated title mutation needed by the existing enrichment code.
+`renderer/enrichment.ts` composes the upstream Save bootstrap, full-pool hydration,
+preferences, registry and inference Worker without mounting the application UI.
+Visible desktop and browser windows observe coalesced processing status and send
+manual tasks or interactive search inference to this owner.
+
+A manual retry persists model-stamp invalidation in main before acknowledging its
+scan request. Prior content and vectors remain until replacement. Processing
+completion waits for persistence acknowledgement. Worker startup and requests
+have deadlines; failure remains visible until the owner is replaced. Intentionally
+hidden service pacing retains battery and thermal limits. Sleep stops the owner,
+resume recreates it, and explicit quit permanently closes admission. Owner IPC
+checks sender, Library and generation; stopping aborts main-owned media work.
+
+Native inference tensors cross IPC as typed arrays. Browser tensors use bounded,
+Library-bound upload tickets and `/web/inference`, then the same host owner.
+Staging files are consumed after execution or removed after upload failure. Browser
+clients never receive model/provider credentials or supply host file paths.
+
+## Library request lifetime and Canvas writes
+
+`main/core/library-access.ts` leases the actual asynchronous lifetime of native,
+HTTP, chat, routine and conversion work. Location changes close admission, stop
+background owners and drain readers before sealing database/path access. Transition
+callers leave their own request lease so they cannot wait on themselves. The web
+launcher retains its address while replacing an Electron child after a prepared
+Library relaunch; a new process restores valid digest-only sessions and has a distinct readiness nonce.
+
+The native history owner publishes revision and committed Undo/Redo availability
+after background work as well as ordinary edits. Reads during an in-flight command
+retain the last committed availability; a failed write cannot leave a reconnecting
+browser with a transient empty snapshot at that revision. Browser keyboard Edit
+shortcuts feed the existing surface Undo owner, preserving text-field and Canvas
+history. Host-history commands are queued with their acknowledged revision;
+out-of-order responses cannot lower it.
+
+Repair jobs retain an independent lease through their final recoverable unit,
+including work after the initiating IPC or HTTP request returns. Location changes
+cancel and drain the repair owner; quit also closes its admission. Cancellation
+remains running until in-flight writes settle. Retained job IDs are scoped to the
+Library ID and root. Preview/apply/cancel control requests do not hold the mutation
+queue while the repair performs its own commits.
+
+The browser's host-folder chooser exchanges short-lived, session-, Library- and
+purpose-bound handles. Display paths do not authorize operations. Main rechecks
+canonical containment and directory identity before calling the same native
+Library operations; a missing selection cannot open a dialog on the Mac. Browsing
+and cancelling do not enter a location transition. Create uses a granted parent
+and one validated name; move, backup and restore resolve complete destinations.
+
+An explicit backup restore creates a separately editable Library with a new root
+Library ID, preserving Save and organization identities and all other metadata.
+Its index cannot reuse rows or sessions from the source. Move and rename preserve
+the existing Library ID. Portable backups reject unresolved transaction journals:
+their SQLite commit receipts are host-local, so recovery against a fresh index
+cannot safely decide whether to roll back a copied journal.
+
+Canvas snapshots carry a host-issued content version outside the portable JSON
+format. Both preload and browser transports use `shared/canvas-client.ts` to save
+against their last acknowledged snapshot and serialize their own requests. Main
+rejects stale content while preserving independent renames. An uncertain write
+requires a fresh read before retry; optimistic renderer state never supplies the
+expected host version.
+
+## Browser archive replay
+
+`main/web/replay-host.ts` owns per-Save replay grants, their Portless routes,
+request cancellation and shutdown. Each grant binds one sanitized archive revision
+to a browser session, Library and parent origin. A fresh random origin under
+`replay.elkyiem` has separate cookie ancestry from `circe.elkyiem`. Exact-Host
+dispatch precedes application authentication and exposes only the fixed viewer,
+bootstrap, UI, worker and scoped archive source. It never receives the application
+key or a general API capability.
+
+The browser receives a private WARC derivative with captured cookie and
+authorization headers and request records removed. Native originals remain
+unchanged. `replay-archive.ts` checks indexed files and their revision;
+`replay-source.ts` serves bounded byte ranges. `library-response.ts` retains its
+Library lease until the actual stream finishes or is cancelled. Grant revocation
+aborts reads and waits for file handles before deleting temporary bytes. In-flight
+revocations remain owned even after a grant leaves the routing maps.
+
+The typed `browser/replay-worker.ts` uses the replay engine's supported subclass
+hooks to pin its source and persisted collection configuration. Read-only engine
+APIs and a separate HTTP worker policy apply to fresh and cached replay paths.
+`replay-bootstrap.ts` observes current replay documents, frames and open shadow
+roots for navigation; it does not poll or grant archived code application access.
+The whole replay origin remains untrusted. The shared archive viewer keeps its
+native webview on desktop and lazily uses `BrowserArchiveFrame` in browsers.
+Parent messages require the current frame, exact origin, generation and schema.
+External navigation is a proposal displayed in trusted Circé UI and requires a
+user click. Already imported browser cache bytes are not securely erased by
+revocation.
+
+## Visiting-device Eagle imports
+
+The browser's folder picker retains relative paths and uploads selected files
+through existing Library-bound tickets. `main/web/eagle-import.ts` assembles only
+those granted files into a private tree, rejects mixed roots, traversal and
+ambiguous names, and waits for all assembly work before failure cleanup.
+`core/eagle-library-import.ts` owns the existing native import options, shortcut
+policy and paced progress for both IPC and HTTP. Native import progress uses the
+authenticated status feed; upload progress remains on the visiting device.
+`main/lib/private-work-directories.ts` tracks explicit temporary-directory
+ownership for Eagle assembly and replay. Crash cleanup preserves another live
+host's directories and all unrecognized or unmarked entries.
+
+
+## Circé transfer delivery and production browser shell
+
+The native durable transfer store remains the job owner. `web/package-import.ts`
+retains an owned raw archive and reconstructible expanded source through retry;
+unpacking is part of the cancellable job. `web/transfers.ts` includes packaging
+and download receipts before Completed. The resident
+`core/transfer-delivery.ts` registration lets native transfer queries reuse those
+hooks and save a completed browser artifact through the desktop file picker.
+Browser responses contain only authenticated download URLs, never native paths.
+Streaming ZIP64 and random-access extraction retain cancellation, disk headroom,
+explicit file-handle ownership and identity-checked partial cleanup.
+
+`web/auth.ts` persists only expiring session digests in a mode 0600 file bound to
+the current key. A same-Library host replacement preserves login; logout settles
+the persisted revocation before acknowledging. Public built assets remain
+available while a Library transition closes private request admission.
+
+Browser interface zoom is device-local. Canvas normalizes CSS scale into its
+physical camera and back into persisted world coordinates. PWA generation emits
+manifest/icons and caches only the public reconnect page and 192-pixel icon.
+Library data and writes remain online-only. Fixture controls are opt-in; Settings
+owns ordinary browser disconnect. An explicit font activation on a Circé host
+uses the real OS user Fonts directory, while normal isolated tests keep their
+configured home and legacy installations remain removable.

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import log from "electron-log/main.js";
@@ -9,6 +9,7 @@ import {
   CanvasIdSchema,
   type CanvasItem,
   CanvasSchema,
+  type CanvasSnapshot,
   type CanvasSummary,
 } from "../../shared/canvas-contracts";
 import { readBundleJson, writeBundleJson } from "../lib/library-config";
@@ -152,15 +153,37 @@ export function renameCanvas(
   write(root, { ...requireCanvas(id, root), name: trimmed, updatedAt: now });
 }
 
+export class CanvasConflictError extends Error {
+  constructor() {
+    super(
+      "This Canvas changed in another window. Reload before saving your changes.",
+    );
+  }
+}
+
+export function canvasContentVersion(content: CanvasContentInput): string {
+  return createHash("sha256")
+    .update(JSON.stringify(CanvasContentSchema.parse(content)))
+    .digest("hex");
+}
+
+export function canvasSnapshot(canvas: Canvas): CanvasSnapshot {
+  return { ...canvas, contentVersion: canvasContentVersion(canvas) };
+}
+
 export function updateCanvas(
   id: string,
   content: CanvasContentInput,
+  expectedContent: string,
   root = libraryRoot(),
   now = Date.now(),
-): number {
+) {
   const parsed = CanvasContentSchema.parse(content);
-  write(root, { ...requireCanvas(id, root), ...parsed, updatedAt: now });
-  return now;
+  const current = requireCanvas(id, root);
+  if (canvasContentVersion(current) !== expectedContent)
+    throw new CanvasConflictError();
+  write(root, { ...current, ...parsed, updatedAt: now });
+  return { updatedAt: now, contentVersion: canvasContentVersion(parsed) };
 }
 
 export function addSavesToCanvas(

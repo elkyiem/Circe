@@ -20,6 +20,7 @@
   "include": [
     "electron.vite.config.ts",
     "vite.browser.config.ts",
+    "browser-pwa.ts",
     "css-composes-hmr.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",

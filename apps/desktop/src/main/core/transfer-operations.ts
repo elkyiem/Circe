@@ -2,9 +2,8 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import log from "electron-log/main.js";
-import type { OkResult } from "../../shared/query-contracts-shared";
 import type { TransferRequest } from "../../shared/transfer-contracts";
-import { libraryRoot } from "../paths";
+import { libraryId, libraryRoot } from "../paths";
 import { importEaglePackage } from "./eagle-package";
 import {
   exportSavesToDirectory,
@@ -13,7 +12,8 @@ import {
 import { copyPackageToLibrary, packageLibrary } from "./library-transfer-files";
 import { runLibraryTransfer } from "./library-transfers";
 import { exportPondPackage, importPondPackage } from "./pond-package";
-import { transferJobStore } from "./transfer-jobs";
+import { runTransferJob, transferJobStore } from "./transfer-jobs";
+import { createTransferRetry } from "./transfer-retry";
 
 export function copySaveSelectionToLibrary(
   ids: readonly string[],
@@ -65,15 +65,11 @@ async function executeRequest(request: TransferRequest) {
       return mergeLibraryFrom(request.source || request.destination);
   }
 }
-export async function retryTransferJob(id: string): Promise<OkResult> {
-  const store = transferJobStore();
-  const job = (await store.list()).find((entry) => entry.id === id);
-  if (!job || !["failed", "cancelled", "interrupted"].includes(job.status))
-    return { ok: false, error: "This transfer can't be retried." };
-  if ((await realpath(job.request.origin)) !== (await realpath(libraryRoot())))
-    throw new Error("Open the original library before retrying this transfer.");
-  void store
-    .run(job.request, () => executeRequest(job.request), id)
-    .catch((error) => log.warn("Transfer retry stopped", error));
-  return { ok: true };
-}
+export const retryTransferJob = createTransferRetry({
+  list: () => transferJobStore().list(),
+  libraryRoot,
+  libraryId,
+  run: runTransferJob,
+  execute: executeRequest,
+  warn: (error) => log.warn("Transfer retry stopped", error),
+});

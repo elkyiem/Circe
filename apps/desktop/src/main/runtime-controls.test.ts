@@ -1,13 +1,21 @@
 import { DEFAULT_PREFS, type Prefs } from "@pond/schema/db";
 import { describe, expect, it } from "vitest";
-import { createRuntimeControls } from "./runtime-controls";
+import {
+  createRuntimeControls,
+  localApiLaunchPolicy,
+} from "./runtime-controls";
 
-function setup(isPackaged = false) {
+function setup(
+  isPackaged = false,
+  httpPolicy?: { enabled: boolean; port?: number },
+) {
   const events: string[] = [];
   let prefs = structuredClone(DEFAULT_PREFS);
   let readError: Error | null = null;
   let closeError: Error | null = null;
+  let startError: Error | null = null;
   const controls = createRuntimeControls({
+    httpPolicy,
     async getPrefs() {
       events.push("read");
       if (readError) throw readError;
@@ -18,6 +26,7 @@ function setup(isPackaged = false) {
     },
     async startHttpServer(port, bind) {
       events.push(`start:${port}:${bind}`);
+      if (startError) throw startError;
       return {
         port,
         host: bind === "lan" ? "0.0.0.0" : "127.0.0.1",
@@ -49,6 +58,9 @@ function setup(isPackaged = false) {
     events,
     setPrefs(next: Prefs) {
       prefs = next;
+    },
+    failStart() {
+      startError = new Error("Address already in use");
     },
     failRead() {
       readError = new Error("unavailable preferences");
@@ -136,3 +148,81 @@ describe("runtime controls", () => {
     ]);
   });
 });
+
+it("keeps sandbox listeners disabled without an explicit resident host launch policy", async () => {
+  expect(localApiLaunchPolicy({ POND_SANDBOX: "/fixture" })).toEqual({
+    enabled: false,
+  });
+  expect(
+    localApiLaunchPolicy({
+      POND_SANDBOX: "/fixture",
+      CIRCE_LOCAL_API_PORT: "4788",
+    }),
+  ).toEqual({ enabled: false });
+  const run = setup(false, { enabled: false });
+  await run.controls.startHttpServer();
+  await run.controls.restartHttpServer();
+  expect(run.events).toEqual([]);
+  expect(run.controls.httpStatus()).toEqual({
+    state: "disabled",
+    url: null,
+    error: null,
+  });
+});
+it("preserves the opt-in loopback port across restart without changing preferences", async () => {
+  const policy = localApiLaunchPolicy({
+    POND_SANDBOX: "/fixture",
+    CIRCE_WEB: "1",
+    CIRCE_LOCAL_API_PORT: "4788",
+  });
+  const run = setup(false, policy);
+  run.setPrefs({
+    ...DEFAULT_PREFS,
+    api: { ...DEFAULT_PREFS.api, port: 41610, bindAddress: "lan" },
+  });
+  await run.controls.startHttpServer();
+  await run.controls.restartHttpServer();
+  expect(run.events.filter((event) => event.startsWith("start:"))).toEqual([
+    "start:4788:loopback",
+    "start:4788:loopback",
+  ]);
+  expect(run.controls.httpStatus()).toEqual({
+    state: "listening",
+    url: "http://127.0.0.1:4788/api/v2",
+    error: null,
+  });
+  await run.controls.closeHttpServer();
+  expect(run.controls.httpStatus()).toEqual({
+    state: "stopped",
+    url: null,
+    error: null,
+  });
+});
+it("reports a failed restart rather than retaining the closed listener", async () => {
+  const run = setup(false, { enabled: true, port: 4788 });
+  await run.controls.startHttpServer();
+  run.failStart();
+  await expect(run.controls.restartHttpServer()).rejects.toThrow(
+    "Address already in use",
+  );
+  expect(run.controls.httpStatus()).toEqual({
+    state: "failed",
+    url: "http://127.0.0.1:4788/api/v2",
+    error: "Address already in use",
+  });
+  run.events.length = 0;
+  await run.controls.closeHttpServer();
+  expect(run.events).toEqual([]);
+});
+it.each(["0", "1023", "65536", "oops", "4788.5"])(
+  "rejects invalid local API launch port %s",
+  (port) => {
+    expect(() =>
+      localApiLaunchPolicy({
+        POND_SANDBOX: "/fixture",
+        CIRCE_WEB: "1",
+        CIRCE_LOCAL_API_PORT: port,
+      }),
+    ).toThrow("CIRCE_LOCAL_API_PORT");
+  },
+);

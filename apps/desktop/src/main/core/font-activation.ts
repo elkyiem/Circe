@@ -141,6 +141,22 @@ export function pondFontsDir(
   return join(home, ".local", "share", "fonts");
 }
 
+/** A resident Circé host keeps Library files isolated while installing fonts for the real OS user. */
+export function fontActivationHome(input: {
+  appHome: string;
+  hostHome: string;
+  circeHost: boolean;
+  installedPath?: string;
+}) {
+  if (!input.circeHost) return input.appHome;
+  if (input.installedPath) {
+    const legacy = resolve(join(pondFontsDir(input.appHome), "Pond"));
+    if (resolve(input.installedPath).startsWith(`${legacy}${sep}`))
+      return input.appHome;
+  }
+  return input.hostHome;
+}
+
 function sidecarPath(id: string): string {
   return join(saveDir(id), "font-activation.json");
 }

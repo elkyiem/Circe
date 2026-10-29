@@ -14,11 +14,24 @@ import { afterEach, describe, expect, it } from "vitest";
 import { isWindowsSymlinkPrivilegeError } from "../test/symlink";
 import {
   createLibraryBackup,
+  hasLibraryBackupManifest,
   restoreLibraryBackup,
   verifyLibraryBackup,
 } from "./library-backup";
 
 const roots: string[] = [];
+
+it("detects snapshots without reading or validating the live Library's originals", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pond-backup-marker-test-"));
+  roots.push(root);
+  await writeFile(join(root, "metadata.json"), "damaged metadata");
+  await mkdir(join(root, "items"));
+  await writeFile(join(root, "items", "broken.info"), "not a Save");
+  expect(await hasLibraryBackupManifest(root)).toBe(false);
+  await writeFile(join(root, "pond-backup-manifest.json"), "damaged manifest");
+  expect(await hasLibraryBackupManifest(root)).toBe(true);
+  await expect(verifyLibraryBackup(root)).rejects.toThrow();
+});
 afterEach(async () => {
   await Promise.all(
     roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
@@ -79,12 +92,21 @@ describe("verified library backup", () => {
         await restoreLibraryBackup({
           source: destination,
           destination: restored,
+          identity: "new",
         })
       ).copied,
     ).toBe(3);
+    const restoredMetadata = JSON.parse(
+      await readFile(join(restored, "metadata.json"), "utf8"),
+    );
+    expect(restoredMetadata.id).not.toBe("library");
+    expect(restoredMetadata.name).toBe("Source");
+    expect(
+      JSON.parse(await readFile(join(source, "metadata.json"), "utf8")).id,
+    ).toBe("library");
     await writeFile(
       join(restored, "metadata.json"),
-      JSON.stringify({ id: "library", name: "Restored" }),
+      JSON.stringify({ ...restoredMetadata, name: "Restored" }),
     );
     expect((await verifyLibraryBackup(destination)).verifiedManifest).toBe(
       true,
@@ -94,6 +116,20 @@ describe("verified library backup", () => {
       JSON.parse(await readFile(join(destination, "metadata.json"), "utf8"))
         .name,
     ).toBe("Source");
+  });
+
+  it("preserves Library identity when the verified copy is a move", async () => {
+    const { root, source } = await fixture();
+    const moved = join(root, "Moved.pond");
+    await restoreLibraryBackup({
+      source,
+      destination: moved,
+      identity: "preserve",
+    });
+    expect(
+      JSON.parse(await readFile(join(moved, "metadata.json"), "utf8")).id,
+    ).toBe("library");
+    expect((await verifyLibraryBackup(moved)).verifiedManifest).toBe(false);
   });
 
   it("detects source edits during copying and never publishes a partial backup", async () => {
@@ -154,6 +190,24 @@ describe("verified library backup", () => {
     expect(await readFile(join(destination, "important.txt"), "utf8")).toBe(
       "keep",
     );
+  });
+
+  it("rejects unresolved journals whose SQLite commit receipts are not portable", async () => {
+    const { root, source, destination } = await fixture();
+    const journal = join(source, ".transactions", "committed-but-not-cleaned");
+    await mkdir(journal, { recursive: true });
+    await writeFile(
+      join(journal, "journal.json"),
+      JSON.stringify({ batchId: "committed-but-not-cleaned", snapshots: [] }),
+    );
+    await expect(createLibraryBackup({ source, destination })).rejects.toThrow(
+      "unfinished transaction recovery",
+    );
+    await expect(
+      restoreLibraryBackup({ source, destination, identity: "new" }),
+    ).rejects.toThrow("unfinished transaction recovery");
+    expect(await readdir(root)).toEqual(["Source.pond"]);
+    expect(await readdir(journal)).toEqual(["journal.json"]);
   });
 
   it("rejects library symlinks rather than copying external data", async (ctx) => {

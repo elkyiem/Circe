@@ -89,3 +89,17 @@
   font-size: var(--ds-text-md);
   color: var(--ds-gray-10);
 }
+
+@media (pointer: coarse) {
+  :global(html[data-runtime="browser"]) .input {
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
+    padding-block: max(
+      0px,
+      calc((44px / var(--browser-interface-zoom, 1) - 1.5em) / 2)
+    );
+  }
+  :global(html[data-runtime="browser"]) .clear {
+    min-inline-size: calc(44px / var(--browser-interface-zoom, 1));
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
+  }
+}

@@ -1,5 +1,6 @@
 import { Input } from "@pond/ui";
 import { useId, useState } from "react";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { savePrefsSection, usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
 
@@ -23,7 +24,11 @@ export function SystemPreferences() {
           }}
         />
       </Input.Root>
-      <span>An HTTP or SOCKS address for Pond's requests.</span>
+      <span>
+        {isBrowserRuntime()
+          ? "An HTTP or SOCKS address reachable from your host computer."
+          : "An HTTP or SOCKS address for Pond's requests."}
+      </span>
     </label>
   );
 }

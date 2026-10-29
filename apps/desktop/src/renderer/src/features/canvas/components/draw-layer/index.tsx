@@ -3,6 +3,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useRef, useState } from "react";
 import { INK } from "../../lib/colors";
 import type { StrokePoint } from "../../lib/document";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import { strokePath } from "../../lib/stroke";
 import styles from "./styles.module.css";
 
@@ -24,6 +25,7 @@ export function DrawLayer({
   onErase,
 }: DrawLayerProps) {
   const flow = useReactFlow();
+  const interfaceScale = useCanvasInterfaceScale();
   const screen = useRef<StrokePoint[]>([]);
   const client = useRef<StrokePoint[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function DrawLayer({
       pressure,
     ]);
     client.current.push([event.clientX, event.clientY, pressure]);
-    setPreview(strokePath(screen.current, size));
+    setPreview(strokePath(screen.current, size * interfaceScale));
   };
 
   const finish = () => {
@@ -58,7 +60,7 @@ export function DrawLayer({
       return;
     }
     const zoom = flow.getZoom();
-    onStroke(points, Math.min(48, Math.max(1, size / zoom)));
+    onStroke(points, Math.min(48, Math.max(1, (size * interfaceScale) / zoom)));
   };
 
   return (

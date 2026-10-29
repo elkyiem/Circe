@@ -1,5 +1,6 @@
 import { cssVars } from "@pond/ui";
 import { useStore, ViewportPortal } from "@xyflow/react";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import type { Guide } from "../../lib/snap";
 import styles from "./styles.module.css";
 
@@ -8,7 +9,8 @@ interface GuidesProps {
 }
 
 export function Guides({ guides }: GuidesProps) {
-  const zoom = useStore((state) => state.transform[2]);
+  const interfaceScale = useCanvasInterfaceScale();
+  const zoom = useStore((state) => state.transform[2]) / interfaceScale;
   if (!guides.length) return null;
   return (
     <ViewportPortal>

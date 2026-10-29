@@ -2,7 +2,10 @@ import { app } from "electron";
 import log from "electron-log/main.js";
 import { getPrefs, invalidatePrefs } from "./core/prefs";
 import { startHttpServer } from "./http/server";
-import { createRuntimeControls } from "./runtime-controls";
+import {
+  createRuntimeControls,
+  localApiLaunchPolicy,
+} from "./runtime-controls";
 import { setTrayVisible } from "./tray";
 import { setCloseToTray } from "./window";
 
@@ -10,6 +13,7 @@ import { setCloseToTray } from "./window";
 export const LOGIN_LAUNCH_ARG = "--hidden";
 
 export const runtimeControls = createRuntimeControls({
+  httpPolicy: localApiLaunchPolicy(process.env),
   getPrefs,
   invalidatePrefs,
   startHttpServer,

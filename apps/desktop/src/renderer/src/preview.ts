@@ -99,7 +99,14 @@ const actions: PreviewControlActions = {
 
 function renderPreviewUi(): void {
   if (!state) return;
-  uiRoot.render(createElement(PreviewControls, { actions, slideshow, state }));
+  uiRoot.render(
+    createElement(PreviewControls, {
+      actions,
+      slideshow,
+      state,
+      nativeWindow: document.documentElement.dataset.runtime !== "browser",
+    }),
+  );
 }
 
 function refreshImageSize(): void {
@@ -128,7 +135,7 @@ function refreshSlideshow(): void {
 
 const unsubscribe = window.pondPreview.onState((next) => {
   state = next;
-  const title = `${next.title} · Pond`;
+  const title = `${next.title} · ${document.documentElement.dataset.runtime === "browser" ? "Circé" : "Pond"}`;
   document.title = title;
   media.show(next);
   preview.dataset.mediaType = next.mediaType;

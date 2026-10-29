@@ -1,6 +1,6 @@
 import { Button, Settings, Switch } from "@pond/ui";
 import { useEffect, useState } from "react";
-import { IS_MAC } from "@/shared/lib/platform";
+import { IS_MAC, isBrowserRuntime } from "@/shared/lib/platform";
 import { usePrefs } from "@/shared/state/prefs";
 
 const SOUND_ROWS = [
@@ -94,15 +94,18 @@ export function NotificationPreferences() {
             {permission === "granted"
               ? "Notifications are allowed."
               : permission === "denied"
-                ? IS_MAC
-                  ? "Notifications are blocked in System Settings."
-                  : "Notifications are blocked in Windows Settings."
+                ? isBrowserRuntime()
+                  ? "Notifications are blocked for Circé. Allow them in your browser or device’s notification settings."
+                  : IS_MAC
+                    ? "Notifications are blocked in System Settings."
+                    : "Notifications are blocked in Windows Settings."
                 : permission === "unsupported"
                   ? "Notifications aren't available on this platform."
                   : "Allow Pond to show system notifications."}
           </Settings.ItemDescription>
         </Settings.ItemDetails>
-        {permission === "default" || permission === "denied" ? (
+        {permission === "default" ||
+        (permission === "denied" && !isBrowserRuntime()) ? (
           <Settings.ItemControl>
             <Button
               size="sm"

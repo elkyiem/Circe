@@ -7,6 +7,13 @@ import {
   mcpHostConfigPath,
 } from "@shared/mcp-hosts";
 import { useState } from "react";
+import { errorCopy } from "@/shared/lib/error-copy";
+import {
+  hostDeviceName,
+  hostNavigatorPlatform,
+  isBrowserRuntime,
+  isMacHost,
+} from "@/shared/lib/platform";
 import { CopyLine } from "../copy-line";
 import { JsonBlock } from "../json-block";
 import styles from "./styles.module.css";
@@ -30,21 +37,27 @@ export function HostPopover({
     : [];
   const json = snippet?.json ?? "";
   const deeplink = isMcpDeeplinkHost(host.id) ? host.id : null;
-  const configPath = mcpHostConfigPath(
-    host,
-    globalThis.navigator?.platform ?? "",
-  );
+  const browser = isBrowserRuntime();
+  const configPath = mcpHostConfigPath(host, hostNavigatorPlatform());
 
   async function addToClient() {
     if (!deeplink) return;
     setError("");
-    const result = await window.pond.query("agent.openMcpInstall", {
-      id: deeplink,
-    });
-    if (!result.ok) {
+    try {
+      const result = await window.pond.query("agent.openMcpInstall", {
+        id: deeplink,
+      });
+      if (!result.ok)
+        setError(
+          result.error ??
+            "Could not open that install link. Copy the config instead.",
+        );
+    } catch (error) {
       setError(
-        result.error ??
-          "Pond could not open that install link. Copy the config instead.",
+        errorCopy(
+          error,
+          "Could not open that install link. Copy the config instead.",
+        ),
       );
     }
   }
@@ -61,10 +74,16 @@ export function HostPopover({
         <Popover.Positioner side="left" align="start" sideOffset={8}>
           <Popover.Popup className={styles.popup}>
             <Popover.Title className={styles.title}>{host.name}</Popover.Title>
-            <p className={styles.lead}>The agent can search and read saves.</p>
+            <p className={styles.lead}>
+              {browser
+                ? `These setup steps run on ${hostDeviceName()}. The agent can search and read Saves there.`
+                : "The agent can search and read saves."}
+            </p>
             {deeplink ? (
               <Button size="sm" onClick={() => void addToClient()}>
-                {host.addLabel}
+                {browser
+                  ? `Add on ${isMacHost() ? "Mac Host" : "Host"}`
+                  : host.addLabel}
               </Button>
             ) : null}
             {commands.map((command) => (

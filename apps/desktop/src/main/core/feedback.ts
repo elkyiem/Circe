@@ -1,17 +1,6 @@
 import { Notification, shell } from "electron";
-import type { FeedbackEvent } from "../../shared/feedback";
+import { FEEDBACK_MESSAGES, type FeedbackEvent } from "../../shared/feedback";
 import { getPrefs } from "./prefs";
-
-interface FeedbackMessage {
-  title: string;
-}
-
-const MESSAGES = {
-  saveDeletion: { title: "Save Removed" },
-  folderDeletion: { title: "Folder Removed" },
-  extensionCapture: { title: "Saved to Pond" },
-  autoImport: { title: "Imported to Pond" },
-} as const satisfies Record<FeedbackEvent, FeedbackMessage>;
 
 interface FeedbackServicePorts {
   beep(): void;
@@ -44,7 +33,7 @@ export function createFeedbackService(ports: FeedbackServicePorts) {
       ) {
         return;
       }
-      ports.showNotification(MESSAGES[event].title);
+      ports.showNotification(FEEDBACK_MESSAGES[event].title);
     },
   };
 }

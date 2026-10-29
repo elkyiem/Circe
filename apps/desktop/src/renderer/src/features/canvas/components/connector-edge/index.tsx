@@ -16,6 +16,7 @@ import {
   type ConnectorEdge as ConnectorEdgeType,
   capsOf,
 } from "../../lib/document";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import { useBoard } from "../board/context";
 import { ConnectorBar } from "../connector-bar";
 import { EditableText } from "../editable-text";
@@ -145,7 +146,8 @@ interface EndsProps {
 
 /** Drag either end to reconnect; React Flow's own anchors sit on top and take the pointer. */
 function Ends({ source, target }: EndsProps) {
-  const zoom = useStore((state) => state.transform[2]);
+  const interfaceScale = useCanvasInterfaceScale();
+  const zoom = useStore((state) => state.transform[2]) / interfaceScale;
   const end = (point: XYPosition) => (
     <circle
       className={styles.end}

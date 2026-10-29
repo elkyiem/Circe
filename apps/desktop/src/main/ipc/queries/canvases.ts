@@ -2,13 +2,14 @@ import { writeFile } from "node:fs/promises";
 import { BrowserWindow, dialog } from "electron";
 import { z } from "zod";
 import {
-  CanvasContentSchema,
   CanvasIdSchema,
+  CanvasWriteSchema,
 } from "../../../shared/canvas-contracts";
 import type { QueryResult } from "../../../shared/query-contracts";
 import { canvasPdf } from "../../core/canvas-pdf";
 import {
   addSavesToCanvas,
+  canvasSnapshot,
   createCanvas,
   deleteCanvas,
   listCanvases,
@@ -39,13 +40,16 @@ function fileNameOf(name: string): string {
 
 export const canvasesQueries = {
   "canvases.list": query(z.object({}), () => listCanvases()),
-  "canvases.get": query(Id, ({ id }) => readCanvas(id)),
+  "canvases.get": query(Id, ({ id }) => {
+    const canvas = readCanvas(id);
+    return canvas ? canvasSnapshot(canvas) : null;
+  }),
   "canvases.create": query(
     z.object({
       name: z.string().max(200).optional(),
       saveIds: SaveIds.optional(),
     }),
-    (input) => createCanvas(input),
+    (input) => canvasSnapshot(createCanvas(input)),
   ),
   "canvases.rename": query(
     Id.extend({ name: z.string().max(200) }),
@@ -55,15 +59,15 @@ export const canvasesQueries = {
     },
   ),
   "canvases.update": query(
-    Id.extend({ content: CanvasContentSchema }),
-    ({ id, content }) => ({
+    CanvasWriteSchema,
+    ({ id, content, expectedContent }) => ({
       ok: true as const,
-      updatedAt: updateCanvas(id, content),
+      ...updateCanvas(id, content, expectedContent),
     }),
   ),
   "canvases.addSaves": query(
     Id.extend({ saveIds: SaveIds.min(1) }),
-    ({ id, saveIds }) => addSavesToCanvas(id, saveIds),
+    ({ id, saveIds }) => canvasSnapshot(addSavesToCanvas(id, saveIds)),
   ),
   "canvases.capture": query(Rect, async (rect, event) => {
     if (!event) throw new Error("Capturing a canvas needs its window.");

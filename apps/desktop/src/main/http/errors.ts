@@ -3,6 +3,7 @@ import log from "electron-log/main.js";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
+import { LibraryTransitionError } from "../core/library-access";
 import { PondError } from "../lib/pond-error";
 
 const STATUS = {
@@ -38,6 +39,8 @@ export function invalidRequest(c: Context, error: z.ZodError): Response {
 }
 
 export function handleApiError(error: Error, c: Context): Response {
+  if (error instanceof LibraryTransitionError)
+    return apiError(c, "library_unavailable", error.message);
   if (error instanceof PondError) return apiError(c, error.code, error.message);
   if (error instanceof SyntaxError)
     return apiError(c, "invalid_json", "The request body isn't valid JSON.");

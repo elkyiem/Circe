@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { AnimateHeight } from "@/shared/components/animate-height";
-import { IS_MAC } from "@/shared/lib/platform";
+import { isMacHost } from "@/shared/lib/platform";
 import { ProviderLogo } from "../icons";
 import type { AgentPrefs, KeyRow } from "../types";
 import styles from "./styles.module.css";
@@ -276,13 +276,13 @@ export function ProviderConnection({
                     {catalog.id === "codex" ? (
                       <>
                         Sign in with ChatGPT in{" "}
-                        {IS_MAC ? "Terminal" : "a terminal"} using{" "}
+                        {isMacHost() ? "Terminal" : "a terminal"} using{" "}
                         <code>codex login</code>, then connect here.
                       </>
                     ) : (
                       <>
                         Sign in with your Claude plan in{" "}
-                        {IS_MAC ? "Terminal" : "a terminal"} using{" "}
+                        {isMacHost() ? "Terminal" : "a terminal"} using{" "}
                         <code>claude auth login</code>, then connect here.
                       </>
                     )}{" "}

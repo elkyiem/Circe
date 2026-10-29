@@ -478,3 +478,22 @@ Updated after live Twitter acceptance on 2026-10-26:
    web tabs closed, then continue the remaining organization, format, host-helper
    and device acceptance matrix in the ledger. Exposed capabilities alone remain
    insufficient evidence of parity.
+
+
+## Current native-backed implementation — 2026-10-29
+
+The audited baseline is now Pond 2.0.1 through `029bfcb1`; implementation continues
+on `web` from `57ee6186`. The chosen architecture retains the native host and shared
+renderer. The owner clarified that only one device will be active at a time.
+Stale-write guards remain for handoff, with no collaborative editing requirement.
+
+Completed acceptance now includes real Library administration and maintenance,
+identity/icon/name, file actions, detached previews, isolated archive replay,
+Eagle imports, copy/storage, trusted drag/Undo, Settings/interface zoom and Canvas
+coordinates, durable transfer failure/cancel/retry/download, resident enrichment,
+MCP launch context and persisted browser login across host replacement. The
+production PWA passed fifteen actual checks, host fonts passed four, and bookmarks/
+Mymind passed four. Desktop preload/preview smoke, offline checks and production
+bundles passed. Physical-device acceptance remains an explicit external gate. Current evidence and explicit physical-device gaps belong to
+`docs/circe/verification.md` and the parity ledger; historical code examples in this
+plan describe its kickoff revision, not the current adapter.

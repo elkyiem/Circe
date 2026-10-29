@@ -20,6 +20,7 @@ afterEach(() => {
   clearDraggingSaveIds();
   pool.clear();
   vi.unstubAllGlobals();
+  delete document.documentElement.dataset.runtime;
 });
 
 interface TestSaveDragDataTransfer extends SaveDragDataTransfer {
@@ -49,6 +50,22 @@ function seedImage(id: string) {
   if (!save) throw new Error("Invalid image fixture");
   pool.upsert(save);
 }
+
+it("keeps browser file selections in HTML drag state so folder drops retain their Save IDs", () => {
+  document.documentElement.dataset.runtime = "browser";
+  seedImage("file-save");
+  const query = vi.fn();
+  vi.stubGlobal("pond", { query });
+  const data = transfer();
+  const event = start(data);
+  beginSaveDrag("file-save", event);
+  expect(event.preventDefault).not.toHaveBeenCalled();
+  expect(query).not.toHaveBeenCalled();
+  expect(data.getData(SAVE_DRAG_TYPE)).toBe("file-save");
+  expect(saveDropIds(data)).toEqual(["file-save"]);
+  window.dispatchEvent(new Event("drop"));
+  expect(draggingSaveIds()).toEqual([]);
+});
 
 function transfer(
   types: string[] = [],

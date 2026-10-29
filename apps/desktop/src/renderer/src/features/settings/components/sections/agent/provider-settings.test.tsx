@@ -62,6 +62,35 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete document.documentElement.dataset.hostPlatform;
+  delete document.documentElement.dataset.runtime;
+});
+
+it("offers Mac-host providers in a browser independently of the visiting device", async () => {
+  document.documentElement.dataset.runtime = "browser";
+  document.documentElement.dataset.hostPlatform = "darwin";
+  const host = document.createElement("div");
+  document.body.append(host);
+  const { root, render } = renderSettings(host, {
+    agent: emptyAgent,
+    keys: keysFor([]),
+    onAdd: () => {},
+    onPatchAgent: () => {},
+    onRefresh: async () => {},
+  });
+  try {
+    await act(async () => render());
+    const button = host.querySelector<HTMLButtonElement>(
+      '[aria-label="Add Local Provider"]',
+    );
+    if (!button) throw new Error("Missing local providers menu");
+    await act(async () => button.click());
+    expect(document.body.textContent).toContain("Apple");
+    expect(document.body.textContent).toContain("Ollama");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });
 
 it("hides unadded providers from Cloud and Local lists", async () => {

@@ -7,6 +7,7 @@ import {
   type XYPosition,
 } from "@xyflow/react";
 import { useRef } from "react";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import { CORNERS, type Corner } from "../../lib/transform";
 import styles from "./styles.module.css";
 
@@ -25,7 +26,8 @@ export function SelectionFrame({
   onResize,
 }: SelectionFrameProps) {
   const flow = useReactFlow();
-  const zoom = useStore((state) => state.transform[2]);
+  const interfaceScale = useCanvasInterfaceScale();
+  const zoom = useStore((state) => state.transform[2]) / interfaceScale;
   const grabbed = useRef<Corner | null>(null);
   const started = useRef(false);
   return (

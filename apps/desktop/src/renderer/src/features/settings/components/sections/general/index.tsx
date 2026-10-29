@@ -2,6 +2,7 @@ import { Button, Settings } from "@pond/ui";
 import { useState } from "react";
 import { z } from "zod";
 import { loadAppInfo } from "@/shared/lib/app-info";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { whatsNewDialog } from "@/shared/state/whats-new";
 
 const UpdateCheckSchema = z.object({
@@ -27,7 +28,9 @@ export function CheckNowRow() {
       if (!result.ok) {
         setMessage(
           result.reason === "dev_build"
-            ? "Updates are only available in packaged builds."
+            ? isBrowserRuntime()
+              ? "This host runs from source. Updates are applied when the Circé host is rebuilt."
+              : "Updates are only available in packaged builds."
             : (result.error ?? "Could not check for updates."),
         );
         return;
@@ -47,7 +50,9 @@ export function CheckNowRow() {
       <Settings.ItemDetails>
         <Settings.ItemTitle>Check for Updates</Settings.ItemTitle>
         <Settings.ItemDescription>
-          Look for a newer build.
+          {isBrowserRuntime()
+            ? "Look for a newer build for your host computer."
+            : "Look for a newer build."}
           {message ? (
             <>
               <br />

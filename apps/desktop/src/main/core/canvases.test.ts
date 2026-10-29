@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import {
+  type CanvasClientParams,
+  createCanvasClient,
+} from "../../shared/canvas-client";
+import {
   addSavesToCanvas,
+  canvasContentVersion,
+  canvasSnapshot,
   createCanvas,
   deleteCanvas,
   listCanvases,
@@ -24,6 +30,58 @@ async function library(): Promise<string> {
   roots.push(root);
   return root;
 }
+
+it("rejects stale desktop and browser autosaves, permits refresh and keeps concurrent renames", async () => {
+  const root = await library();
+  const canvas = createCanvas({}, root, 1);
+  const requireCanvas = () => {
+    const current = readCanvas(canvas.id, root);
+    if (!current) throw new Error("Canvas missing");
+    return current;
+  };
+  const request = async (name: string, params: CanvasClientParams) => {
+    if (name === "canvases.get") return canvasSnapshot(requireCanvas());
+    const { CanvasWriteSchema } = await import("../../shared/canvas-contracts");
+    const input = CanvasWriteSchema.parse(params);
+    return {
+      ok: true,
+      ...updateCanvas(input.id, input.content, input.expectedContent, root),
+    };
+  };
+  const desktop = createCanvasClient(request);
+  const browser = createCanvasClient(request);
+  const read = { id: canvas.id };
+  await Promise.all([
+    desktop.query("canvases.get", read),
+    browser.query("canvases.get", read),
+  ]);
+  const change = (x: number) => ({
+    id: canvas.id,
+    content: { ...canvas, viewport: { x, y: 0, zoom: 1 } },
+  });
+  await desktop.query("canvases.update", change(10));
+  await expect(browser.query("canvases.update", change(20))).rejects.toThrow(
+    "another window",
+  );
+  expect(readCanvas(canvas.id, root)?.viewport.x).toBe(10);
+  await browser.query("canvases.get", read);
+  renameCanvas(canvas.id, "Renamed elsewhere", root);
+  await browser.query("canvases.update", change(30));
+  await expect(desktop.query("canvases.update", change(40))).rejects.toThrow(
+    "another window",
+  );
+  expect(readCanvas(canvas.id, root)).toMatchObject({
+    name: "Renamed elsewhere",
+    viewport: { x: 30 },
+  });
+  await desktop.query("canvases.get", read);
+  await desktop.query("canvases.update", change(50));
+  expect(readCanvas(canvas.id, root)?.viewport.x).toBe(50);
+  const stored = JSON.parse(
+    await readFile(join(root, "canvases", `${canvas.id}.json`), "utf8"),
+  );
+  expect(stored.data).not.toHaveProperty("contentVersion");
+});
 
 it("stores each Canvas as a plain file in the Library and lists them in creation order", async () => {
   const root = await library();
@@ -76,6 +134,7 @@ it("keeps the stored name when content is updated and rejects connectors to miss
   updateCanvas(
     canvas.id,
     { viewport: { x: 10, y: 20, zoom: 1.5 }, items: [note], connectors: [] },
+    canvasContentVersion(canvas),
     root,
     3,
   );
@@ -102,6 +161,7 @@ it("keeps the stored name when content is updated and rejects connectors to miss
           },
         ],
       },
+      canvasContentVersion(readCanvas(canvas.id, root) ?? canvas),
       root,
     ),
   ).toThrow();

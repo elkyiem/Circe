@@ -31,6 +31,10 @@
   padding-left: 96px;
 }
 
+:global(html[data-runtime="browser"]) .chrome {
+  padding-left: 12px;
+}
+
 .main {
   display: flex;
   align-items: center;
@@ -159,5 +163,12 @@
 @media (prefers-reduced-motion: reduce) {
   .main {
     transition: none;
+  }
+}
+
+@media (pointer: coarse) {
+  :global(html[data-runtime="browser"]) .bar button {
+    min-inline-size: calc(44px / var(--browser-interface-zoom, 1));
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
   }
 }

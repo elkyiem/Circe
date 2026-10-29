@@ -38,7 +38,11 @@ export const autoTitleEnricher: Enricher = {
     if (!title) return null;
     const current = pool.get(save.id) ?? save;
     if (!hasTitle(current)) {
-      await mutateSave(save.id, { title }, { actorReason: "ai:auto-title" });
+      await mutateSave(
+        save.id,
+        { title },
+        { actorReason: "ai:auto-title", throwOnError: true },
+      );
     }
     return { derived: { autoTitleModel: AUTO_TITLE_VERSION } };
   },

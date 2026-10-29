@@ -10,6 +10,10 @@ import {
 import type { AgentStreamEvent } from "../shared/agent-stream";
 import type { AssistantChunk } from "../shared/assistant";
 import {
+  CanvasClientParamsSchema,
+  createCanvasClient,
+} from "../shared/canvas-client";
+import {
   COMBINE_IMAGES_WINDOW_IPC,
   type CombineImagesWindowOpen,
 } from "../shared/combine-images-contracts";
@@ -18,6 +22,10 @@ import {
   type MenuActionEvent,
   type RecentMenuEntry,
 } from "../shared/constants";
+import {
+  ENRICHMENT_IPC,
+  type EnrichmentStatus,
+} from "../shared/enrichment-contracts";
 import { FilterQuery } from "../shared/filter-query";
 import type { FishEvent, FishOpen } from "../shared/fish-contracts";
 import {
@@ -70,8 +78,13 @@ ipcRenderer.on(IPC.fishOpen, (_: IpcRendererEvent, open: FishOpen) =>
   fishOpen.receive(open),
 );
 
+const canvases = createCanvasClient((name, params) =>
+  ipcRenderer.invoke(IPC.query, name, params),
+);
 const query: QueryClient = (name, ...args) =>
-  ipcRenderer.invoke(IPC.query, name, args[0]);
+  canvases.handles(name)
+    ? canvases.query(name, CanvasClientParamsSchema.parse(args[0] ?? {}))
+    : ipcRenderer.invoke(IPC.query, name, args[0]);
 
 export interface RelocatePreviewWire {
   currentPath: string;
@@ -89,18 +102,25 @@ export interface RelocatePreviewWire {
   suggestedMode: "copy" | "adopt";
 }
 
-export interface StorageGuardStatusWire {
-  state: "ok" | "warn" | "exceeded";
-  pondBytes: number;
-  capBytes: number | null;
-  warnBytes: number | null;
-  action: "warn" | "pauseSync" | "pauseVideo";
-  appliedAt: string;
-}
+export type { StorageGuardStatus as StorageGuardStatusWire } from "../shared/storage-contracts";
+
+import type { StorageGuardStatus as StorageGuardStatusWire } from "../shared/storage-contracts";
 
 let cachedLibraryId: string | null = null;
 
 const api = {
+  onEnrichmentStatus(callback: (status: EnrichmentStatus) => void): () => void {
+    const listener = (_event: IpcRendererEvent, status: EnrichmentStatus) =>
+      callback(status);
+    ipcRenderer.on(ENRICHMENT_IPC.status, listener);
+    return () => ipcRenderer.off(ENRICHMENT_IPC.status, listener);
+  },
+  onLibraryIdentityChanged(callback: (libraryId: string) => void): () => void {
+    const listener = (_event: IpcRendererEvent, libraryId: string) =>
+      callback(libraryId);
+    ipcRenderer.on(IPC.libraryIdentityChanged, listener);
+    return () => ipcRenderer.off(IPC.libraryIdentityChanged, listener);
+  },
   openCombineImagesWindow(input: CombineImagesWindowOpen): Promise<void> {
     return ipcRenderer.invoke(COMBINE_IMAGES_WINDOW_IPC.open, input);
   },

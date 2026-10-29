@@ -142,6 +142,7 @@ export const libraryBackupQueries = {
         const restored = await restoreLibraryBackup({
           source,
           destination: ensurePondSuffix(destination.filePath),
+          identity: "new",
         });
         await relocateLibrary(restored.path, "adopt");
         await relaunchSoon();

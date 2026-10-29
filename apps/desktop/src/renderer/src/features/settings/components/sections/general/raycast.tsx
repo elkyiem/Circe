@@ -1,6 +1,7 @@
 import { Button, Dialog, Settings, Tooltip } from "@pond/ui";
 import { useState } from "react";
 import { errorCopy } from "@/shared/lib/error-copy";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 
 export function RaycastRow() {
   const [busy, setBusy] = useState(false);
@@ -53,14 +54,16 @@ export function RaycastRow() {
     <>
       <Settings.ItemDetails>
         <Settings.ItemTitle>
-          Raycast
+          {isBrowserRuntime() ? "Raycast on Your Mac Host" : "Raycast"}
           <Tooltip.Info
             label="It connects the Raycast extension to Pond's local API."
             aria-label="About Raycast"
           />
         </Settings.ItemTitle>
         <Settings.ItemDescription>
-          Treat the token like a password.
+          {isBrowserRuntime()
+            ? "Use this host-wide local API token with Raycast on your Mac. Copy its Base URL from Local API settings. Treat the token like a password."
+            : "Treat the token like a password."}
           {error ? (
             <>
               <br />
@@ -86,8 +89,9 @@ export function RaycastRow() {
           onClick={() =>
             Dialog.confirm({
               title: "Rotate Local API Token",
-              description:
-                "Existing local integrations stop working until you give them the new token.",
+              description: isBrowserRuntime()
+                ? "Existing local integrations on your Mac host stop working until you give them the new token."
+                : "Existing local integrations stop working until you give them the new token.",
               confirmLabel: "Rotate",
               onConfirm: rotateToken,
             })

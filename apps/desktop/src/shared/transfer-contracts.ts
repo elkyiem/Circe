@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OkResult } from "./query-contracts-shared";
+import type { CancellableResult, OkResult } from "./query-contracts-shared";
 
 export const TransferRequestSchema = z.object({
   kind: z.enum([
@@ -12,6 +12,7 @@ export const TransferRequestSchema = z.object({
     "merge_library",
   ]),
   origin: z.string().min(1),
+  originLibraryId: z.string().min(1).optional(),
   destination: z.string().min(1),
   source: z.string().optional(),
   ids: z.array(z.string()).optional(),
@@ -34,6 +35,7 @@ export const TransferJobSchema = z.object({
   bytes: z.number(),
   currentFile: z.string().nullable(),
   error: z.string().nullable(),
+  browserDownload: z.boolean().optional(),
   startedAt: z.number(),
   updatedAt: z.number(),
 });
@@ -43,9 +45,14 @@ export interface TransferQueryInputs {
   "transferJobs.list": Record<string, never>;
   "transferJobs.cancel": { id: string };
   "transferJobs.retry": { id: string };
+  "transferJobs.download": { id: string };
 }
 export interface TransferQueryResults {
   "transferJobs.list": TransferJob[];
   "transferJobs.cancel": OkResult;
   "transferJobs.retry": OkResult;
+  "transferJobs.download": CancellableResult<{
+    download?: string;
+    filename?: string;
+  }>;
 }

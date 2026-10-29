@@ -12,9 +12,11 @@ import {
   type FishPresence,
 } from "../../../shared/fish-contracts";
 import { routineTools } from "../fish/routine-tools";
+import { LibraryTransitionError, libraryAccess } from "../library-access";
 import {
   type ChatDependencies,
   sendMessage as send,
+  stopAllMessages,
   stopMessage,
 } from "./chat";
 import type { ToolSpec } from "./complete";
@@ -446,6 +448,59 @@ describe("Assistant requests", () => {
       ok: false,
       error: "This reply already finished.",
     });
+  });
+  it("drains every active reply before a Library transition and rejects new replies meanwhile", async () => {
+    const ready = Promise.withResolvers<void>();
+    const cleanup = Promise.withResolvers<void>();
+    let started = 0;
+    mock.complete.mockImplementation(async (input) => {
+      input.onText("Partial reply");
+      if (++started === 2) ready.resolve();
+      await new Promise<void>((resolve) =>
+        input.abortController.signal.addEventListener(
+          "abort",
+          () => resolve(),
+          { once: true },
+        ),
+      );
+      await cleanup.promise;
+      throw new Error("aborted");
+    });
+    const first = sendMessage({ ...request, chatId: "first-chat" });
+    const second = sendMessage({ ...request, chatId: "second-chat" });
+    const releaseParent = Promise.withResolvers<void>();
+    const lateFromParent = libraryAccess.run(async () => {
+      await releaseParent.promise;
+      return sendMessage({ ...request, chatId: "delayed-parent-chat" });
+    });
+    await ready.promise;
+    let transitioned = false;
+    const transition = libraryAccess.transition({
+      prepare: stopAllMessages,
+      operation: async () => {
+        transitioned = true;
+      },
+      keepClosed: () => false,
+    });
+    try {
+      releaseParent.resolve();
+      await expect(lateFromParent).rejects.toBeInstanceOf(
+        LibraryTransitionError,
+      );
+      await expect(
+        sendMessage({ ...request, chatId: "late-chat" }),
+      ).rejects.toBeInstanceOf(LibraryTransitionError);
+      expect(transitioned).toBe(false);
+    } finally {
+      cleanup.resolve();
+      await transition;
+    }
+    expect(await first).toMatchObject({ stopped: true, accepted: true });
+    expect(await second).toMatchObject({ stopped: true, accepted: true });
+    expect(transitioned).toBe(true);
+    expect(
+      mock.append.mock.calls.filter(([row]) => row.metadata?.stopped),
+    ).toHaveLength(2);
   });
 });
 

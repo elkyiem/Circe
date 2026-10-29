@@ -4,7 +4,7 @@ import { app, BrowserWindow, dialog, shell } from "electron";
 import { z } from "zod";
 import type { QueryResult } from "../../../shared/query-contracts";
 import { createPondBundle } from "../../core/ensure-default-library";
-import { verifyLibraryBackup } from "../../core/library-backup";
+import { hasLibraryBackupManifest } from "../../core/library-backup";
 import { updateLibraryIdentity } from "../../core/library-identity";
 import { readLibraryLogo } from "../../core/library-logo";
 import { relocateLibrary } from "../../core/library-ops";
@@ -172,7 +172,7 @@ export const libraryLocationOpenQueries = {
         await suspendLibraryWork();
         await flushTagsDump();
         readLibraryId(dest);
-        if ((await verifyLibraryBackup(dest)).verifiedManifest) {
+        if (await hasLibraryBackupManifest(dest)) {
           throw new Error(
             "Use Restore Backup to open a copy of this snapshot.",
           );

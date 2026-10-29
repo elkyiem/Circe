@@ -146,10 +146,16 @@ export const canvases = {
     if (removed.has(id)) return;
     const cached = documents.get(id);
     if (cached) documents.set(id, { ...cached, ...content });
-    const { updatedAt } = await window.pond.query("canvases.update", {
-      id,
-      content,
-    });
+    let updatedAt: number;
+    try {
+      ({ updatedAt } = await window.pond.query("canvases.update", {
+        id,
+        content,
+      }));
+    } catch (error) {
+      documents.delete(id);
+      throw error;
+    }
     const saved = documents.get(id);
     if (saved) {
       const next = { ...saved, updatedAt };

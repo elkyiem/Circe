@@ -1,6 +1,7 @@
 import { resolveFileIndex } from "@/features/saves/lib/actions";
 import { pool } from "@/features/saves/state/pool";
 import { selection } from "@/features/saves/state/selection";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 
 export const SAVE_DRAG_TYPE = "application/x-pond-save";
@@ -184,7 +185,7 @@ export function beginSaveDrag(id: string, event?: SaveDragStartEvent): void {
     const save = pool.get(saveId);
     return save ? resolveFileIndex(save) != null : false;
   });
-  if (ids.length > 0) {
+  if (ids.length > 0 && !isBrowserRuntime()) {
     /** `startDrag` only adds files to Chromium's drag; running both strands this window in a drag that never ends. */
     event?.preventDefault();
     installNativeSessionListeners();

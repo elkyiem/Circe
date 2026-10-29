@@ -18,6 +18,7 @@ import type {
 import { isRoutineDue } from "../../../shared/fish-routine";
 import type { OkSuccess } from "../../../shared/query-contracts-shared";
 import { getDb } from "../../db";
+import { libraryAccess } from "../library-access";
 import { libraryScopeClauses } from "../library-retrieval";
 import { getPrefs } from "../prefs";
 import { announceFishChanged } from "./presence";
@@ -109,11 +110,21 @@ function providerFor(fish: Fish, prefs: Prefs) {
 }
 
 /** Runs one routine in its fish's conversation; any changes it proposes wait for review. */
-export async function runFishRoutine(
+export function runFishRoutine(
   fish: Fish,
   routine: FishRoutine,
   trigger: RoutineTrigger,
   deps: RoutineDependencies = defaultDependencies,
+): Promise<FishRun | null> {
+  if (!libraryAccess.isOpen()) return Promise.resolve(null);
+  return libraryAccess.run(() => runRoutine(fish, routine, trigger, deps));
+}
+
+async function runRoutine(
+  fish: Fish,
+  routine: FishRoutine,
+  trigger: RoutineTrigger,
+  deps: RoutineDependencies,
 ): Promise<FishRun | null> {
   if (running.has(fish.id)) return null;
   running.add(fish.id);
@@ -196,32 +207,38 @@ export async function runFishRoutine(
 export async function runDueRoutines(
   deps: RoutineDependencies = defaultDependencies,
 ): Promise<void> {
-  const now = deps.now();
-  for (const fish of deps.listFish()) {
-    for (const routine of fish.routines) {
-      if (isRoutineDue(routine, now))
-        await runFishRoutine(fish, routine, { kind: "schedule" }, deps);
+  if (!libraryAccess.isOpen()) return;
+  await libraryAccess.run(async () => {
+    const now = deps.now();
+    for (const fish of deps.listFish()) {
+      for (const routine of fish.routines) {
+        if (isRoutineDue(routine, now))
+          await runFishRoutine(fish, routine, { kind: "schedule" }, deps);
+      }
     }
-  }
+  });
 }
 
 export async function runNewSaveRoutines(
   saveIds: readonly string[],
   deps: RoutineDependencies = defaultDependencies,
 ): Promise<void> {
-  for (const fish of deps.listFish()) {
-    const routines = fish.routines.filter(
-      (routine) => routine.when.kind === "newSaves" && !routine.paused,
-    );
-    if (!routines.length) continue;
-    const inScope = await deps.savesInScope(saveIds, fish);
-    if (!inScope.length) continue;
-    for (const routine of routines)
-      await runFishRoutine(
-        fish,
-        routine,
-        { kind: "newSaves", saveIds: inScope.slice(0, MAX_NEW_SAVES) },
-        deps,
+  if (!libraryAccess.isOpen()) return;
+  await libraryAccess.run(async () => {
+    for (const fish of deps.listFish()) {
+      const routines = fish.routines.filter(
+        (routine) => routine.when.kind === "newSaves" && !routine.paused,
       );
-  }
+      if (!routines.length) continue;
+      const inScope = await deps.savesInScope(saveIds, fish);
+      if (!inScope.length) continue;
+      for (const routine of routines)
+        await runFishRoutine(
+          fish,
+          routine,
+          { kind: "newSaves", saveIds: inScope.slice(0, MAX_NEW_SAVES) },
+          deps,
+        );
+    }
+  });
 }

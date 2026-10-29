@@ -2,7 +2,8 @@ import { readdir, stat, statfs } from "node:fs/promises";
 import { join, sep } from "node:path";
 import log from "electron-log/main.js";
 import { createMemoCache } from "../lib/memo-cache";
-import { libraryRoot, savesRoot, thumbnailCacheRoot } from "../paths";
+import { resolvePaths } from "../paths";
+import { libraryAccess } from "./library-access";
 
 interface LibraryBreakdown {
   items: number;
@@ -41,17 +42,39 @@ const KNOWN_BUCKETS: ReadonlyArray<{
 
 const CACHE_TTL_MS = 30_000;
 
-const snapshotCache = createMemoCache<StorageSnapshot>(computeSnapshot, {
-  ttlMs: CACHE_TTL_MS,
-});
+let snapshotCache: {
+  key: string;
+  value: ReturnType<typeof createMemoCache<StorageSnapshot>>;
+} | null = null;
 
 export async function getStorageSnapshot(): Promise<StorageSnapshot> {
-  return snapshotCache.get();
+  return libraryAccess.run(async () => {
+    const paths = resolvePaths();
+    const key = JSON.stringify([
+      paths.libraryRoot,
+      paths.indexDb,
+      paths.thumbnailCache,
+    ]);
+    if (snapshotCache?.key !== key) {
+      snapshotCache = {
+        key,
+        value: createMemoCache(() => computeSnapshot(paths), {
+          ttlMs: CACHE_TTL_MS,
+        }),
+      };
+    }
+    return snapshotCache.value.get();
+  });
 }
 
-async function computeSnapshot(): Promise<StorageSnapshot> {
-  const root = libraryRoot();
-  const breakdown = await computeLibraryBreakdown();
+type StoragePaths = Pick<
+  ReturnType<typeof resolvePaths>,
+  "libraryRoot" | "savesDir" | "thumbnailCache" | "indexDb"
+>;
+
+async function computeSnapshot(paths: StoragePaths): Promise<StorageSnapshot> {
+  const root = paths.libraryRoot;
+  const breakdown = await computeLibraryBreakdown(paths);
   const device = await getDeviceDiskInfo(root);
   return {
     pondBytes: breakdown.total,
@@ -74,9 +97,11 @@ async function computeSnapshot(): Promise<StorageSnapshot> {
   };
 }
 
-async function computeLibraryBreakdown(): Promise<LibraryBreakdown> {
-  const root = libraryRoot();
-  const itemsAbs = savesRoot();
+async function computeLibraryBreakdown(
+  paths: StoragePaths,
+): Promise<LibraryBreakdown> {
+  const root = paths.libraryRoot;
+  const itemsAbs = paths.savesDir;
   const buckets: Omit<LibraryBreakdown, "total"> = {
     items: 0,
     videoCache: 0,
@@ -113,10 +138,10 @@ async function computeLibraryBreakdown(): Promise<LibraryBreakdown> {
     buckets.items += await sumDirSizes(itemsAbs);
   }
 
-  buckets.thumbs += await sumDirSizes(thumbnailCacheRoot());
+  buckets.thumbs += await sumDirSizes(paths.thumbnailCache);
 
   try {
-    const dbPath = (await import("../paths")).resolvePaths().indexDb;
+    const dbPath = paths.indexDb;
     buckets.db += await safeFileSize(dbPath);
     buckets.db += await safeFileSize(`${dbPath}-wal`);
     buckets.db += await safeFileSize(`${dbPath}-shm`);

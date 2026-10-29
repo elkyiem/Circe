@@ -8,7 +8,6 @@ import {
 import type { MenuItemSpec } from "@pond/ui";
 import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import type { Save } from "@/features/saves/types";
-import { REVEAL_LABEL } from "@/shared/lib/platform";
 import {
   buildReverseSearchItems,
   buildSupplementalItems,
@@ -18,7 +17,7 @@ import { createSaveMenuContext } from "./menu/context";
 import { buildCopyItems } from "./menu/copy";
 import { buildDetailItems, buildViewerDisplayItems } from "./menu/details";
 import { buildExportItems, buildExportPopupItems } from "./menu/export";
-import { buildOpenItems } from "./menu/open";
+import { buildOpenItems, openMenuLabels } from "./menu/open";
 import { buildOrganizeItems } from "./menu/organize";
 import { buildShareItem } from "./menu/share";
 import { glyph, submenuHidden } from "./menu/shared";
@@ -117,9 +116,9 @@ function detailOpenItems(
   defaultAppPath: string | null,
 ): MenuItemSpec[] {
   const openInNewWindow = itemWithLabel(items, "Open in New Window");
-  const openWithDefault = itemWithLabel(items, "Open with Default App");
+  const openWithDefault = itemWithLabel(items, openMenuLabels().defaultApp);
   const openWith = itemWithLabel(items, "Open With");
-  const reveal = itemWithLabel(items, REVEAL_LABEL);
+  const reveal = itemWithLabel(items, openMenuLabels().reveal);
 
   const combinedOpenWith: MenuItemSpec | null =
     openWith?.type === "submenu" &&
@@ -138,7 +137,7 @@ function detailOpenItems(
         }
       : null;
 
-  return [openInNewWindow, combinedOpenWith, reveal].filter(
+  return [openInNewWindow, combinedOpenWith ?? openWithDefault, reveal].filter(
     (item): item is MenuItemSpec => item !== null && item !== undefined,
   );
 }

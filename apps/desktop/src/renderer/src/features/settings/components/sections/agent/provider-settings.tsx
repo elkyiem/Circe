@@ -9,7 +9,7 @@ import {
 } from "@shared/assistant";
 import type { ReactNode } from "react";
 import { AnimateHeight } from "@/shared/components/animate-height";
-import { IS_MAC, THIS_DEVICE } from "@/shared/lib/platform";
+import { hostDeviceName, isMacHost } from "@/shared/lib/platform";
 import { ProviderLogo } from "./icons";
 import { ProviderConnection } from "./provider";
 import styles from "./styles.module.css";
@@ -25,15 +25,19 @@ export const GROUPS = [
   {
     kind: "local" as const,
     title: "Local Providers",
-    description: IS_MAC
-      ? "Use Apple Intelligence or connect to a model server you run."
-      : "Connect to a model server you run.",
+    get description() {
+      return isMacHost()
+        ? "Use Apple Intelligence or connect to a model server you run."
+        : "Connect to a model server you run.";
+    },
     empty: "No local providers",
   },
   {
     kind: "subscription" as const,
     title: "Subscriptions",
-    description: `Use Codex or Claude Code signed in on ${THIS_DEVICE}.`,
+    get description() {
+      return `Use Codex or Claude Code signed in on ${hostDeviceName()}.`;
+    },
     empty: "No subscription connections",
   },
 ];
@@ -106,7 +110,7 @@ function remainingProviders(
 ) {
   return offeredProviders(kind).filter(
     (entry) =>
-      (!("macOnly" in entry) || IS_MAC) &&
+      (!("macOnly" in entry) || isMacHost()) &&
       !isListedProvider(entry.id, agent, keys),
   );
 }

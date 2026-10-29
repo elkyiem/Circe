@@ -1,7 +1,11 @@
 import { Button, Dialog, Settings } from "@pond/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { REVEAL_LABEL } from "@/shared/lib/platform";
+import {
+  hostDeviceName,
+  isBrowserRuntime,
+  REVEAL_LABEL,
+} from "@/shared/lib/platform";
 import { prettyPath } from "@/shared/lib/pretty-path";
 import styles from "./styles.module.css";
 
@@ -68,7 +72,9 @@ export function StorageLocationSettings() {
             variant="secondary"
             onClick={() => void window.pond.query("library.openInFinder", {})}
           >
-            {REVEAL_LABEL}
+            {isBrowserRuntime()
+              ? `Browse on ${hostDeviceName()}`
+              : REVEAL_LABEL}
           </Button>
         </Settings.ItemControl>
       </Settings.Item>

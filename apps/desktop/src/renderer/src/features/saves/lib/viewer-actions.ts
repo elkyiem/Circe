@@ -5,6 +5,7 @@ import { selectOnlySave } from "@/features/saves/lib/select";
 import { pool } from "@/features/saves/state/pool";
 import { requestQuickPreview } from "@/features/saves/state/quick-preview";
 import { errorCopy } from "@/shared/lib/error-copy";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 
 type ViewerAction = Prefs["viewer"]["doubleClickAction"];
@@ -47,7 +48,7 @@ export function runViewerAction(saveId: string, action: ViewerAction): void {
     return;
   }
   selectOnlySave(saveId);
-  if (action === "preview") {
+  if (action === "preview" || (action === "quick-look" && isBrowserRuntime())) {
     requestQuickPreview(saveId);
     return;
   }

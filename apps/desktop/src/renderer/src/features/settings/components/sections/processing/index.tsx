@@ -2,7 +2,7 @@ import { IconCircleCheck, IconCircleWarning, IconPowerOff } from "@pond/icons";
 import { Button, Loader, Settings, Tooltip } from "@pond/ui";
 import { useState } from "react";
 import { useEnrichmentStatus } from "@/features/enrichment/status";
-import { THIS_DEVICE } from "@/shared/lib/platform";
+import { hostDeviceName } from "@/shared/lib/platform";
 import { usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
 
@@ -55,7 +55,7 @@ function groupStatus(group: TaskGroup): string {
 
 async function checkLibrary(): Promise<void> {
   const { runEnrichment } = await import("@/features/enrichment");
-  runEnrichment();
+  await runEnrichment();
 }
 
 export function ProcessingStatus() {
@@ -92,44 +92,54 @@ export function ProcessingStatusCard({
 }) {
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
-  const busy = checking || status.inflight > 0;
+  const busy = checking || status.inflight > 0 || status.state === "starting";
+  const ownerFailed = status.state === "failed";
   const failed = status.failedKeys.size;
   const groups = taskGroups(status.activeKeys, status.failedKeys);
   const state =
     !loaded || busy
       ? "processing"
-      : checkFailed || failed
+      : checkFailed || ownerFailed || failed
         ? "attention"
         : enabled
           ? "ready"
           : "off";
   const title = !loaded
     ? "Loading processing settings"
-    : checking
-      ? "Checking your library"
-      : status.inflight > 0
-        ? "Processing your library"
-        : checkFailed
-          ? "Couldn't check your library"
-          : failed
-            ? "Processing needs attention"
-            : enabled
-              ? "Ready for new items"
-              : "Local processing is off";
+    : status.state === "starting"
+      ? "Starting library processing"
+      : status.state === "paused"
+        ? "Library processing is paused"
+        : checking
+          ? "Checking your library"
+          : status.inflight > 0
+            ? "Processing your library"
+            : checkFailed || ownerFailed
+              ? "Couldn't check your library"
+              : failed
+                ? "Processing needs attention"
+                : enabled
+                  ? "Ready for new items"
+                  : "Local processing is off";
   const detail = !loaded
     ? "Getting your processing preferences."
-    : checking
-      ? "Looking for saves that need processing."
-      : status.inflight > 0
-        ? `${plural(status.inflight, "task", "tasks")} left`
-        : checkFailed
-          ? "Try checking the library again."
-          : failed
-            ? `${plural(failed, "task", "tasks")} couldn't finish`
-            : enabled
-              ? `New saves are processed on ${THIS_DEVICE}.`
-              : "Turn on a processing option below to get started.";
-  const canRetry = loaded && enabled && !busy && (failed > 0 || checkFailed);
+    : status.state === "starting"
+      ? `Starting processing on ${hostDeviceName()}.`
+      : status.state === "paused"
+        ? "Processing resumes when the host is available."
+        : checking
+          ? "Looking for saves that need processing."
+          : status.inflight > 0
+            ? `${plural(status.inflight, "task", "tasks")} left`
+            : checkFailed || ownerFailed
+              ? (status.error ?? "Try checking the library again.")
+              : failed
+                ? `${plural(failed, "task", "tasks")} couldn't finish`
+                : enabled
+                  ? `New saves are processed on ${hostDeviceName()}.`
+                  : "Turn on a processing option below to get started.";
+  const canRetry =
+    loaded && enabled && !busy && (failed > 0 || checkFailed || ownerFailed);
 
   async function handleCheck() {
     setChecking(true);

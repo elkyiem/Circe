@@ -7,6 +7,7 @@ import {
   activateFont,
   backfillFontActivationIndex,
   deactivateFont,
+  fontActivationHome,
   pondFontsDir,
 } from "./font-activation";
 
@@ -197,3 +198,42 @@ it("places Windows fonts under LOCALAPPDATA when it is set", () => {
     join("C:\\Users\\a", "AppData", "Local", "Microsoft", "Windows", "Fonts"),
   );
 });
+
+it("uses the actual user home for resident host font installation and retains isolated test homes", () => {
+  expect(
+    fontActivationHome({
+      appHome: "/fixture/sandbox/home",
+      hostHome: "/Users/fixture",
+      circeHost: true,
+    }),
+  ).toBe("/Users/fixture");
+  expect(
+    fontActivationHome({
+      appHome: "/fixture/sandbox/home",
+      hostHome: "/Users/fixture",
+      circeHost: false,
+    }),
+  ).toBe("/fixture/sandbox/home");
+});
+it.skipIf(process.platform !== "darwin")(
+  "can deactivate a legacy isolated font without broadening the native deletion boundary",
+  () => {
+    const appHome = "/fixture/sandbox/home";
+    expect(
+      fontActivationHome({
+        appHome,
+        hostHome: "/Users/fixture",
+        circeHost: true,
+        installedPath: join(pondFontsDir(appHome), "Pond", "owned.ttf"),
+      }),
+    ).toBe(appHome);
+    expect(
+      fontActivationHome({
+        appHome,
+        hostHome: "/Users/fixture",
+        circeHost: true,
+        installedPath: "/foreign/system.ttf",
+      }),
+    ).toBe("/Users/fixture");
+  },
+);

@@ -56,13 +56,8 @@ const FILE_NOT_FOUND: OkFailure = {
   error: "This Save has no video file.",
 };
 
-export const videoQueries = {
-  "video.preparePreview": query(
-    z.object({ src: StringParam }),
-    async ({ src }) => ensureVideoPreviewProxy(src),
-  ),
-
-  "video.sampleFrames": query(
+export const sampleFramesQuery = (signal?: AbortSignal) =>
+  query(
     SampleFramesParams,
     async (params): Promise<QueryResult<"video.sampleFrames">> => {
       const resolved = resolvePondSavePath(params.src);
@@ -71,6 +66,7 @@ export const videoQueries = {
         resolved.path,
         params.maxFrames,
         params.strategy,
+        signal,
       );
       if (!sampled) return FRAME_UNAVAILABLE;
       try {
@@ -86,7 +82,15 @@ export const videoQueries = {
         await sampled.cleanup();
       }
     },
+  );
+
+export const videoQueries = {
+  "video.preparePreview": query(
+    z.object({ src: StringParam }),
+    async ({ src }) => ensureVideoPreviewProxy(src),
   ),
+
+  "video.sampleFrames": sampleFramesQuery(),
 
   "video.copyFrame": query(
     FrameParams,

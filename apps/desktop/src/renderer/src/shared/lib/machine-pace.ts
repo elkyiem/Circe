@@ -68,6 +68,8 @@ function patch(partial: Partial<MachinePace>): void {
 
 function readFocus() {
   if (!("document" in globalThis)) return { hidden: false, focused: true };
+  if (document.documentElement.dataset.enrichmentOwner === "true")
+    return { hidden: false, focused: false };
   return { hidden: document.hidden, focused: document.hasFocus() };
 }
 

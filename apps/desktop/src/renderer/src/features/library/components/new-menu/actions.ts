@@ -261,11 +261,16 @@ export function createNewActions({
         id: notificationId,
         title: "Importing Eagle library",
         description: hasItems
-          ? `${progress.processed} of ${progress.total} item${progress.total === 1 ? "" : "s"}`
+          ? progress.stage === "uploading"
+            ? `Uploading ${progress.processed} of ${progress.total} files`
+            : `${progress.processed} of ${progress.total} item${progress.total === 1 ? "" : "s"}`
           : "Checking library",
         progress: {
           label: "Eagle library import progress",
-          detail: `${progress.imported} imported · ${progress.skipped} skipped · ${progress.failed} failed`,
+          detail:
+            progress.stage === "uploading"
+              ? "Copying from this device to your host"
+              : `${progress.imported} imported · ${progress.skipped} skipped · ${progress.failed} failed`,
           value: hasItems ? progress.processed : undefined,
           max: hasItems ? progress.total : undefined,
         },

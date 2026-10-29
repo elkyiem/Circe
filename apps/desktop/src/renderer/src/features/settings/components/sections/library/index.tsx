@@ -1,6 +1,6 @@
 import { Button, Input, Select, Settings, Tooltip } from "@pond/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import defaultAppIcon from "@/generated/app-icon-previews/aqua.png";
 import { errorCopy } from "@/shared/lib/error-copy";
@@ -94,15 +94,13 @@ export function LibrarySettings() {
 
 function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
   const client = useQueryClient();
-  const [name, setName] = useState(info?.name ?? "");
-  const [logo, setLogo] = useState<string | null>(info?.icon ?? null);
+  const [draftName, setName] = useState<string | null>(null);
+  const name = draftName ?? info?.name ?? "";
+  const logo = info?.icon ?? null;
   const [logoBusy, setLogoBusy] = useState(false);
   const [nameBusy, setNameBusy] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-
-  useEffect(() => setName(info?.name ?? ""), [info?.name]);
-  useEffect(() => setLogo(info?.icon ?? null), [info?.icon]);
 
   const refreshIdentity = async () => {
     await Promise.all([
@@ -118,7 +116,6 @@ function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
     if (!result.ok) {
       throw new Error(result.error);
     }
-    setLogo(nextLogo);
     await refreshIdentity();
   };
 
@@ -160,7 +157,7 @@ function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
       return;
     }
     if (nextName === info.name) {
-      setName(info.name);
+      setName(null);
       setNameError(null);
       return;
     }
@@ -181,6 +178,7 @@ function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
       }
       setName(nextName);
       await refreshIdentity();
+      setName(null);
     } catch (error) {
       setNameError(errorCopy(error, "Couldn't rename the library. Try again."));
     } finally {
@@ -243,7 +241,7 @@ function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
               onKeyDown={(event) => {
                 if (event.key === "Enter") event.currentTarget.blur();
                 if (event.key === "Escape" && info) {
-                  setName(info.name);
+                  setName(null);
                   setNameError(null);
                 }
               }}

@@ -273,49 +273,51 @@ function Gif({ active, gif, mode }: GifProps) {
 
   return (
     <ChromePortal slot="bottom">
-      <ViewerHud.Tools
-        tooltipSide="top"
-        className={styles.gif}
-        role="toolbar"
-        aria-label="GIF Controls"
-      >
-        <ViewerHud.Tool
-          label={gif.playing ? "Pause GIF" : "Play GIF"}
-          onClick={gif.toggle}
+      <ViewerHud.Pill className={styles["gif-pill"]}>
+        <ViewerHud.Tools
+          tooltipSide="top"
+          className={styles.gif}
+          role="toolbar"
+          aria-label="GIF Controls"
         >
-          {gif.playing ? <IconMediaPause /> : <IconMediaPlay />}
-        </ViewerHud.Tool>
-        <ViewerHud.Tool
-          label="Previous Frame"
-          disabled={gif.frameIndex <= loopStart}
-          onClick={() => gif.seek(gif.frameIndex - 1)}
-        >
-          <IconMediaFastBackwards />
-        </ViewerHud.Tool>
-        <ViewerHud.Scale>
-          {gif.frameIndex + 1} / {gif.frameCount} · {gif.rate}×
-        </ViewerHud.Scale>
-        <ViewerHud.Tool
-          label="Next Frame"
-          disabled={gif.frameIndex >= loopEnd}
-          onClick={() => gif.seek(gif.frameIndex + 1)}
-        >
-          <IconMediaFastForward />
-        </ViewerHud.Tool>
-        <ViewerHud.Tool label="Set Loop Start" onClick={gif.setLoopStart}>
-          <IconMediaFastBackwards />
-        </ViewerHud.Tool>
-        <ViewerHud.Tool label="Set Loop End" onClick={gif.setLoopEnd}>
-          <IconMediaFastForward />
-        </ViewerHud.Tool>
-        <ViewerHud.Tool
-          label="Reset Loop Range"
-          disabled={!gif.loop}
-          onClick={gif.resetLoop}
-        >
-          <IconRefresh />
-        </ViewerHud.Tool>
-      </ViewerHud.Tools>
+          <ViewerHud.Tool
+            label={gif.playing ? "Pause GIF" : "Play GIF"}
+            onClick={gif.toggle}
+          >
+            {gif.playing ? <IconMediaPause /> : <IconMediaPlay />}
+          </ViewerHud.Tool>
+          <ViewerHud.Tool
+            label="Previous Frame"
+            disabled={gif.frameIndex <= loopStart}
+            onClick={() => gif.seek(gif.frameIndex - 1)}
+          >
+            <IconMediaFastBackwards />
+          </ViewerHud.Tool>
+          <ViewerHud.Scale>
+            {gif.frameIndex + 1} / {gif.frameCount} · {gif.rate}×
+          </ViewerHud.Scale>
+          <ViewerHud.Tool
+            label="Next Frame"
+            disabled={gif.frameIndex >= loopEnd}
+            onClick={() => gif.seek(gif.frameIndex + 1)}
+          >
+            <IconMediaFastForward />
+          </ViewerHud.Tool>
+          <ViewerHud.Tool label="Set Loop Start" onClick={gif.setLoopStart}>
+            <IconMediaFastBackwards />
+          </ViewerHud.Tool>
+          <ViewerHud.Tool label="Set Loop End" onClick={gif.setLoopEnd}>
+            <IconMediaFastForward />
+          </ViewerHud.Tool>
+          <ViewerHud.Tool
+            label="Reset Loop Range"
+            disabled={!gif.loop}
+            onClick={gif.resetLoop}
+          >
+            <IconRefresh />
+          </ViewerHud.Tool>
+        </ViewerHud.Tools>
+      </ViewerHud.Pill>
     </ChromePortal>
   );
 }

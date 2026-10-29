@@ -9,6 +9,7 @@ import {
   registerPondOperations,
 } from "../../core/agent/operations";
 import { combineImagesWindowOwnsSender } from "../../core/combine-images-window";
+import { libraryAccess } from "../../core/library-access";
 import { currentLibraryId } from "../../core/prefs-scope";
 import { agentControlOperations } from "../agent-controls";
 import { safeHandle } from "../helpers";
@@ -20,6 +21,7 @@ import { bulkQueries } from "./bulk";
 import { canvasesQueries } from "./canvases";
 import { conversionQueries } from "./conversion";
 import { downloadsQueries } from "./downloads";
+import { enrichmentQueries } from "./enrichment";
 import { fishQueries } from "./fish";
 import { fishMcpQueries } from "./fish-mcp";
 import { foldersQueries } from "./folders";
@@ -46,6 +48,7 @@ import { watchesQueries } from "./watches";
 type ContractHandlers = Required<QueryHandlerMap>;
 
 const queryRegistry = {
+  ...enrichmentQueries,
   ...transferJobsQueries,
   ...updateQueries,
   ...bulkQueries,
@@ -113,7 +116,7 @@ export function registerQueryHandler(): void {
     if (!handler) throw new Error(`unknown query: ${name}`);
     const startedAt = performance.now();
     try {
-      return await handler(raw, event);
+      return await libraryAccess.run(async () => handler(raw, event));
     } catch (err) {
       log.error("[pond ipc] query failed", name, err);
       throw err;

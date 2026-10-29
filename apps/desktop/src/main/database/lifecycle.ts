@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import log from "electron-log/main.js";
 import { recoverBatchJournal } from "../core/batch-journal";
 import { backfillFontActivationIndex } from "../core/font-activation";
+import { libraryAccess } from "../core/library-access";
 import { hydrateOrganizationBundle } from "../core/organization-bundle";
 import { backfillVecBatch } from "../core/vec-index";
 import { readOrCreateLibraryId } from "../lib/library-id";
@@ -26,6 +27,7 @@ export async function getGlobalDb(): Promise<Db> {
 }
 
 export async function getDb(): Promise<Db> {
+  libraryAccess.assertDatabaseAvailable();
   if (cachedPond) return cachedPond;
   if (pondDbInflight) return pondDbInflight;
 
@@ -37,6 +39,7 @@ export async function getDb(): Promise<Db> {
 
 async function openPondDb(): Promise<Db> {
   await new Promise<void>((resolve) => setImmediate(resolve));
+  libraryAccess.assertDatabaseAvailable();
 
   const paths = resolvePaths();
   log.info("[pond db] opening pond index", paths.indexDb);
@@ -55,6 +58,7 @@ async function openPondDb(): Promise<Db> {
           .prepare("SELECT 1 FROM mutation_commits WHERE batch_id = ?")
           .get(batchId) != null,
     );
+    libraryAccess.assertDatabaseAvailable();
     sqlite.exec("DELETE FROM mutation_commits");
     hydrateOrganizationBundle(opened, paths.libraryRoot);
   } catch (error) {
@@ -109,6 +113,11 @@ export function closeDb(): void {
     }
     cachedPond = null;
   }
+}
+
+/** Settle an opener before paths can change; rejected background opens are already fenced. */
+export async function drainDb(): Promise<void> {
+  await pondDbInflight?.catch(() => {});
 }
 
 function ensureLibraryMetadata(): void {

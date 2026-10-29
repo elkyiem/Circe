@@ -2,11 +2,11 @@ import {
   defineCustomSection,
   group,
 } from "@/features/settings/lib/engine-types";
-import { THIS_DEVICE } from "@/shared/lib/platform";
+import { hostDeviceName } from "@/shared/lib/platform";
 
 export const localApiSection = defineCustomSection({
   title: "Local API",
-  description: `Let scripts and apps on ${THIS_DEVICE} use this library over HTTP while Pond is open.`,
+  description: `Let scripts and apps on ${hostDeviceName()} use this library over HTTP while Pond is open.`,
   keywords: [
     "api",
     "http",

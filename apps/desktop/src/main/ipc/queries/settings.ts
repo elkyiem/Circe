@@ -184,6 +184,12 @@ export const settingsQueries = {
     PrefsPatchParamsSchema,
     async (params): Promise<QueryResult<"settings.setPrefs">> => {
       const next = await setPrefs(params);
+      if ("storage" in params) {
+        const { applyStorageWatcherPrefs } = await import(
+          "../../core/storage-watcher"
+        );
+        await applyStorageWatcherPrefs();
+      }
       if ("preferences" in params) await syncShellChrome();
       if (params.window && "appIcon" in params.window) {
         const { applyAppIcon } = await import("../../core/app-icon");

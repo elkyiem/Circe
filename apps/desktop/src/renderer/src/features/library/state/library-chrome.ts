@@ -3,6 +3,7 @@ import { Store } from "@tanstack/store";
 import { beginLibraryLayoutTransition } from "@/features/library/lib/library-layout-transition";
 import { navigationHistory } from "@/features/library/state/navigation-history";
 import type { LibraryNav } from "@/shared/lib/library-nav";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 
 export type { LibraryNav } from "@/shared/lib/library-nav";
 
@@ -46,6 +47,10 @@ function writeWidth(key: string, width: number): void {
   } catch {}
 }
 
+function overlayPanels(): boolean {
+  return isBrowserRuntime() && window.matchMedia("(max-width: 700px)").matches;
+}
+
 interface ChromeState {
   nav: LibraryNav;
   sidebarOpen: boolean;
@@ -82,6 +87,8 @@ export const libraryChrome = {
   },
   toggleSidebar(): void {
     beginLibraryLayoutTransition();
+    if (!store.state.sidebarOpen && overlayPanels())
+      libraryChrome.setDetailsOpen(false);
     store.setState((s) => {
       const sidebarOpen = !s.sidebarOpen;
       try {
@@ -103,6 +110,8 @@ export const libraryChrome = {
   setDetailsOpen(detailsOpen: boolean): void {
     if (store.state.detailsOpen === detailsOpen) return;
     beginLibraryLayoutTransition();
+    if (detailsOpen && store.state.sidebarOpen && overlayPanels())
+      libraryChrome.toggleSidebar();
     try {
       window.localStorage.setItem("pond.details", detailsOpen ? "1" : "0");
     } catch {}

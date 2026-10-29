@@ -181,6 +181,7 @@ export const libraryLocationMaintenanceQueries = {
         await restoreLibraryBackup({
           source: srcResolved,
           destination: destResolved,
+          identity: "preserve",
         });
         const result = await relocateLibrary(destResolved, "adopt");
         const sourceRemoved = await removeMovedLibrarySource(

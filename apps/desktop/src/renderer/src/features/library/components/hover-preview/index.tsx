@@ -26,6 +26,7 @@ import {
 import { ensureSaves, useSave } from "@/features/saves/pool";
 import { getAppRouter } from "@/shared/lib/app-router";
 import { isEditableTarget } from "@/shared/lib/editable-target";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { bindingKeys, useShortcutBindings } from "@/shared/lib/shortcuts";
 import { usePrefs } from "@/shared/state/prefs";
 import styles from "./styles.module.css";
@@ -39,6 +40,9 @@ export function HoverPreview() {
   const viewerNav = useRef<ViewerNav | null>(null);
   const navigation = useRef(Promise.resolve());
   const [prefs] = usePrefs("viewer");
+  const previewOnSpace =
+    prefs.spaceAction === "preview" ||
+    (isBrowserRuntime() && prefs.spaceAction === "quick-look");
   const shortcuts = useShortcutBindings();
   const { grayscale, compare } = useInspect();
   const selectedCount = useSelectionSize();
@@ -80,7 +84,7 @@ export function HoverPreview() {
         return;
       event.preventDefault();
       heldKey.current = event.code;
-      if (prefs.spaceAction !== "preview") {
+      if (!previewOnSpace) {
         runViewerAction(selected, prefs.spaceAction);
         return;
       }
@@ -171,15 +175,14 @@ export function HoverPreview() {
       if (event.key.toLowerCase() === "z") setHoverId(null);
       if (
         event.code === heldKey.current &&
-        prefs.spaceAction === "preview" &&
+        previewOnSpace &&
         prefs.spaceBehavior === "hold"
       )
         setOpen(false);
     };
     const blur = () => {
       setHoverId(null);
-      if (prefs.spaceAction === "preview" && prefs.spaceBehavior === "hold")
-        setOpen(false);
+      if (previewOnSpace && prefs.spaceBehavior === "hold") setOpen(false);
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -189,7 +192,7 @@ export function HoverPreview() {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
     };
-  }, [open, prefs.spaceAction, prefs.spaceBehavior]);
+  }, [open, previewOnSpace, prefs.spaceBehavior]);
 
   if (!save && !compare) return null;
   if (!open && !compare && save)
@@ -223,6 +226,9 @@ export function HoverPreview() {
           <Dialog.Title className={styles["sr-only"]}>
             {compare ? "Compare Saves" : save?.title || "Preview"}
           </Dialog.Title>
+          {isBrowserRuntime() ? (
+            <Dialog.Close className={styles.close} />
+          ) : null}
           <div className={styles.viewer}>
             {compare && compareA && compareB ? (
               <div

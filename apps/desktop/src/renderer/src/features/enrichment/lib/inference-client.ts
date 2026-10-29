@@ -1,4 +1,5 @@
 import type { RawImage } from "@huggingface/transformers";
+import { HostInferenceSchema } from "@shared/enrichment-contracts";
 import { z } from "zod";
 import type { FlorenceTask } from "./inference-core";
 import type {
@@ -22,6 +23,7 @@ function serializeImage(image: RawImage): SerializedImage {
 }
 
 interface Pending {
+  timer: ReturnType<typeof setTimeout>;
   resolve(value: InferenceResult): void;
   reject(error: Error): void;
 }
@@ -116,14 +118,32 @@ export function createVideoEmbeddingRequest(
 }
 
 let worker: Worker | null = null;
+let workerReady: Promise<void> | null = null;
+let rejectReady: (error: Error) => void = () => {};
+let startupTimer: ReturnType<typeof setTimeout> | undefined;
 let workerBroken = false;
 let workerEverStarted = false;
 let nextId = 1;
 const pending = new Map<number, Pending>();
 
 function failAllPending(error: Error): void {
-  for (const p of pending.values()) p.reject(error);
+  for (const p of pending.values()) {
+    clearTimeout(p.timer);
+    p.reject(error);
+  }
   pending.clear();
+}
+
+function breakWorker(error: Error): void {
+  clearTimeout(startupTimer);
+  workerBroken = true;
+  worker?.terminate();
+  worker = null;
+  rejectReady(error);
+  failAllPending(error);
+  window.dispatchEvent(
+    new CustomEvent("enrichment-worker-failed", { detail: error.message }),
+  );
 }
 
 function ensureWorker(): Worker | null {
@@ -133,20 +153,47 @@ function ensureWorker(): Worker | null {
     const w = new Worker(new URL("./inference-worker.ts", import.meta.url), {
       type: "module",
     });
-    w.onmessage = (event: MessageEvent<InferenceResponse>) => {
+    let ready = () => {};
+    workerReady = new Promise<void>((resolve, reject) => {
+      ready = resolve;
+      rejectReady = reject;
+    });
+    startupTimer = setTimeout(
+      () =>
+        breakWorker(new Error("The inference worker did not become ready.")),
+      30000,
+    );
+    w.onmessage = (
+      event: MessageEvent<InferenceResponse | { ready: true }>,
+    ) => {
       const msg = event.data;
+      if ("ready" in msg) {
+        clearTimeout(startupTimer);
+        ready();
+        console.info("[inference] worker ready");
+        return;
+      }
       const p = pending.get(msg.id);
       if (!p) return;
+      clearTimeout(p.timer);
       pending.delete(msg.id);
       if (msg.ok) p.resolve(msg.result);
       else p.reject(new Error(msg.error));
     };
     w.onerror = (event) => {
-      console.error("[inference] worker crashed", event.message);
-      workerBroken = true;
-      worker?.terminate();
-      worker = null;
-      failAllPending(new Error("inference worker crashed"));
+      console.error("[inference] worker crashed", {
+        type: event.type,
+        message: event.message,
+        filename: event.filename,
+        line: event.lineno,
+        column: event.colno,
+        pending: pending.size,
+      });
+      breakWorker(
+        new Error(
+          event.message || "The inference worker stopped unexpectedly.",
+        ),
+      );
     };
     worker = w;
     workerEverStarted = true;
@@ -167,22 +214,84 @@ const ScoresSchema = z.array(z.number());
 const VectorSchema = z.instanceof(Float32Array);
 const VectorsSchema = z.array(VectorSchema);
 
-function callWorker<T extends InferenceResult>(
+async function callWorker<T extends InferenceResult>(
   result: z.ZodType<T>,
   msg: RequestBody,
   transfer: Transferable[],
 ): Promise<T> {
+  if (document.documentElement.dataset.enrichmentOwner !== "true")
+    return callHost(result, msg);
   const w = ensureWorker();
   if (!w) return Promise.reject(new Error("inference worker unavailable"));
+  await workerReady;
+  if (worker !== w || workerBroken)
+    throw new Error("The inference worker stopped.");
   const id = nextId++;
   return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () =>
+        breakWorker(
+          new Error("The inference request timed out. Retry Check Library."),
+        ),
+      300000,
+    );
     pending.set(id, {
-      resolve: (value) => resolve(result.parse(value)),
+      timer,
+      resolve: (value) => {
+        const parsed = result.safeParse(value);
+        if (parsed.success) resolve(parsed.data);
+        else reject(parsed.error);
+      },
       reject,
     });
     const request: InferenceRequest = { id, ...msg };
-    w.postMessage(request, transfer);
+    try {
+      w.postMessage(request, transfer);
+    } catch (error) {
+      clearTimeout(timer);
+      pending.delete(id);
+      reject(error);
+    }
   });
+}
+
+async function callHost<T extends InferenceResult>(
+  schema: z.ZodType<T>,
+  message: RequestBody,
+): Promise<T> {
+  const toImage = (image: SerializedImage) => ({
+    ...image,
+    data: new Uint8ClampedArray(image.data),
+  });
+  const input = HostInferenceSchema.parse(
+    "image" in message
+      ? { ...message, image: toImage(message.image) }
+      : "images" in message
+        ? { ...message, images: message.images.map(toImage) }
+        : "frames" in message
+          ? {
+              ...message,
+              frames: message.frames.map((frame) => ({
+                ...frame,
+                image: toImage(frame.image),
+              })),
+            }
+          : message,
+  );
+  const raw = await window.pond.query("enrichment.infer", input);
+  const vector = z.array(z.number().finite());
+  const value =
+    input.op === "embedTexts"
+      ? z
+          .array(vector)
+          .parse(raw)
+          .map((v) => Float32Array.from(v))
+      : ["clipImage", "embedText", "embedAudio", "embedVideoFrames"].includes(
+            input.op,
+          )
+        ? Float32Array.from(vector.parse(raw))
+        : raw;
+  return schema.parse(value);
 }
 
 /** A model-level rejection while the worker is healthy propagates as-is. A worker that died mid-run must not resume on the UI thread. */
@@ -269,7 +378,15 @@ export function inferEmbedText(text: string): Promise<Float32Array> {
   );
 }
 
-export function inferEmbedTexts(texts: string[]): Promise<Float32Array[]> {
+export async function inferEmbedTexts(
+  texts: string[],
+): Promise<Float32Array[]> {
+  if (texts.length > 64) {
+    const vectors: Float32Array[] = [];
+    for (let start = 0; start < texts.length; start += 64)
+      vectors.push(...(await inferEmbedTexts(texts.slice(start, start + 64))));
+    return vectors;
+  }
   return viaWorker(
     () => callWorker(VectorsSchema, { op: "embedTexts", texts }, []),
     async () => (await import("./inference-core")).coreEmbedTexts(texts),

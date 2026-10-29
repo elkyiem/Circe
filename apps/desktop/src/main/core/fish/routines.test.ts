@@ -11,6 +11,7 @@ import type {
   FishRun,
 } from "../../../shared/fish-contracts";
 import { isRoutineDue } from "../../../shared/fish-routine";
+import { libraryAccess } from "../library-access";
 import {
   type RoutineDependencies,
   runDueRoutines,
@@ -52,6 +53,39 @@ const curator: Fish = {
   createdAt: 0,
   updatedAt: 0,
 };
+
+it("drains a pending new-Save scope lookup and defers its routine during a Library transition", async () => {
+  const fake = pond([{ ...curator, routines: [tagging] }]);
+  const began = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+  fake.deps.savesInScope = async (ids) => {
+    began.resolve();
+    await finish.promise;
+    return [...ids];
+  };
+  const processing = runNewSaveRoutines(["poster-one"], fake.deps);
+  await began.promise;
+  let transitioned = false;
+  const transition = libraryAccess.transition({
+    prepare: async () => {},
+    operation: async () => {
+      transitioned = true;
+    },
+    keepClosed: () => false,
+  });
+  try {
+    expect(transitioned).toBe(false);
+  } finally {
+    finish.resolve();
+    await Promise.all([processing, transition]);
+  }
+  expect(transitioned).toBe(true);
+  expect(fake.chats).toEqual([]);
+  expect(fake.runs).toEqual([]);
+  await runNewSaveRoutines(["poster-one"], fake.deps);
+  expect(fake.chats).toEqual(["curator"]);
+  expect(fake.runs).toHaveLength(1);
+});
 
 function pond(
   school: Fish[],

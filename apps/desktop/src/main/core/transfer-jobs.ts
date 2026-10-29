@@ -17,7 +17,8 @@ import {
   type TransferRequest,
 } from "../../shared/transfer-contracts";
 import { renameWithRetry } from "../lib/rename-retry";
-import { libraryRoot } from "../paths";
+import { libraryId, libraryRoot } from "../paths";
+import { libraryAccess } from "./library-access";
 import { runLibraryTransfer } from "./library-transfers";
 
 const CopyCheckpointSchema = z.object({
@@ -115,23 +116,6 @@ export function createTransferJobStore(directory: string) {
     job.updatedAt = Date.now();
     entries.set(job.id, job);
     const checkpoints = new Map<string, CopyCheckpoint>();
-    if (previous) {
-      const text = await readFile(
-        join(directory, `${job.id}.jsonl`),
-        "utf8",
-      ).catch((error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return "";
-        throw error;
-      });
-      for (const line of text.split("\n").filter(Boolean)) {
-        try {
-          const copy = CopyCheckpointSchema.parse(JSON.parse(line));
-          checkpoints.set(copy.key, copy);
-        } catch {
-          /* An interrupted append leaves only the final checkpoint unavailable. */
-        }
-      }
-    }
     const context: TransferContext = {
       job,
       cancelled: false,
@@ -147,10 +131,31 @@ export function createTransferJobStore(directory: string) {
         checkpoints.set(copy.key, copy);
       },
     };
+    // Reserve before checkpoint I/O so another retry cannot start the same job.
     running.set(job.id, context);
     try {
+      if (previous) {
+        const text = await readFile(
+          join(directory, `${job.id}.jsonl`),
+          "utf8",
+        ).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === "ENOENT") return "";
+          throw error;
+        });
+        for (const line of text.split("\n").filter(Boolean)) {
+          try {
+            const copy = CopyCheckpointSchema.parse(JSON.parse(line));
+            checkpoints.set(copy.key, copy);
+          } catch {
+            /* An interrupted append leaves only the final checkpoint unavailable. */
+          }
+        }
+      }
       await write();
-      const result = await scope.run(context, operation);
+      const result = await scope.run(context, async () => {
+        checkTransferCancellation();
+        return operation();
+      });
       if (context.cancelled) throw new TransferCancelledError();
       job.status = "completed";
       job.currentFile = null;
@@ -198,12 +203,23 @@ export function transferJobStore() {
 export function runTransferJob<T>(
   request: TransferRequest,
   operation: () => Promise<T>,
+  retryId?: string,
 ) {
-  return runLibraryTransfer(async () => {
-    if ((await realpath(request.origin)) !== (await realpath(libraryRoot())))
-      throw new Error("The library changed before this transfer started.");
-    return transferJobStore().run(request, operation);
-  });
+  return libraryAccess.run(() =>
+    runLibraryTransfer(async () => {
+      if ((await realpath(request.origin)) !== (await realpath(libraryRoot())))
+        throw new Error("The library changed before this transfer started.");
+      if (request.originLibraryId && request.originLibraryId !== libraryId())
+        throw new Error(
+          "This transfer belongs to another Library. Start a new transfer.",
+        );
+      return transferJobStore().run(
+        { ...request, originLibraryId: request.originLibraryId ?? libraryId() },
+        operation,
+        retryId,
+      );
+    }),
+  );
 }
 function activeContext() {
   const current = scope.getStore();

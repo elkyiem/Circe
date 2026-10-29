@@ -13,6 +13,19 @@
   }
 }
 
+@media (pointer: coarse) {
+  :global(html[data-runtime="browser"]) .root {
+    --sidebar-height-lg: max(
+      32px,
+      calc(44px / var(--browser-interface-zoom, 1))
+    );
+    --sidebar-height-md: max(
+      28px,
+      calc(44px / var(--browser-interface-zoom, 1))
+    );
+  }
+}
+
 .toolbar {
   display: flex;
   gap: 8px;

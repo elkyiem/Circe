@@ -2,6 +2,56 @@ import { expect, it } from "vitest";
 import { ConversionPresetSchema } from "../../shared/conversion-contracts";
 import { createConversionJobs } from "./conversion-jobs";
 
+it("cancels and drains export and compression work before returning from shutdown", async () => {
+  const began = Promise.withResolvers<void>();
+  const cleanup = Promise.withResolvers<void>();
+  let count = 0;
+  const stop = async (signal: AbortSignal) => {
+    if (++count === 2) began.resolve();
+    await new Promise<void>((resolve) =>
+      signal.addEventListener("abort", () => resolve(), { once: true }),
+    );
+    await cleanup.promise;
+    throw new Error("cancelled");
+  };
+  const jobs = createConversionJobs({
+    scope: () => "fixture",
+    resolve: async (id) => id,
+    async convert({ signal }) {
+      await stop(signal);
+      return "unused";
+    },
+    async compress({ signal }) {
+      if (!signal) throw new Error("Missing cancellation signal");
+      await stop(signal);
+      return { changed: 0, skipped: 0, bytesBefore: 0, bytesAfter: 0 };
+    },
+  });
+  const exporting = jobs.start({
+    ids: ["a"],
+    fileIndex: 0,
+    preset,
+    directory: "/output",
+  });
+  const compressing = jobs.startCompression({
+    ids: ["b"],
+    fileIndex: 0,
+    mode: "quality",
+    quality: 75,
+  });
+  await began.promise;
+  let drained = false;
+  const draining = jobs.cancelAll().then(() => {
+    drained = true;
+  });
+  await Promise.resolve();
+  expect(drained).toBe(false);
+  cleanup.resolve();
+  await draining;
+  expect(jobs.status(exporting.id)?.status).toBe("cancelled");
+  expect(jobs.status(compressing.id)?.status).toBe("cancelled");
+});
+
 const preset = ConversionPresetSchema.parse({
   id: "web",
   name: "Web",

@@ -316,8 +316,21 @@ interface BoardProps {
   snapshot?: { complete(image: BoardImage): void; fail(message: string): void };
 }
 
+import {
+  scaleCanvasViewport,
+  useCanvasInterfaceScale,
+} from "../../lib/interface-scale";
+
 export function Board({ canvas, onExport, snapshot }: BoardProps) {
   const flow = useReactFlow<CanvasNode, ConnectorEdge>();
+  const interfaceScale = useCanvasInterfaceScale();
+  const previousScale = useRef(interfaceScale);
+  useEffect(() => {
+    if (previousScale.current === interfaceScale) return;
+    const ratio = interfaceScale / previousScale.current;
+    previousScale.current = interfaceScale;
+    void flow.setViewport(scaleCanvasViewport(flow.getViewport(), ratio));
+  }, [flow, interfaceScale]);
   const wrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<CanvasNode[]>(() =>
     canvas.items.map(toNode),
@@ -348,7 +361,7 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
     end: endSettle,
   } = useSettle(
     useCallback(() => latest.current.nodes, []),
-    useCallback(() => flow.getZoom(), [flow]),
+    useCallback(() => flow.getZoom() / interfaceScale, [flow, interfaceScale]),
   );
   const viewport = useRef<Viewport>(canvas.viewport);
   const editStart = useRef<{ id: string; snapshot: CanvasSnapshot } | null>(
@@ -636,7 +649,11 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
 
   const onErase = useCallback(
     (points: StrokePoint[]) => {
-      const next = eraseDrawings(current().items, points, 18 / flow.getZoom());
+      const next = eraseDrawings(
+        current().items,
+        points,
+        (18 * interfaceScale) / flow.getZoom(),
+      );
       if (!next) return;
       record();
       const selectedIds = new Set(
@@ -651,7 +668,7 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
         })),
       );
     },
-    [current, flow, record],
+    [current, flow, record, interfaceScale],
   );
 
   const recolor = (next: CanvasColor) => {
@@ -1258,7 +1275,8 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
         return;
       case "zoom": {
         const picked = latest.current.nodes.filter((node) => node.selected);
-        if (command.to === "actual") void flow.zoomTo(1, { duration: 200 });
+        if (command.to === "actual")
+          void flow.zoomTo(interfaceScale, { duration: 200 });
         else if (command.to === "selection" && picked.length)
           void flow.fitView({ nodes: picked, duration: 200, padding: 0.2 });
         else if (command.to === "fit")
@@ -1855,9 +1873,12 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
             edges={edges}
             nodeTypes={NODE_TYPES}
             edgeTypes={EDGE_TYPES}
-            defaultViewport={canvas.viewport}
-            minZoom={0.05}
-            maxZoom={8}
+            defaultViewport={scaleCanvasViewport(
+              canvas.viewport,
+              interfaceScale,
+            )}
+            minZoom={0.05 * interfaceScale}
+            maxZoom={8 * interfaceScale}
             connectionMode={ConnectionMode.Loose}
             connectionRadius={40}
             deleteKeyCode={["Backspace", "Delete"]}
@@ -1891,7 +1912,7 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
               return true;
             }}
             onMoveEnd={(_, next) => {
-              viewport.current = next;
+              viewport.current = scaleCanvasViewport(next, 1 / interfaceScale);
               flush();
             }}
             onNodeDoubleClick={(_, node) => {

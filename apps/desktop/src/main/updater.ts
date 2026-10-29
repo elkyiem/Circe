@@ -55,7 +55,7 @@ async function loadUpdater(): Promise<UpdaterPort> {
 }
 
 const updater = createUpdaterCoordinator({
-  isPackaged: () => app.isPackaged,
+  isPackaged: () => app.isPackaged && !process.env.POND_SANDBOX,
   loadUpdater,
   loadPreferences: async () => {
     const { autoInstall } = (await getPrefs()).updates;

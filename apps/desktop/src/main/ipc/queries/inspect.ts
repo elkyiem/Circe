@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
 import { z } from "zod";
 import type { QueryResult } from "../../../shared/query-contracts";
-import { readAutoImportLog, startAutoImport } from "../../core/auto-import";
+import { configureAutoImport, readAutoImportLog } from "../../core/auto-import";
 import { saveCropCopy } from "../../core/crop-copy";
 import { applyImageTransformToFile } from "../../core/image-transform";
-import { getPrefs, setPrefs } from "../../core/prefs";
+import { getPrefs } from "../../core/prefs";
 import { probeVideoDims } from "../../lib/video-dims";
 import { resolveSaveFilePath } from "../helpers";
 import { type QueryHandlerMap, query } from "./params";
@@ -69,11 +69,7 @@ export const inspectQueries = {
       path: z.string().optional(),
       mode: z.enum(["copy", "move"]).optional(),
     }),
-    async (params) => {
-      await setPrefs({ autoImport: params });
-      await startAutoImport();
-      return { ok: true };
-    },
+    configureAutoImport,
   ),
 
   async "autoImport.pickFolder"(): Promise<
@@ -93,11 +89,7 @@ export const inspectQueries = {
     if (result.canceled || !result.filePaths[0]) {
       return { ok: false, reason: "cancelled" };
     }
-    await setPrefs({
-      autoImport: { enabled: true, path: result.filePaths[0] },
-    });
-    await startAutoImport();
-    return { ok: true, path: result.filePaths[0] };
+    return configureAutoImport({ enabled: true, path: result.filePaths[0] });
   },
 
   async "autoImport.reveal"(): Promise<QueryResult<"autoImport.reveal">> {

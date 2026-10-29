@@ -1,9 +1,12 @@
-import { Button, Input } from "@pond/ui";
+import { Button } from "@pond/ui";
 import { WebSessionSchema } from "@shared/web-contracts";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { z } from "zod";
 import { installBrowserAdapter, webRequest } from "./adapter";
+import { BrowserConnectionForm } from "./connection-form";
+import { BrowserFixtureControls } from "./fixture-controls";
+import { registerBrowserPwa } from "./pwa";
+import { readBrowserSession } from "./session";
 import "../styles.css";
 import "../app/boot-shell";
 import styles from "./styles.module.css";
@@ -13,10 +16,13 @@ function BrowserConnection() {
     typeof WebSessionSchema.parse
   > | null>(null);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("Connecting to Electron host…");
+  const [status, setStatus] = useState("Connecting to Circé…");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   useEffect(() => {
+    void registerBrowserPwa();
+    let active = true;
     const onError = (event: Event) => {
       if (event instanceof CustomEvent) setError(String(event.detail));
     };
@@ -25,24 +31,31 @@ function BrowserConnection() {
     };
     window.addEventListener("iris-error", onError);
     window.addEventListener("iris-connection", onConnection);
-    void fetch("/web/session")
-      .then(async (response) => {
-        if (response.ok)
-          setSession(WebSessionSchema.parse(await response.json()));
+    void readBrowserSession()
+      .then((current) => {
+        if (!active) return;
+        if (current) setSession(current);
         else setStatus("Connect to your private library");
+        setCheckingSession(false);
       })
-      .catch(() =>
-        setError("The Electron host is unavailable. Start it and reload."),
-      );
+      .catch(() => {
+        if (active)
+          setError(
+            "Your Mac is unavailable. Check that Circé and Tailscale are running, then reload.",
+          );
+      });
     return () => {
+      active = false;
       window.removeEventListener("iris-error", onError);
       window.removeEventListener("iris-connection", onConnection);
     };
   }, []);
   useEffect(() => {
     if (!session) return;
-    if (matchMedia("(max-width: 700px)").matches)
+    if (matchMedia("(max-width: 700px)").matches) {
       localStorage.setItem("pond.sidebar", "0");
+      localStorage.setItem("pond.details", "0");
+    }
     void installBrowserAdapter(session.libraryId)
       .then(() => import("../main"))
       .then(() => setReady(true))
@@ -55,155 +68,88 @@ function BrowserConnection() {
         );
       });
   }, [session]);
+  if (checkingSession && !session)
+    return (
+      <section
+        className={styles.connect}
+        aria-label="Host connection"
+        aria-busy={!error}
+      >
+        <h1>Circé</h1>
+        {error ? (
+          <>
+            <p role="alert">{error}</p>
+            <Button onClick={() => location.reload()}>Reload</Button>
+          </>
+        ) : (
+          <p role="status">Connecting to your Library…</p>
+        )}
+      </section>
+    );
+  if (
+    ready &&
+    session &&
+    !session.fixtures &&
+    !error &&
+    status === "Connected to Circé"
+  )
+    return null;
   return (
     <section
       className={session ? styles.bar : styles.connect}
       aria-label="Host connection"
     >
       {!session ? (
-        <form
-          onSubmit={async (event) => {
-            event.preventDefault();
+        <BrowserConnectionForm
+          status={status}
+          busy={busy}
+          onError={setError}
+          onConnect={async (key) => {
             setBusy(true);
             setError("");
-            const form = new FormData(event.currentTarget);
             try {
               setSession(
                 WebSessionSchema.parse(
-                  await webRequest(
-                    "session",
-                    JSON.stringify({ key: form.get("key") }),
-                  ),
+                  await webRequest("session", JSON.stringify({ key })),
                 ),
               );
-            } catch (failure) {
+            } catch (cause) {
               setError(
-                failure instanceof Error
-                  ? failure.message
-                  : "Connection failed.",
+                cause instanceof Error ? cause.message : "Connection failed.",
               );
             } finally {
               setBusy(false);
             }
           }}
-        >
-          <h1>Circé</h1>
-          <p>{status}</p>
-          <p>
-            Enter the access key from your isolated host’s web-access-key file.
-          </p>
-          <label htmlFor="host-key">Host access key</label>
-          <Input.Root>
-            <Input.Field
-              id="host-key"
-              name="key"
-              type="password"
-              autoComplete="current-password"
-              required
-              aria-describedby="host-error"
-            />
-          </Input.Root>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Connecting…" : "Connect"}
-          </Button>
-          <label htmlFor="host-key-file">
-            Or choose the access key file from this device
-          </label>
-          <input
-            id="host-key-file"
-            aria-label="Access key file"
-            type="file"
-            disabled={busy}
-            onChange={async (event) => {
-              const file = event.currentTarget.files?.[0];
-              if (!file) return;
-              if (file.size > 256) {
-                setError("Choose the host’s small web-access-key text file.");
-                return;
-              }
-              setBusy(true);
-              setError("");
-              try {
-                setSession(
-                  WebSessionSchema.parse(
-                    await webRequest(
-                      "session",
-                      JSON.stringify({ key: (await file.text()).trim() }),
-                    ),
-                  ),
-                );
-              } catch (failure) {
-                setError(
-                  failure instanceof Error
-                    ? failure.message
-                    : "Connection failed.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        </form>
+        />
       ) : (
         <>
           <span role="status">{status}</span>
-          {ready && session.fixtures && (
-            <label>
-              Offline fixture{" "}
-              <select
-                aria-label="Offline fixture"
-                defaultValue="quote"
-                id="fixture-kind"
-              >
-                <option value="quote">Quoted post</option>
-                <option value="image">Original image</option>
-                <option value="video">Video</option>
-              </select>
-            </label>
-          )}
-          {ready && session.fixtures && (
-            <Button
-              disabled={busy}
-              onClick={async () => {
-                const select = document.getElementById("fixture-kind");
-                if (!(select instanceof HTMLSelectElement)) return;
-                setBusy(true);
-                setError("");
-                try {
-                  const result = z
-                    .object({ id: z.string(), created: z.boolean() })
-                    .parse(
-                      await webRequest(
-                        "fixtures",
-                        JSON.stringify({ kind: select.value }),
-                      ),
-                    );
-                  setStatus(
-                    result.created
-                      ? "Save enqueued · follow progress in Downloads"
-                      : "Fixture already in library",
-                  );
-                } catch (failure) {
-                  setError(
-                    failure instanceof Error
-                      ? failure.message
-                      : "Could not enqueue.",
-                  );
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              {busy ? "Enqueuing…" : "Enqueue fixture"}
-            </Button>
-          )}
+          {ready && session.fixtures ? (
+            <BrowserFixtureControls
+              busy={busy}
+              onBusy={setBusy}
+              onStatus={setStatus}
+              onError={setError}
+            />
+          ) : null}
           <Button
             onClick={async () => {
-              await fetch("/web/session", {
-                method: "DELETE",
-                headers: { "x-iris-library": session.libraryId },
-              });
-              location.reload();
+              try {
+                const response = await fetch("/web/session", {
+                  method: "DELETE",
+                  headers: { "x-iris-library": session.libraryId },
+                });
+                if (!response.ok)
+                  throw new Error("Couldn’t disconnect. Try again.");
+                location.reload();
+              } catch (cause) {
+                setError(
+                  cause instanceof Error
+                    ? cause.message
+                    : "Couldn’t disconnect. Try again.",
+                );
+              }
             }}
           >
             Disconnect

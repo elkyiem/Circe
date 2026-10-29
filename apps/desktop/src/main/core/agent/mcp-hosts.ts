@@ -14,6 +14,38 @@ const McpConfigSchema = z.object({
   mcpServers: z.record(z.string(), z.unknown()),
 });
 
+/** Launch the same native app/profile as the resident host, without inheriting Electron's Node-only mode. */
+export function mcpLaunchDescriptor(options: {
+  executable: string;
+  appPath: string;
+  packaged: boolean;
+  platform: NodeJS.Platform;
+  sandbox?: string;
+  mockKeychain: boolean;
+}) {
+  const args = [
+    ...(options.packaged ? [] : [options.appPath]),
+    "--mcp",
+    ...(options.mockKeychain ? ["--use-mock-keychain"] : []),
+  ];
+  if (!options.sandbox) return { command: options.executable, args };
+  if (options.platform === "win32")
+    throw new Error(
+      "Sandbox MCP setup is supported on the Mac host. Use a packaged app on Windows.",
+    );
+  return {
+    command: "/usr/bin/env",
+    args: [
+      "-u",
+      "ELECTRON_RUN_AS_NODE",
+      `POND_SANDBOX=${options.sandbox}`,
+      "CIRCE_WEB=1",
+      options.executable,
+      ...args,
+    ],
+  };
+}
+
 export function pondMcpSnippet(
   command = process.execPath,
   args: string[] = ["--mcp"],
@@ -42,8 +74,12 @@ export function mcpInstallUrl(
   return null;
 }
 
-export function mcpDeeplinkUrl(id: McpDeeplinkHost): string | null {
-  return mcpInstallUrl(id, process.execPath, ["--mcp"]);
+export function mcpDeeplinkUrl(
+  id: McpDeeplinkHost,
+  command = process.execPath,
+  args = ["--mcp"],
+): string | null {
+  return mcpInstallUrl(id, command, args);
 }
 
 /** People rename the server, so a launch path pointing at Pond counts as connected too. */

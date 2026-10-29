@@ -9,6 +9,23 @@ import { type QueryHandlerMap, query } from "./params";
 
 const Params = z.looseObject({});
 
+async function currentMcpSetup() {
+  const mcp = await import("../../core/agent/mcp-hosts");
+  const launch = mcp.mcpLaunchDescriptor({
+    executable: process.execPath,
+    appPath: app.getAppPath(),
+    packaged: app.isPackaged,
+    platform: process.platform,
+    sandbox: process.env.POND_SANDBOX,
+    mockKeychain: app.commandLine.hasSwitch("use-mock-keychain"),
+  });
+  return {
+    snippet: mcp.pondMcpSnippet(launch.command, launch.args),
+    installUrl: (id: Parameters<typeof mcp.mcpDeeplinkUrl>[0]) =>
+      mcp.mcpDeeplinkUrl(id, launch.command, launch.args),
+  };
+}
+
 export const agentQueries = {
   "agent.keys": query(Params, async () => {
     const { listKeys } = await import("../../core/agent/keys");
@@ -180,8 +197,7 @@ export const agentQueries = {
   }),
 
   "agent.mcpSnippet": query(Params, async () => {
-    const { pondMcpSnippet } = await import("../../core/agent/mcp-hosts");
-    return { ...pondMcpSnippet(), app: app.getName() };
+    return { ...(await currentMcpSetup()).snippet, app: app.getName() };
   }),
 
   "agent.mcpClients": query(Params, async () => {
@@ -192,8 +208,7 @@ export const agentQueries = {
   "agent.openMcpInstall": query(
     z.object({ id: z.enum(["cursor", "vscode"]) }),
     async ({ id }): Promise<QueryResult<"agent.openMcpInstall">> => {
-      const { mcpDeeplinkUrl } = await import("../../core/agent/mcp-hosts");
-      const url = mcpDeeplinkUrl(id);
+      const url = (await currentMcpSetup()).installUrl(id);
       if (!url) {
         return {
           ok: false,

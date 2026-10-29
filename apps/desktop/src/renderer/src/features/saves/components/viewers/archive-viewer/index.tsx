@@ -8,7 +8,15 @@ import {
   IconLink2,
 } from "@pond/icons";
 import { Menu, type MenuItemSpec } from "@pond/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import {
   ChromePortal,
@@ -24,6 +32,7 @@ import {
 } from "@/features/saves/lib/media/archive";
 import type { Save } from "@/features/saves/types";
 import { SpecMenu } from "@/shared/components/spec-context-menu";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import type { PondWebviewElement } from "@/shared/types/electron-webview";
 import {
   currentPageIndex,
@@ -33,6 +42,8 @@ import {
   visitPage,
 } from "./archive-navigation";
 import styles from "./styles.module.css";
+
+const BrowserArchiveFrame = lazy(() => import("./browser-frame"));
 
 export function SaveArchiveViewer({ save }: { save: Save }) {
   const [manifest, setManifest] = useState<ArchiveManifest | null>(null);
@@ -64,6 +75,7 @@ function ArchiveFrame({
   const [history, setHistory] = useState(initialPageHistory);
   const guestIdRef = useRef<number | null>(null);
   const webviewRef = useRef<PondWebviewElement | null>(null);
+  const [reload, setReload] = useState(0);
 
   const pageIndex = currentPageIndex(history);
   const canGoBack = history.cursor > 0;
@@ -154,7 +166,10 @@ function ArchiveFrame({
               </ViewerHud.Tool>
               <ViewerHud.Tool
                 label="Reload"
-                onClick={() => webviewRef.current?.reload()}
+                onClick={() => {
+                  if (isBrowserRuntime()) setReload((value) => value + 1);
+                  else webviewRef.current?.reload();
+                }}
               >
                 <IconArrowRotateClockwise />
               </ViewerHud.Tool>
@@ -207,7 +222,22 @@ function ArchiveFrame({
         />
       </ChromePortal>
       <div className={styles.frame}>
-        <webview ref={attachWebview} src={src} className={styles.webview} />
+        {isBrowserRuntime() ? (
+          <Suspense fallback={null}>
+            <BrowserArchiveFrame
+              key={`${save.id}:${manifest.archivedAt}`}
+              saveId={save.id}
+              pageUrl={page.url}
+              reload={reload}
+              onNavigate={(url) => {
+                const index = pageIndexByKey.get(archiveUrlKey(url));
+                if (index != null) visit(index);
+              }}
+            />
+          </Suspense>
+        ) : (
+          <webview ref={attachWebview} src={src} className={styles.webview} />
+        )}
       </div>
     </div>
   );

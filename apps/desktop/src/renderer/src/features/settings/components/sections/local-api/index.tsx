@@ -2,9 +2,10 @@ import { API_TOKEN_SCOPE_LABELS, type ApiTokenInfo } from "@pond/schema/api";
 import { Button, Dialog, Settings } from "@pond/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { THIS_DEVICE } from "@/shared/lib/platform";
+import { hostDeviceName } from "@/shared/lib/platform";
 import { relativeTimeFromMs } from "@/shared/lib/relative-time";
 import { CreateTokenDialog } from "./create-dialog";
+import { LocalApiEndpoint } from "./endpoint";
 
 const TOKENS_KEY = ["api-tokens"];
 
@@ -23,11 +24,16 @@ export function LocalApiSection() {
         <Settings.HeaderText>
           <Settings.Title>Local API</Settings.Title>
           <Settings.Description>
-            Let scripts and apps on {THIS_DEVICE} use this library over HTTP
-            while Pond is open.
+            Let scripts and apps on {hostDeviceName()} use this library over
+            HTTP while Pond is open.
           </Settings.Description>
         </Settings.HeaderText>
       </Settings.Header>
+      <Settings.Section>
+        <Settings.List>
+          <LocalApiEndpoint />
+        </Settings.List>
+      </Settings.Section>
       <Settings.Section>
         <Settings.SectionDetails>
           <Settings.SectionTitle>Tokens</Settings.SectionTitle>

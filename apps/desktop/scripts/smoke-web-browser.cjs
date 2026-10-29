@@ -6,6 +6,7 @@ const {
   mkdirSync,
   writeFileSync,
   rmSync,
+  chmodSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { resolve, join } = require("node:path");
@@ -16,7 +17,8 @@ const sandbox = resolve(
 );
 const evidence = resolve("../../.artifacts/web-verification");
 const profile = mkdtempSync(join(tmpdir(), "iris-browser-smoke-"));
-mkdirSync(evidence, { recursive: true });
+mkdirSync(evidence, { recursive: true, mode: 0o700 });
+chmodSync(evidence, 0o700);
 app.setPath("userData", profile);
 app.commandLine.appendSwitch("use-mock-keychain");
 process.once("exit", () => {
@@ -37,7 +39,29 @@ const timer = setTimeout(
     console.error("WEB_BROWSER_FAILED: timed out");
     app.exit(1);
   },
-  process.argv.includes("--viewers") ? 300000 : 120000,
+  process.argv.includes("--import-formats")
+    ? 360000
+    : process.argv.includes("--viewers") ||
+        process.argv.includes("--identity") ||
+        process.argv.includes("--file-actions") ||
+        process.argv.includes("--previews") ||
+        process.argv.includes("--replay") ||
+        process.argv.includes("--interactions") ||
+        process.argv.includes("--eagle") ||
+        process.argv.includes("--pwa-shell") ||
+        process.argv.includes("--pwa-shell-restore") ||
+        process.argv.includes("--fonts") ||
+        process.argv.includes("--transfers") ||
+        process.argv.includes("--transfers-restore") ||
+        process.argv.includes("--settings-preview") ||
+        process.argv.includes("--settings-preview-restore") ||
+        process.argv.includes("--library-copy-storage") ||
+        process.argv.includes("--library-copy-storage-restore") ||
+        process.argv.includes("--host-maintenance") ||
+        process.argv.includes("--library-admin") ||
+        process.argv.includes("--library-admin-restore")
+      ? 300000
+      : 120000,
 );
 
 app
@@ -51,6 +75,8 @@ app
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
+        // The visible test window must keep rendering after a host relaunch foregrounds its native window.
+        backgroundThrottling: false,
       },
     });
     win.webContents.on("console-message", (event) => {
@@ -58,26 +84,62 @@ app
         console.error("BROWSER_ERROR", event.message);
     });
     const run = (code) => win.webContents.executeJavaScript(code, true);
+    const boundedOperation = (operation, label, timeoutMs = 5000) =>
+      new Promise((resolveCapture, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`Browser operation timed out: ${label}`)),
+          timeoutMs,
+        );
+        Promise.resolve()
+          .then(operation)
+          .then(
+            (value) => {
+              clearTimeout(timer);
+              resolveCapture(value);
+            },
+            (error) => {
+              clearTimeout(timer);
+              reject(error);
+            },
+          );
+      });
     const snapshot = async (name) => {
-      await run(
-        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+      await boundedOperation(
+        () =>
+          run(
+            "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+          ),
+        `${name} animation frames`,
       );
-      writeFileSync(
-        join(evidence, `${name}.png`),
-        (await win.webContents.capturePage()).toPNG(),
+      const page = await boundedOperation(
+        () => win.webContents.capturePage(),
+        `${name} pixels`,
       );
-      const text = await run("document.body.innerText");
-      writeFileSync(join(evidence, `${name}.txt`), text);
+      const text = await boundedOperation(
+        () => run("document.body.innerText"),
+        `${name} text`,
+      );
+      const screenshotPath = join(evidence, `${name}.png`);
+      const textPath = join(evidence, `${name}.txt`);
+      writeFileSync(screenshotPath, page.toPNG(), { mode: 0o600 });
+      writeFileSync(textPath, text, { mode: 0o600 });
+      chmodSync(screenshotPath, 0o600);
+      chmodSync(textPath, 0o600);
       return text;
     };
     const waitFor = (expression) =>
-      run(`new Promise((resolve, reject) => {
+      boundedOperation(
+        () =>
+          run(`new Promise((resolve, reject) => {
     const started = Date.now(); const check = () => {
       if (${expression}) resolve(true);
       else if (Date.now() - started > 20000) reject(new Error("Browser condition timed out: " + ${JSON.stringify(expression)}));
       else setTimeout(check, 100);
     }; check();
-  })`);
+  })`),
+        `condition: ${expression}`,
+        25000,
+      );
     const startupPrompt = `Array.from(document.querySelectorAll('[role="dialog"]')).some(dialog => {
       const title = dialog.querySelector('h2, [role="heading"]')?.textContent?.trim() ?? '';
       return /^(Meet Your Fish|What's New)/.test(title) || Array.from(dialog.querySelectorAll('button')).some(button => button.textContent?.trim() === 'Not Now');
@@ -90,10 +152,15 @@ app
       await waitFor(`!(${startupPrompt})`);
     };
     const click = async (selector, clickCount = 1) => {
-      await dismissStartupPrompt();
       app.focus({ steal: true });
       win.focus();
-      const point = await run(`new Promise((resolve,reject) => {
+      // Focus before a prompt snapshot: an occluded renderer can suspend animation frames.
+      win.webContents.focus();
+      await waitFor("document.hasFocus()");
+      await dismissStartupPrompt();
+      const point = await boundedOperation(
+        () =>
+          run(`new Promise((resolve,reject) => {
         let previous = ''; let stable = 0; const started = Date.now();
         const check = () => {
           const target = document.querySelector(${JSON.stringify(selector)});
@@ -109,7 +176,10 @@ app
           if (Date.now()-started>10000) {reject(new Error('Control is not clickable: ' + ${JSON.stringify(selector)}));return;}
           requestAnimationFrame(check);
         }; check();
-      })`);
+      })`),
+        `pointer stability: ${selector}`,
+        12000,
+      );
       win.webContents.sendInputEvent({ type: "mouseMove", ...point });
       win.webContents.sendInputEvent({
         type: "mouseDown",
@@ -170,11 +240,43 @@ app
         body: JSON.stringify({ key }),
       });
       assert.equal(login.status, 200);
-      const { libraryId } = await login.json();
-      const cookieHeader = login.headers.get("set-cookie").split(";")[0];
+      let { libraryId } = await login.json();
+      let cookieHeader = login.headers.get("set-cookie").split(";")[0];
       const cookie = cookieHeader.split("=")[1];
+      const refreshSession = async ({ allowLibraryChange = false } = {}) => {
+        const cookies = await win.webContents.session.cookies.get({
+          url: origin,
+          name: "iris_session",
+        });
+        assert.equal(
+          cookies.length,
+          1,
+          "The browser must have one host session.",
+        );
+        const nextCookie = `iris_session=${cookies[0].value}`;
+        const response = await fetch(`${origin}/web/session`, {
+          headers: { cookie: nextCookie },
+          signal: AbortSignal.timeout(15000),
+        });
+        assert.equal(
+          response.status,
+          200,
+          "The UI login must create a valid session.",
+        );
+        const next = await response.json();
+        if (!allowLibraryChange)
+          assert.equal(
+            next.libraryId,
+            libraryId,
+            "Renaming must preserve the Library identity.",
+          );
+        cookieHeader = nextCookie;
+        libraryId = next.libraryId;
+        return { libraryId };
+      };
       const query = async (name, params = {}) => {
-        const response = await fetch(`${origin}/web/query`, {
+        const route = name === "library.rename" ? "library" : "query";
+        const response = await fetch(`${origin}/web/${route}`, {
           method: "POST",
           headers: {
             cookie: cookieHeader,
@@ -183,6 +285,7 @@ app
             "x-iris-library": libraryId,
           },
           body: JSON.stringify({ name, params }),
+          signal: AbortSignal.timeout(30000),
         });
         assert.equal(response.status, 200);
         return response.json();
@@ -196,7 +299,46 @@ app
         });
         return query("saves.getMany", { ids: found.ids });
       };
-      const page = { rows: await fixtureSaves() };
+      const libraryAdmin =
+        process.argv.includes("--library-admin") ||
+        process.argv.includes("--library-admin-restore");
+      const fileActions = process.argv.includes("--file-actions");
+      const hostMaintenance = process.argv.includes("--host-maintenance");
+      const previews = process.argv.includes("--previews");
+      const replay = process.argv.includes("--replay");
+      const interactions = process.argv.includes("--interactions");
+      const eagle = process.argv.includes("--eagle");
+      const fonts = process.argv.includes("--fonts");
+      const importFormats = process.argv.includes("--import-formats");
+      const pwaShell =
+        process.argv.includes("--pwa-shell") ||
+        process.argv.includes("--pwa-shell-restore");
+      const transfers =
+        process.argv.includes("--transfers") ||
+        process.argv.includes("--transfers-restore");
+      const settingsPreview =
+        process.argv.includes("--settings-preview") ||
+        process.argv.includes("--settings-preview-restore");
+      const libraryCopyStorage =
+        process.argv.includes("--library-copy-storage") ||
+        process.argv.includes("--library-copy-storage-restore");
+      const focusProbe = process.argv.includes("--focus-probe");
+      const standalone =
+        libraryAdmin ||
+        fileActions ||
+        hostMaintenance ||
+        previews ||
+        replay ||
+        interactions ||
+        eagle ||
+        fonts ||
+        importFormats ||
+        settingsPreview ||
+        transfers ||
+        pwaShell ||
+        libraryCopyStorage ||
+        focusProbe;
+      const page = { rows: standalone ? [] : await fixtureSaves() };
       for (const save of page.rows) titles.set(save.id, save.title);
       const image = page.rows.find(
         (save) => save.sourceId === "900000000000000002",
@@ -204,10 +346,11 @@ app
       const video = page.rows.find(
         (save) => save.sourceId === "900000000000000003",
       );
-      assert.ok(
-        image && video,
-        "Run smoke-web.mjs first to ingest media fixtures",
-      );
+      if (!standalone)
+        assert.ok(
+          image && video,
+          "Run smoke-web.mjs first to ingest media fixtures",
+        );
       await win.webContents.session.cookies.set({
         url: origin,
         name: "iris_session",
@@ -217,8 +360,339 @@ app
       });
       await win.loadURL(origin);
       await waitFor(
-        'document.querySelector("#fixture-kind") && document.querySelector("[data-library-search]")',
+        standalone
+          ? 'document.querySelector("[data-slot=window], [data-library-search]") || Array.from(document.querySelectorAll("button")).some(node => node.textContent.trim() === "Exit settings")'
+          : 'document.querySelector("#fixture-kind") && document.querySelector("[data-library-search]")',
       );
+      if (focusProbe) {
+        const recordPath = join(evidence, `focus-probe-${Date.now()}.json`);
+        const original = await query("library.info");
+        const record = {
+          mainPid: process.pid,
+          rendererPid: win.webContents.getOSProcessId(),
+
+          original,
+          steps: [],
+          completed: false,
+        };
+        const save = () =>
+          writeFileSync(recordPath, JSON.stringify(record, null, 2), {
+            mode: 0o600,
+          });
+        const step = async (name, operation) => {
+          record.phase = name;
+          save();
+          const started = Date.now();
+          const result = await operation();
+          record.steps.push({ name, elapsedMs: Date.now() - started });
+          save();
+          return result;
+        };
+        try {
+          record.before = await step("initial browser state", () =>
+            boundedOperation(
+              () =>
+                run(
+                  "({hasFocus:document.hasFocus(),hidden:document.hidden,visibility:document.visibilityState,active:document.activeElement?.tagName,dialogs:Array.from(document.querySelectorAll('[role=dialog]')).map(node=>node.querySelector('h2,[role=heading]')?.textContent?.trim())})",
+                ),
+              "focus probe state",
+            ),
+          );
+          record.windowBefore = {
+            focused: win.isFocused(),
+            visible: win.isVisible(),
+            minimized: win.isMinimized(),
+          };
+          app.focus({ steal: true });
+          win.focus();
+          win.webContents.focus();
+          await step("document receives focus", () =>
+            waitFor("document.hasFocus()"),
+          );
+          record.frames = await step("animation frames after focus", () =>
+            boundedOperation(
+              () =>
+                run(
+                  "new Promise(resolve=>{const first=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve({first,last:performance.now(),hasFocus:document.hasFocus(),visibility:document.visibilityState})))})",
+                ),
+              "focus probe animation frames",
+            ),
+          );
+          await step("first real sidebar click", () =>
+            click('[aria-label="Toggle Sidebar"]'),
+          );
+          await step("second real sidebar click", () =>
+            click('[aria-label="Toggle Sidebar"]'),
+          );
+          await step("actual New menu click", () =>
+            click('[aria-label="New"]'),
+          );
+          await step("New menu visible", () =>
+            waitFor(`document.querySelector('[aria-label="Search Actions"]')`),
+          );
+          for (const type of ["keyDown", "keyUp"])
+            win.webContents.sendInputEvent({ type, keyCode: "Escape" });
+          await step("actual Escape closes menu", () =>
+            waitFor(`!document.querySelector('[aria-label="Search Actions"]')`),
+          );
+          await step("rendered browser snapshot", () =>
+            snapshot("focus-probe"),
+          );
+          assert.deepEqual(await query("library.info"), original);
+          record.completed = true;
+        } catch (error) {
+          record.failure = { message: error.message, stack: error.stack };
+          throw error;
+        } finally {
+          save();
+        }
+        console.log(
+          "WEB_FOCUS_PROBE_PASSED",
+          JSON.stringify({ record: recordPath, steps: record.steps }),
+        );
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (importFormats) {
+        const {
+          verifyBrowserImportFormats,
+        } = require("./web-import-format-cases.cjs");
+        await verifyBrowserImportFormats({
+          win,
+          run,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (fonts) {
+        const { verifyBrowserFonts } = require("./web-font-cases.cjs");
+        await verifyBrowserFonts({
+          win,
+          run,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (pwaShell) {
+        const { verifyBrowserPwaShell } = require("./web-pwa-shell-cases.cjs");
+        await verifyBrowserPwaShell({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (transfers) {
+        const { verifyBrowserTransfers } = require("./web-transfer-cases.cjs");
+        await verifyBrowserTransfers({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (settingsPreview) {
+        const {
+          verifyBrowserSettingsPreview,
+        } = require("./web-settings-preview-cases.cjs");
+        await verifyBrowserSettingsPreview({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (eagle) {
+        const { verifyBrowserEagle } = require("./web-eagle-cases.cjs");
+        await verifyBrowserEagle({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (interactions) {
+        const {
+          verifyBrowserInteractions,
+        } = require("./web-browser-interactions-cases.cjs");
+        await verifyBrowserInteractions({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (libraryCopyStorage) {
+        const {
+          verifyBrowserLibraryCopyStorage,
+        } = require("./web-library-copy-storage-cases.cjs");
+        await verifyBrowserLibraryCopyStorage({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (replay) {
+        const { verifyBrowserReplay } = require("./web-replay-cases.cjs");
+        await verifyBrowserReplay({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (previews) {
+        const { verifyBrowserPreviews } = require("./web-preview-cases.cjs");
+        await verifyBrowserPreviews({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (hostMaintenance) {
+        const {
+          verifyBrowserHostMaintenance,
+        } = require("./web-host-maintenance-cases.cjs");
+        await verifyBrowserHostMaintenance({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (fileActions) {
+        const {
+          verifyBrowserFileActions,
+        } = require("./web-file-action-cases.cjs");
+        await verifyBrowserFileActions({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (libraryAdmin) {
+        const { verifyBrowserLibraries } = require("./web-library-cases.cjs");
+        await verifyBrowserLibraries({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
+          refreshSession,
+          restoreOnly: process.argv.includes("--library-admin-restore"),
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
       if (process.argv.includes("--identity")) {
         const { verifyBrowserIdentity } = require("./web-identity-cases.cjs");
         await verifyBrowserIdentity({
@@ -230,6 +704,9 @@ app
           query,
           origin,
           evidence,
+          sandbox,
+          refreshSession,
+          settingsOnly: process.argv.includes("--identity-settings"),
         });
         clearTimeout(timer);
         app.exit(0);
@@ -348,7 +825,7 @@ app
       }
       const initial = await snapshot("desktop-library");
       assert.ok(
-        !initial.includes("This action requires the Electron host"),
+        !initial.includes("This action needs the Circé desktop host"),
         "Startup must not invoke unsupported operations",
       );
       await run(
@@ -558,7 +1035,7 @@ app
       await snapshot("mobile-library");
       assert.ok(
         !(await run("document.body.innerText")).includes(
-          "This action requires the Electron host",
+          "This action needs the Circé desktop host",
         ),
       );
       console.log(

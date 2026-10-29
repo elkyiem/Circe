@@ -41,25 +41,23 @@ export async function embeddingFor(
   return entry;
 }
 
-export function setEmbedding(
+export async function setEmbedding(
   id: string,
   vec: Float32Array,
   model: string,
-): void {
+): Promise<void> {
+  z.object({ ok: z.literal(true) }).parse(
+    await window.pond.query("saves.setEmbedding", {
+      id,
+      embedding: Array.from(vec),
+      embeddingModel: model,
+    }),
+  );
   store.setState((s) => {
     const byId = new Map(s.byId);
     byId.set(id, { vec, model });
     return { byId };
   });
-  void window.pond
-    .query("saves.setEmbedding", {
-      id,
-      embedding: Array.from(vec),
-      embeddingModel: model,
-    })
-    .catch((err) => {
-      console.warn(`[embeddings] failed to persist vector for ${id}`, err);
-    });
 }
 
 export function clearEmbeddings(ids?: readonly string[]): number {

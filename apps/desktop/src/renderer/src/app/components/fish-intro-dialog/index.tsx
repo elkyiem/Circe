@@ -7,6 +7,7 @@ import {
 import { Dialog } from "@pond/ui";
 import { DEFAULT_FISH_ID, DEFAULT_FISH_NAME } from "@shared/fish-contracts";
 import { useEffect } from "react";
+import { hostLocationPickerStore } from "@/browser/host-locations";
 import { fish, useFish, useHydrateFish } from "@/features/fish";
 import {
   fishIntroDialog,
@@ -51,6 +52,12 @@ const FACTS = [
 
 function anotherDialogOpen(): boolean {
   return (
+    Boolean(
+      document.querySelector(
+        '[role="dialog"], [role="alertdialog"], [role="menu"]',
+      ),
+    ) ||
+    hostLocationPickerStore.state !== null ||
     setupFlow.isOpen() ||
     whatsNewDialog.isOpen() ||
     supportDialog.isOpen() ||

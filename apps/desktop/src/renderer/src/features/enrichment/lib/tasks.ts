@@ -1,4 +1,5 @@
 import type { Prefs } from "@pond/schema/db";
+import type { EnrichmentTask } from "@shared/enrichment-contracts";
 import { z } from "zod";
 import { statusFeed } from "@/features/downloads/status-feed";
 import { clearEmbeddings } from "@/features/enrichment/state/embedding-store";
@@ -114,14 +115,30 @@ export async function backfillMetadata(): Promise<TaskResult> {
   return { ok: true, message: `${updated} updated` };
 }
 
+function isOwner(): boolean {
+  return document.documentElement.dataset.enrichmentOwner === "true";
+}
+async function remote(
+  kind: EnrichmentTask["kind"],
+  ids?: TaskScope,
+): Promise<TaskResult> {
+  const result = await window.pond.query("enrichment.run", {
+    kind,
+    ids: ids?.length ? [...ids] : undefined,
+  });
+  statusFeed.note(result.message);
+  return result;
+}
+
 function kickRescan(ids?: TaskScope): void {
   void import("./sweep").then(({ rescanEnrichment }) => {
     rescanEnrichment(ids && ids.length > 0 ? ids : undefined);
   });
 }
 
-export function runEnrichment(): TaskResult {
-  kickRescan();
+export async function runEnrichment(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("scan", ids);
+  kickRescan(ids);
   statusFeed.note("Enrichment sweep started");
   return { ok: true, message: "Enrichment sweep started." };
 }
@@ -155,6 +172,7 @@ async function reprocessStamped(
 }
 
 export function recaption(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("caption", ids);
   return reprocessStamped(
     TASK_ENABLED.caption(getPrefsSnapshot()),
     DISABLED_HINTS.caption,
@@ -164,6 +182,7 @@ export function recaption(ids?: TaskScope): Promise<TaskResult> {
 }
 
 export function reocr(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("ocr", ids);
   return reprocessStamped(
     TASK_ENABLED.ocr(getPrefsSnapshot()),
     DISABLED_HINTS.ocr,
@@ -173,6 +192,7 @@ export function reocr(ids?: TaskScope): Promise<TaskResult> {
 }
 
 export function retranscribe(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("transcribe", ids);
   return reprocessStamped(
     TASK_ENABLED.transcribe(getPrefsSnapshot()),
     DISABLED_HINTS.transcribe,
@@ -182,6 +202,7 @@ export function retranscribe(ids?: TaskScope): Promise<TaskResult> {
 }
 
 export async function reembed(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("reembed", ids);
   if (!TASK_ENABLED.reembed(getPrefsSnapshot()))
     return { ok: false, message: DISABLED_HINTS.reembed };
   if (ids?.length) await ensureSaves(ids);
@@ -196,6 +217,7 @@ export async function reembed(ids?: TaskScope): Promise<TaskResult> {
 }
 
 export async function rebuildVisualIndex(ids?: TaskScope): Promise<TaskResult> {
+  if (!isOwner()) return remote("clip", ids);
   if (!TASK_ENABLED.clip(getPrefsSnapshot()))
     return { ok: false, message: DISABLED_HINTS.clip };
   if (ids?.length) await ensureSaves(ids);
@@ -211,6 +233,7 @@ export async function rebuildVisualIndex(ids?: TaskScope): Promise<TaskResult> {
 export function reclassifySensitiveContent(
   ids?: TaskScope,
 ): Promise<TaskResult> {
+  if (!isOwner()) return remote("sensitiveContent", ids);
   return reprocessStamped(
     TASK_ENABLED.sensitiveContent(getPrefsSnapshot()),
     DISABLED_HINTS.sensitiveContent,

@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdtemp, readdir, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -63,4 +63,76 @@ it("normalizes cross-platform filenames and rejects empty names", () => {
   expect(visitingFilename(".hidden")).toBe("_.hidden");
   expect(visitingFilename("line\nfeed.txt")).toBe("line_feed.txt");
   expect(() => visitingFilename("..")).toThrow();
+});
+
+it("retains valid empty originals and their zero-byte metadata across a restart", async () => {
+  const directory = await root();
+  const store = createWebUploads(directory);
+  const ticket = await store.put(
+    new Request("http://host", { method: "PUT", body: "" }),
+    "empty.txt",
+    "library",
+  );
+  expect(ticket.size).toBe(0);
+  const file = await createWebUploads(directory).get(ticket.token, "library");
+  expect(file.size).toBe(0);
+  await store.remove(ticket.token, "library");
+  await expect(store.get(ticket.token, "library")).rejects.toThrow();
+});
+
+it("rejects insufficient disk headroom and removes a partial stream when available space drops", async () => {
+  const directory = await root();
+  let available = 4;
+  const store = createWebUploads(
+    directory,
+    undefined,
+    undefined,
+    async () => available,
+  );
+  await expect(
+    store.put(
+      new Request("http://host", {
+        method: "PUT",
+        headers: { "content-length": "5" },
+        body: "12345",
+      }),
+      "large.txt",
+      "library",
+    ),
+  ).rejects.toThrow("free disk space");
+  expect(await readdir(directory)).toEqual([]);
+  let checks = 0;
+  const streamed = createWebUploads(
+    directory,
+    undefined,
+    undefined,
+    async () => (++checks === 1 ? 4 : 0),
+  );
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("123"));
+      controller.enqueue(new TextEncoder().encode("456"));
+      controller.close();
+    },
+  });
+  const streaming: RequestInit & { duplex: "half" } = {
+    method: "PUT",
+    body,
+    duplex: "half",
+  };
+  await expect(
+    streamed.put(
+      new Request("http://host", streaming),
+      "partial.txt",
+      "library",
+    ),
+  ).rejects.toThrow("ran low on disk space");
+  expect(await readdir(directory)).toEqual([]);
+  available = 8;
+  const next = await store.put(
+    new Request("http://host", { method: "PUT", body: "ok" }),
+    "small.txt",
+    "library",
+  );
+  expect((await store.get(next.token, "library")).size).toBe(2);
 });

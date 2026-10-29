@@ -9,13 +9,21 @@ import { Dialog, type MenuItemSpec } from "@pond/ui";
 import type { SourceActionSections } from "@/features/sources/lib/source-menu";
 import { pickWatchedFolder } from "@/features/sources/lib/watched-folder";
 import { formatNumber } from "@/shared/lib/format";
-import { REVEAL_LABEL } from "@/shared/lib/platform";
+import {
+  hostDeviceName,
+  isBrowserRuntime,
+  REVEAL_LABEL,
+} from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 
 interface FolderMenuTarget {
   name: string;
   imported: number;
   watching: boolean;
+}
+
+function revealLabel() {
+  return isBrowserRuntime() ? `Browse on ${hostDeviceName()}` : REVEAL_LABEL;
 }
 
 async function revealFolder(name: string): Promise<void> {
@@ -63,7 +71,7 @@ export function buildFolderRows(
         value: target.path,
         actions: [
           {
-            label: REVEAL_LABEL,
+            label: revealLabel(),
             onClick: () => void revealFolder(target.name),
           },
           {
@@ -115,7 +123,7 @@ export function buildFolderMenu(
       type: "group",
       items: [
         {
-          label: REVEAL_LABEL,
+          label: revealLabel(),
           icon: <IconFolderOpen />,
           onClick: () => void revealFolder(target.name),
         },

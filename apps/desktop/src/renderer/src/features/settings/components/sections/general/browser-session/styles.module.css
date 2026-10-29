@@ -1,0 +1,5 @@
+@media (pointer: coarse) {
+  .disconnect {
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
+  }
+}

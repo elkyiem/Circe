@@ -206,6 +206,13 @@
   }
 }
 
+@media (pointer: coarse) {
+  :global(html[data-runtime="browser"]) .actions > button {
+    min-inline-size: calc(44px / var(--browser-interface-zoom, 1));
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
   .popup,

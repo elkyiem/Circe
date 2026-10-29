@@ -14,20 +14,35 @@ for (const address of [
   runtimeEnv.PORTLESS_TAILSCALE_URL,
 ])
   if (address) console.info(`Circé: ${address}`);
-const child = spawn(
-  electron,
-  [".", "--enable-logging", "--use-mock-keychain"],
-  {
+let stopping = false;
+let child;
+function startHost() {
+  child = spawn(electron, [".", "--enable-logging", "--use-mock-keychain"], {
     stdio: "inherit",
     env: {
       ...runtimeEnv,
       POND_SANDBOX: sandbox,
       CIRCE_WEB: "1",
+      CIRCE_LOCAL_API_PORT: process.env.CIRCE_LOCAL_API_PORT ?? "4788",
       CIRCE_WEB_FIXTURES:
-        process.env.CIRCE_WEB_FIXTURES ?? process.env.IRIS_WEB_FIXTURES ?? "1",
+        process.env.CIRCE_WEB_FIXTURES ?? process.env.IRIS_WEB_FIXTURES ?? "0",
     },
-  },
-);
+  });
+  child.on("error", (error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+  child.on("exit", (code) => {
+    if (code === 75 && !stopping) {
+      startHost();
+      return;
+    }
+    process.exit(code ?? 1);
+  });
+}
+startHost();
 for (const signal of ["SIGINT", "SIGTERM"])
-  process.on(signal, () => child.kill(signal));
-child.on("exit", (code) => process.exit(code ?? 1));
+  process.on(signal, () => {
+    stopping = true;
+    child.kill(signal);
+  });

@@ -37,8 +37,9 @@ Optional environment variables:
 | `CIRCE_WEB_ORIGINS` | Additional exact HTTPS origins, comma-separated; no paths or wildcard |
 | `CIRCE_WEB_FIXTURES` | `1` enables offline fixtures; `0` disables them |
 
-Fixture mode is on in the development launcher. Enqueue Quoted post, Original
-image or Video in the browser connection bar; inspect progress in Downloads.
+Fixture mode defaults to off. Set `CIRCE_WEB_FIXTURES=1` explicitly for a
+disposable verification host. Then enqueue Quoted post, Original image or Video
+in the browser connection bar and inspect progress in Downloads.
 Repeated requests deduplicate by the original source identity. The generated
 video is a four-second ffmpeg `testsrc2` clip; the image is a purpose-built graphic.
 Fixture media is served only to host-loopback requests. No source login is
@@ -355,3 +356,32 @@ state file stays in the ignored sandbox with mode 0600 until cleanup.
 Run this setup check in a fresh disposable profile before connecting real
 Accounts: it assumes no previous pairing and temporarily requests a Source
 connection. Do not run it against an active live import.
+
+
+## Production browser and PWA verification
+
+The production shell hides fixture controls and the healthy connection bar.
+Settings → General → This Browser owns Disconnect, with confirmation. Sessions
+survive a same-Library host replacement until expiry; Disconnect durably revokes
+that browser. A temporary host failure shows reconnect guidance.
+
+The browser can be installed using its platform's ordinary Install/Add to Home
+Screen command after HTTPS trust is configured. The manifest and app icons are
+served from the shared address. Offline mode shows a reconnect explanation;
+Library browsing and editing require the Mac host to be awake and reachable.
+No private Library response is stored in the PWA cache.
+
+The finite browser harness has standalone probes for `--library-admin`,
+`--host-maintenance`, `--file-actions`, `--previews`, `--replay`, `--interactions`,
+`--eagle`, `--library-copy-storage`, `--settings-preview`, `--transfers` and
+`--pwa-shell` and `--import-formats`. Use the existing runtime with exclusive GUI ownership. These
+probes create explicitly owned content or temporarily adjust device presentation,
+verify original identity/preferences, and restore their fixtures. They are not
+a substitute for the offline suite or physical-device acceptance. Recovery
+variants exist for stateful probes; use their recorded ownership evidence.
+
+`--fonts` additionally installs one unique synthetic font through the real native
+owner and verifies visibility from fresh CoreText processes. It requires an
+explicit runtime-owner grant and `CIRCE_FONT_ACTIVATION_GRANTED=1`; it must never
+be run opportunistically alongside personal font work. Its cleanup validates the
+exact owned font path, sidecar, inode and checksum before native deactivation.

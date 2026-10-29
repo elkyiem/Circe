@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
+
 import { RawImage } from "@huggingface/transformers";
+import pLimit from "p-limit";
 import {
   coreClipAesthetic,
   coreClipImage,
@@ -82,9 +84,11 @@ async function handle(
   }
 }
 
+const limit = pLimit(1);
+self.postMessage({ ready: true });
 self.onmessage = (event: MessageEvent<InferenceRequest>) => {
   const req = event.data;
-  void (async () => {
+  void limit(async () => {
     try {
       const { result, transfer } = await handle(req);
       const response: InferenceResponse = { id: req.id, ok: true, result };
@@ -97,5 +101,5 @@ self.onmessage = (event: MessageEvent<InferenceRequest>) => {
       };
       self.postMessage(response);
     }
-  })();
+  });
 };

@@ -19,6 +19,7 @@ import type { MenuItemSpec } from "@pond/ui";
 import { createElement } from "react";
 import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { deriveTypeKind } from "@/features/saves/lib/media/units";
+import { buildPondUrl } from "@/features/saves/lib/media/url";
 import {
   archiveSitesForSelection,
   refreshDetailsForSelection,
@@ -171,7 +172,7 @@ export function buildDetailItems({
         onClick: () => {
           const file = save.files[fileIndex ?? 0] ?? save.files[0];
           if (!file) return;
-          const src = `pond://${save.id}/${file.path}`;
+          const src = buildPondUrl(save.id, file);
           viewerMemory.setLoop(src, null);
         },
       },
@@ -182,7 +183,7 @@ export function buildDetailItems({
         onClick: () => {
           const file = save.files[fileIndex ?? 0] ?? save.files[0];
           if (!file) return;
-          const src = `pond://${save.id}/${file.path}`;
+          const src = buildPondUrl(save.id, file);
           const canvas = document.querySelector<HTMLCanvasElement>(
             `[data-gif-player] canvas[data-frame]`,
           );
@@ -319,7 +320,19 @@ export function buildDetailItems({
         icon: glyph(IconImagePlus),
         hidden: batch,
         onClick: () => {
-          void window.pond.query("saves.setCustomThumbnail", { id: save.id });
+          void window.pond
+            .query("saves.setCustomThumbnail", { id: save.id })
+            .then((result) => {
+              if (!result.ok && result.reason !== "cancelled")
+                notify({
+                  id: "thumbnail-file",
+                  title: "Couldn't set the thumbnail",
+                  description:
+                    result.error === "not_an_image"
+                      ? "Choose a valid image file."
+                      : "Choose another image and try again.",
+                });
+            });
         },
       },
       {
@@ -333,7 +346,11 @@ export function buildDetailItems({
               if (!result.ok)
                 notify({
                   id: "thumbnail-clipboard",
-                  title: "No image found on the clipboard",
+                  title: "Couldn't set the thumbnail",
+                  description:
+                    result.error === "clipboard_empty"
+                      ? "No image found on the clipboard."
+                      : result.error,
                 });
             });
         },

@@ -2,11 +2,14 @@ import { IconMinus, IconPlus } from "@pond/icons";
 import { Button, Keyboard, Tooltip } from "@pond/ui";
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { platformGlyphs } from "@/shared/lib/shortcuts";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import styles from "./styles.module.css";
 
 export function Zoom() {
   const flow = useReactFlow();
-  const { zoom } = useViewport();
+  const interfaceScale = useCanvasInterfaceScale();
+  const viewport = useViewport();
+  const zoom = viewport.zoom / interfaceScale;
   return (
     <Tooltip.Group>
       <fieldset className={styles.zoom} aria-label="Zoom">

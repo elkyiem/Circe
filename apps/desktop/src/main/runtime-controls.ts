@@ -1,5 +1,6 @@
 import type { Prefs } from "@pond/schema/db";
 import { DEFAULT_INGEST_PORT } from "../shared/constants";
+import type { LocalApiStatus } from "../shared/local-api-contracts";
 
 interface RuntimeServer {
   port: number;
@@ -8,6 +9,7 @@ interface RuntimeServer {
 }
 
 interface RuntimeDependencies {
+  httpPolicy?: { enabled: boolean; port?: number };
   getPrefs(): Promise<Prefs>;
   invalidatePrefs(): void;
   startHttpServer(
@@ -22,45 +24,97 @@ interface RuntimeDependencies {
   warn(message: string, error: Error): void;
 }
 
+/** A sandbox has no native listener unless its resident web launcher opts in. */
+export function localApiLaunchPolicy(env: NodeJS.ProcessEnv) {
+  if (!env.POND_SANDBOX) return { enabled: true };
+  if (env.CIRCE_WEB !== "1" || !env.CIRCE_LOCAL_API_PORT)
+    return { enabled: false };
+  const port = Number(env.CIRCE_LOCAL_API_PORT);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535)
+    throw new Error("CIRCE_LOCAL_API_PORT must be a port from 1024 to 65535.");
+  return { enabled: true, port };
+}
+
 export function createRuntimeControls(deps: RuntimeDependencies) {
   let httpServer: RuntimeServer | null = null;
-
-  async function startHttpServer() {
-    const prefs = await deps.getPrefs();
-    httpServer = await deps.startHttpServer(
-      prefs.api.port || DEFAULT_INGEST_PORT,
-      prefs.api.bindAddress,
+  const policy = deps.httpPolicy ?? { enabled: true };
+  let status: LocalApiStatus = {
+    state: policy.enabled ? "stopped" : "disabled",
+    url: null,
+    error: null,
+  };
+  let operations = Promise.resolve();
+  function serialize<T>(operation: () => Promise<T>) {
+    const next = operations.then(operation);
+    operations = next.then(
+      () => {},
+      () => {},
     );
-    return { port: httpServer.port, host: httpServer.host };
+    return next;
   }
-
-  async function replaceHttpServer(prefs: Prefs) {
-    if (httpServer) {
-      try {
-        await httpServer.close();
-      } catch (err) {
-        deps.warn(
-          "[pond] http close failed",
-          err instanceof Error ? err : new Error(String(err)),
-        );
-      }
+  async function listen(prefs: Prefs) {
+    if (!policy.enabled) return {};
+    const port = policy.port ?? (prefs.api.port || DEFAULT_INGEST_PORT);
+    const bind = policy.port ? "loopback" : prefs.api.bindAddress;
+    const url = `http://${bind === "lan" ? "0.0.0.0" : "127.0.0.1"}:${port}/api/v2`;
+    try {
+      httpServer = await deps.startHttpServer(port, bind);
+      status = {
+        state: "listening",
+        url: `http://${httpServer.host}:${httpServer.port}/api/v2`,
+        error: null,
+      };
+      return { port: httpServer.port, host: httpServer.host };
+    } catch (cause) {
+      httpServer = null;
+      status = {
+        state: "failed",
+        url,
+        error:
+          cause instanceof Error
+            ? cause.message
+            : "Could not start the Local API.",
+      };
+      throw cause;
     }
-    httpServer = await deps.startHttpServer(
-      prefs.api.port || DEFAULT_INGEST_PORT,
-      prefs.api.bindAddress,
-    );
-    return { port: httpServer.port, host: httpServer.host };
+  }
+  function startHttpServer() {
+    return serialize(async () => {
+      if (httpServer) return { port: httpServer.port, host: httpServer.host };
+      if (!policy.enabled) return {};
+      return listen(await deps.getPrefs());
+    });
+  }
+  async function closeHttpServer() {
+    const previous = httpServer;
+    httpServer = null;
+    status = {
+      state: policy.enabled ? "stopped" : "disabled",
+      url: null,
+      error: null,
+    };
+    await previous?.close();
   }
 
   return {
     startHttpServer,
-    async closeHttpServer() {
-      await httpServer?.close();
-    },
-    async restartHttpServer() {
-      deps.invalidatePrefs();
-      const prefs = await deps.getPrefs();
-      return replaceHttpServer(prefs);
+    httpStatus: (): LocalApiStatus => ({ ...status }),
+    closeHttpServer: () => serialize(closeHttpServer),
+    restartHttpServer() {
+      return serialize(async () => {
+        if (!policy.enabled) return {};
+        deps.invalidatePrefs();
+        const prefs = await deps.getPrefs();
+        try {
+          await closeHttpServer();
+        } catch (cause) {
+          deps.warn(
+            "[pond] http close failed",
+            cause instanceof Error ? cause : new Error(String(cause)),
+          );
+        }
+        return listen(prefs);
+      });
     },
     async applyPrefsAtRuntime() {
       deps.invalidatePrefs();

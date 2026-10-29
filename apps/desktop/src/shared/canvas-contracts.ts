@@ -287,6 +287,24 @@ export const CanvasSchema = z
   .superRefine(checkReferences);
 export type Canvas = z.infer<typeof CanvasSchema>;
 
+export const CanvasContentVersionSchema = z.string().regex(/^[0-9a-f]{64}$/);
+/** A transport snapshot carries concurrency state; the portable Canvas format stays unchanged. */
+export const CanvasSnapshotSchema = CanvasSchema.safeExtend({
+  contentVersion: CanvasContentVersionSchema,
+});
+export type CanvasSnapshot = z.infer<typeof CanvasSnapshotSchema>;
+
+export const CanvasWriteSchema = z.strictObject({
+  id: CanvasIdSchema,
+  content: CanvasContentSchema,
+  expectedContent: CanvasContentVersionSchema,
+});
+export const CanvasWriteResultSchema = z.object({
+  ok: z.literal(true),
+  updatedAt: z.number(),
+  contentVersion: CanvasContentVersionSchema,
+});
+
 export interface CanvasSummary {
   id: string;
   name: string;
@@ -301,7 +319,12 @@ export interface CanvasQueryInputs {
   "canvases.get": { id: string };
   "canvases.create": { name?: string; saveIds?: string[] };
   "canvases.rename": { id: string; name: string };
-  "canvases.update": { id: string; content: CanvasContent };
+  /** UI bridges attach their last acknowledged version when it is omitted. */
+  "canvases.update": {
+    id: string;
+    content: CanvasContent;
+    expectedContent?: string;
+  };
   "canvases.addSaves": { id: string; saveIds: string[] };
   "canvases.delete": { id: string };
   "canvases.capture": { x: number; y: number; width: number; height: number };
@@ -316,11 +339,11 @@ export interface CanvasQueryInputs {
 
 export interface CanvasQueryResults {
   "canvases.list": CanvasSummary[];
-  "canvases.get": Canvas | null;
-  "canvases.create": Canvas;
+  "canvases.get": CanvasSnapshot | null;
+  "canvases.create": CanvasSnapshot;
   "canvases.rename": { ok: true };
-  "canvases.update": { ok: true; updatedAt: number };
-  "canvases.addSaves": Canvas;
+  "canvases.update": z.infer<typeof CanvasWriteResultSchema>;
+  "canvases.addSaves": CanvasSnapshot;
   "canvases.delete": { ok: true };
   "canvases.capture": Uint8Array;
   "canvases.export":

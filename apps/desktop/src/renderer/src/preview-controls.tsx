@@ -66,14 +66,69 @@ function PreviewTool({
   );
 }
 
+function MediaTools({
+  state,
+  actions,
+  side,
+}: {
+  state: PreviewWindowState;
+  actions: PreviewControlActions;
+  side: "top" | "bottom";
+}) {
+  return state.mediaType === "image" ? (
+    <div className="preview-control-group">
+      <PreviewTool label={"Rotate"} onClick={actions.rotate} side={side}>
+        <IconRotateImageClockwise />
+      </PreviewTool>
+      <PreviewTool
+        label={"Mirror"}
+        onClick={actions.toggleMirror}
+        pressed={state.mirrored}
+        side={side}
+      >
+        <IconFlipHorizontal2 />
+      </PreviewTool>
+      <PreviewTool
+        label={"Grayscale"}
+        onClick={actions.toggleGrayscale}
+        pressed={state.grayscale}
+        side={side}
+      >
+        <IconContrast />
+      </PreviewTool>
+      <PreviewTool
+        label={state.zoom === null ? "Actual Size" : "Fit"}
+        onClick={actions.toggleSize}
+        pressed={state.zoom !== null}
+        side={side}
+      >
+        {state.zoom === null ? <IconSizeLg /> : <IconExpand />}
+      </PreviewTool>
+    </div>
+  ) : (
+    <div className="preview-control-group">
+      <PreviewTool
+        label={state.size === "fill" ? "Fit" : "Fill"}
+        onClick={actions.toggleSize}
+        pressed={state.size === "fill"}
+        side={side}
+      >
+        <IconExpand />
+      </PreviewTool>
+    </div>
+  );
+}
+
 export function PreviewControls({
   actions,
   slideshow,
   state,
+  nativeWindow = true,
 }: {
   actions: PreviewControlActions;
   slideshow: boolean;
   state: PreviewWindowState;
+  nativeWindow?: boolean;
 }) {
   const tooltipSide = state.mediaType === "video" ? "bottom" : "top";
 
@@ -114,63 +169,20 @@ export function PreviewControls({
             ) : null}
           </div>
 
-          {state.mediaType === "image" ? (
-            <div className="preview-control-group">
-              <PreviewTool
-                label={"Rotate"}
-                onClick={actions.rotate}
-                side={tooltipSide}
-              >
-                <IconRotateImageClockwise />
-              </PreviewTool>
-              <PreviewTool
-                label={"Mirror"}
-                onClick={actions.toggleMirror}
-                pressed={state.mirrored}
-                side={tooltipSide}
-              >
-                <IconFlipHorizontal2 />
-              </PreviewTool>
-              <PreviewTool
-                label={"Grayscale"}
-                onClick={actions.toggleGrayscale}
-                pressed={state.grayscale}
-                side={tooltipSide}
-              >
-                <IconContrast />
-              </PreviewTool>
-              <PreviewTool
-                label={state.zoom === null ? "Actual Size" : "Fit"}
-                onClick={actions.toggleSize}
-                pressed={state.zoom !== null}
-                side={tooltipSide}
-              >
-                {state.zoom === null ? <IconSizeLg /> : <IconExpand />}
-              </PreviewTool>
-            </div>
-          ) : (
-            <div className="preview-control-group">
-              <PreviewTool
-                label={state.size === "fill" ? "Fit" : "Fill"}
-                onClick={actions.toggleSize}
-                pressed={state.size === "fill"}
-                side={tooltipSide}
-              >
-                <IconExpand />
-              </PreviewTool>
-            </div>
-          )}
+          <MediaTools state={state} actions={actions} side={tooltipSide} />
 
           <div className="preview-control-group">
+            {nativeWindow ? (
+              <PreviewTool
+                label={"Open in Default App"}
+                onClick={actions.openOriginal}
+                side={tooltipSide}
+              >
+                <IconWindowShare />
+              </PreviewTool>
+            ) : null}
             <PreviewTool
-              label={"Open in Default App"}
-              onClick={actions.openOriginal}
-              side={tooltipSide}
-            >
-              <IconWindowShare />
-            </PreviewTool>
-            <PreviewTool
-              label={"Export Original"}
+              label={nativeWindow ? "Export Original" : "Download Original"}
               onClick={actions.exportOriginal}
               side={tooltipSide}
             >
@@ -187,29 +199,33 @@ export function PreviewControls({
             >
               <IconFullScreen />
             </PreviewTool>
-            <Tooltip
-              label={`${"Opacity"}: ${Math.round(state.opacity * 100)}%`}
-              side={tooltipSide}
-            >
-              <Button
-                aria-label={`${"Opacity"}: ${Math.round(state.opacity * 100)}%`}
-                className="preview-opacity"
-                onClick={actions.cycleOpacity}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {Math.round(state.opacity * 100)}%
-              </Button>
-            </Tooltip>
-            <PreviewTool
-              label={"Keep on Top"}
-              onClick={actions.togglePin}
-              pressed={state.alwaysOnTop}
-              side={tooltipSide}
-            >
-              <IconPinTack />
-            </PreviewTool>
+            {nativeWindow ? (
+              <>
+                <Tooltip
+                  label={`${"Opacity"}: ${Math.round(state.opacity * 100)}%`}
+                  side={tooltipSide}
+                >
+                  <Button
+                    aria-label={`${"Opacity"}: ${Math.round(state.opacity * 100)}%`}
+                    className="preview-opacity"
+                    onClick={actions.cycleOpacity}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {Math.round(state.opacity * 100)}%
+                  </Button>
+                </Tooltip>
+                <PreviewTool
+                  label={"Keep on Top"}
+                  onClick={actions.togglePin}
+                  pressed={state.alwaysOnTop}
+                  side={tooltipSide}
+                >
+                  <IconPinTack />
+                </PreviewTool>
+              </>
+            ) : null}
           </div>
         </nav>
       </Tooltip.Group>

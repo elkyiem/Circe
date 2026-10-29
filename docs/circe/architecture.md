@@ -1,7 +1,8 @@
 # Circé browser milestone
 
-Status: host-backed browser implementation. Upstream baseline: Pond 2.0.0,
-including upstream `main` through `c594ed4d` (2026-10-27).
+Status: native-backed browser implementation. Upstream baseline: Pond 2.0.1,
+including upstream `main` through `029bfcb1` (2026-10-28). The usage target is one
+active device at a time; stale tabs still cannot overwrite a newer Library state.
 
 ## Decision
 
@@ -43,8 +44,10 @@ metadata. Fixtures do not prove live platform sync or account authentication.
 The host creates a random access key in the isolated sandbox with mode `0600`.
 It is never bundled, logged or placed in a URL. The visitor supplies it through a
 password field or a local file picker. Login creates an opaque, expiring,
-HttpOnly, SameSite=Strict cookie; HTTPS origins also set Secure. Sessions are
-memory-only and are invalidated by host restart. Logout revokes the session and immediately closes its event subscriptions.
+HttpOnly, SameSite=Strict cookie; HTTPS origins also set Secure. Only session digests are persisted in a private 0600 file, bound to the current
+access-key identity and expiry. Restart restores valid sessions for the same
+Library; rotation and Library changes invalidate them. Logout durably removes the
+session and immediately closes its event subscriptions.
 Sessions are bound to the origin and active Library. Writes also send the Library
 identity and revalidate it inside the mutation scope.
 Failed login attempts are limited by socket address.
@@ -66,7 +69,10 @@ private/no-store, carry nosniff and a sandbox CSP, and never expose host paths.
 Frame extraction and compatible previews reuse host FFmpeg processing. Preview
 URLs are bound to an indexed original and active Library, with authenticated
 range delivery. Arbitrary `_meta`, `_replay` and video-cache paths remain blocked.
-Archive replay is still deferred until its separate-origin isolation is proven.
+Archive replay uses per-session random origins under replay.elkyiem, a sanitized
+WARC derivative and a pinned, read-only replay worker. The original archive stays
+unchanged. Trusted Circé UI confirms external links; replay origins cannot access
+application sessions or general APIs.
 
 Visiting-device files are streamed to bounded, Library-bound staging using opaque
 tickets. Existing importers own persistence and duplicate handling; replaying one
@@ -146,7 +152,8 @@ custom Library logo. Reset restores the default.
 The launcher requires `POND_SANDBOX`, defaults to the checkout's ignored
 `.artifacts/iris-web-sandbox`, and uses Chromium's disposable keychain mode. It
 never imports normal Pond sessions. The sandbox owns app-data, Chromium storage,
-home/Library, logs and native socket. Upstream sandbox guards suppress protocol
+home/Library, logs and native socket. Explicit host font activation uses the real
+OS user Fonts directory; all other Library isolation remains in that profile. Upstream sandbox guards suppress protocol
 registration, native-host installation, shortcuts and auto-updates. Keep the
 normal Pond app installed and its Library closed to this development host.
 
@@ -198,3 +205,38 @@ The Circé host retains its accented display name while its Electron fallback
 User-Agent uses the ASCII token `Circe`. Chromium's protocol bridge otherwise
 rejects renderer requests before they reach `pond://` media handlers. The network
 smoke verifies this boundary using an actual generated image in a temporary Library.
+
+
+## Durable browser transfers and device handoff
+
+`web/transfers.ts` adapts the native durable transfer owner rather than creating a
+second queue. Jobs retain their originating Library identity. Ordinary legacy native jobs keep
+the desktop path-based retry policy; browser requests and web staging jobs
+require an explicit saved Library identity. Browser export jobs
+include ZIP packaging and a validated download receipt before reaching Completed;
+retry reconstructs only the artifact directory whose Library/kind/device/inode
+marker matches that job. A completed job can be downloaded again after reload.
+`core/transfer-delivery.ts` registers the resident delivery owner so desktop Retry
+uses the same preparation and settlement hooks; desktop download uses native Save
+As, while browsers receive authenticated URLs without host paths.
+
+`web/package-import.ts` retains a private raw ZIP hardlink and an atomic expanded
+source marker across failure, cancellation and host restart. Unpacking occurs
+inside the native job's cancellable operation. Successful jobs retire their owned
+source after settlement; failed jobs retain it for Retry. Streaming ZIP64 output
+and bounded random-access extraction avoid buffering the entire archive. Each
+owner closes its streams and removes only its own partial files. Resource-aware
+upload/extraction admission preserves disk headroom instead of imposing the old
+256 MiB upload and 1 GiB expansion ceilings. Browser references release uploaded File
+bytes while retaining their idempotent ticket and relative name.
+
+Interface zoom belongs to the visiting device; host window flags remain native
+preferences. Canvas camera math normalizes CSS interface scale before persisting
+world coordinates. Shared dialogs remain within the current viewport at 200% zoom.
+The production connection/debug bar is hidden once connected; fixtures are opt-in.
+
+The PWA caches only its reconnect explanation and one public app icon. It does not
+replicate the Library or accept offline writes. Navigation network failures and
+proxy 5xx responses show the reconnect page; the Mac must be awake and reachable
+through Tailscale. A temporary host failure does not pretend that the session has
+expired or ask for a new access key.

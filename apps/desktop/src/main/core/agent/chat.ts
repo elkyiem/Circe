@@ -30,6 +30,7 @@ import { routineContext, routineTools } from "../fish/routine-tools";
 import { fishScopeFilter } from "../fish/scope";
 import { listFish } from "../fish/store";
 import { listFolders } from "../folders";
+import { libraryAccess } from "../library-access";
 import { getPrefs } from "../prefs";
 import type { CompletionInput } from "./complete";
 import { libraryContext } from "./context";
@@ -89,8 +90,14 @@ export { chatDependencies as defaultChatDependencies };
 
 const active = new Map<
   string,
-  { requestId: string; controller: AbortController }
+  { requestId: string; controller: AbortController; settled: Promise<void> }
 >();
+
+export async function stopAllMessages(): Promise<void> {
+  const running = [...active.values()];
+  for (const run of running) run.controller.abort();
+  await Promise.all(running.map((run) => run.settled));
+}
 
 /** A reply with breaks is stored as its ordered messages; its content stays readable as one reply. */
 function replyRow(assembled: string): {
@@ -116,11 +123,21 @@ export async function sendMessage(
   deps: ChatDependencies = chatDependencies,
   onEvent?: (event: AssistantEvent) => void,
 ): Promise<AssistantSendResult> {
+  libraryAccess.assertNewWorkAllowed();
+  return libraryAccess.run(() => runMessage(input, deps, onEvent));
+}
+
+async function runMessage(
+  input: AssistantSend,
+  deps: ChatDependencies,
+  onEvent?: (event: AssistantEvent) => void,
+): Promise<AssistantSendResult> {
   const { chatId, requestId, content, provider } = input;
   if (active.has(chatId))
     return { chatId, error: "Wait for the current reply or stop it first." };
   const controller = new AbortController();
-  active.set(chatId, { requestId, controller });
+  const settled = Promise.withResolvers<void>();
+  active.set(chatId, { requestId, controller, settled: settled.promise });
   const startedAt = performance.now();
   let lastActivity: AssistantActivity | undefined;
   let fish: Fish | undefined;
@@ -440,6 +457,7 @@ ${personalizationContext}`.trim(),
   } finally {
     context?.finishPending();
     active.delete(chatId);
+    settled.resolve();
     if (fish) deps.setFishPresence(fish.id, null);
   }
 }

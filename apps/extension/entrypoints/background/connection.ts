@@ -13,7 +13,7 @@ import { syncSettings } from "./settings";
 const PairInput = ExtensionPairRequestSchema.extend({
   origin: CirceHostOriginSchema,
 });
-const SourceInput = z.object({ source: z.enum(SOURCES) }).strict();
+const SourceInput = z.strictObject({ source: z.enum(SOURCES) });
 const internalPage = (url?: string) =>
   Boolean(url?.startsWith(browser.runtime.getURL("")));
 const unavailable = {

@@ -15,6 +15,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
+import { forkLibraryId } from "../lib/library-id";
 import { isPathInside, isSamePath } from "../lib/path-identity";
 
 const MANIFEST = "pond-backup-manifest.json";
@@ -86,6 +87,22 @@ function sameInventory(
 }
 
 async function validateReferences(root: string, files: readonly BackupEntry[]) {
+  // Portable snapshots do not contain SQLite commit receipts. Replaying a copied
+  // journal against a fresh index could undo a successfully committed edit.
+  const journals = join(root, ".transactions");
+  const journalStat = await lstat(journals).catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    },
+  );
+  if (
+    journalStat &&
+    (!journalStat.isDirectory() || (await readdir(journals)).length > 0)
+  )
+    throw new Error(
+      "This Library has unfinished transaction recovery. Reopen the original Library to finish recovery before creating or restoring a backup.",
+    );
   const indexed = new Map(files.map((file) => [file.path, file]));
   if (!indexed.has("metadata.json"))
     throw new Error(
@@ -123,6 +140,20 @@ async function validateReferences(root: string, files: readonly BackupEntry[]) {
           `An original is missing or damaged in Save ${item.id}: ${file.path}`,
         );
     }
+  }
+}
+
+/** Opening a live Library must not checksum its entire archive just to detect a snapshot. */
+export async function hasLibraryBackupManifest(
+  directory: string,
+): Promise<boolean> {
+  try {
+    await lstat(join(directory, MANIFEST));
+    return true;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return false;
+    throw error;
   }
 }
 
@@ -203,10 +234,12 @@ export async function createLibraryBackup(input: {
 export async function restoreLibraryBackup(input: {
   source: string;
   destination: string;
+  identity: "new" | "preserve";
 }) {
   await verifyLibraryBackup(input.source);
   const restored = await createLibraryBackup(input);
   await verifyLibraryBackup(input.source);
+  if (input.identity === "new") forkLibraryId(restored.path);
   await rm(join(restored.path, MANIFEST));
   return restored;
 }

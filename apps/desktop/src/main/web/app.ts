@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
@@ -8,31 +10,79 @@ import {
   type AgentStreamRequest,
   agentStreamRequest,
 } from "../../shared/assistant";
+import {
+  type WebInference,
+  WebInferenceSchema,
+} from "../../shared/enrichment-contracts";
 import { WEB_QUERY_ACCESS } from "../../shared/web-capabilities";
 import {
   WebFixtureSchema,
   WebQueryRequestSchema,
 } from "../../shared/web-contracts";
-import { WebFileQuerySchema } from "../../shared/web-files-contracts";
+import {
+  WebFileQuerySchema,
+  WebUploadTokenSchema,
+} from "../../shared/web-files-contracts";
+import {
+  type HostLocationsRequest,
+  HostLocationsRequestSchema,
+} from "../../shared/web-host-locations";
+import { WebLibraryRequestSchema } from "../../shared/web-library-contracts";
+import { WebLibraryCopySchema } from "../../shared/web-library-copy-contracts";
 import {
   type WebHistorySchema,
   WebTransactionsSchema,
 } from "../../shared/web-mutations";
+import { WebReplayRequestSchema } from "../../shared/web-replay-contracts";
 import { stringifyWebValue } from "../../shared/web-serialization";
 import { WebVideoRequestSchema } from "../../shared/web-video-contracts";
+import { WebWatchedFolderRequestSchema } from "../../shared/web-watched-folder-contracts";
 import type { WireSyncAction } from "../../shared/wire";
+import { LibraryTransitionError, libraryAccess } from "../core/library-access";
 import { createWebSessions } from "./auth";
 import { WebRequestError } from "./errors";
+import { createWebEventQueue } from "./event-queue";
 import { createExtensionApi, type ExtensionHost } from "./extension-api";
+import { libraryResponse } from "./library-response";
+import { validateWebPreferences } from "./preferences";
+import type { ReplayScope } from "./replay-host";
 
 const COOKIE = "iris_session";
-const Login = z.object({ key: z.string().max(256) }).strict();
+const Login = z.strictObject({ key: z.string().max(256) });
 
 export interface WebHost {
+  replay?: (
+    input: ReturnType<typeof WebReplayRequestSchema.parse>,
+    scope: ReplayScope,
+    signal: AbortSignal,
+  ) => Promise<Response>;
+  copyLibrary?: (
+    input: ReturnType<typeof WebLibraryCopySchema.parse>,
+    libraryId: string,
+    session: string,
+  ) => Promise<Response>;
+  watchedFolder?: (
+    input: ReturnType<typeof WebWatchedFolderRequestSchema.parse>,
+    libraryId: string,
+    session: string,
+  ) => Promise<Response>;
+  locations?: (
+    input: HostLocationsRequest,
+    libraryId: string,
+    session: string,
+  ) => Promise<Response>;
+  removeUpload?: (token: string, libraryId: string) => Promise<void>;
+  inference?: (input: WebInference, libraryId: string) => Promise<Response>;
+  library?: (
+    input: ReturnType<typeof WebLibraryRequestSchema.parse>,
+    libraryId: string,
+    session: string,
+  ) => Promise<Response>;
   extension?: ExtensionHost;
   origin: string;
   origins?: string[];
   key: string;
+  sessions?: ReturnType<typeof createWebSessions>;
   assets: string;
   libraryId(): string;
   query(
@@ -85,7 +135,49 @@ export interface WebHost {
 }
 
 export function createWebApp(host: WebHost) {
-  const app = new Hono();
+  const app = new Hono<{
+    Variables: { authenticatedScope: string; authenticatedLibrary: string };
+  }>();
+  const instance = randomUUID();
+  app.use("*", async (c, next) => {
+    await next();
+    const fingerprinted =
+      /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|png|svg|webp|avif)$/.test(
+        c.req.path,
+      );
+    c.header(
+      "Cache-Control",
+      fingerprinted && c.res.ok
+        ? "public, max-age=31536000, immutable"
+        : "no-store",
+    );
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Referrer-Policy", "no-referrer");
+    c.header(
+      "X-Frame-Options",
+      c.req.path === "/browser-preview.html" ? "SAMEORIGIN" : "DENY",
+    );
+    if (c.req.path === "/browser-preview.html")
+      c.header("Content-Security-Policy", "frame-ancestors 'self'");
+  });
+  app.use("*", async (c, next) => {
+    if (
+      (!c.req.path.startsWith("/web/") &&
+        !c.req.path.startsWith("/extension")) ||
+      ["/web/ready", "/web/events", "/web/library"].includes(c.req.path) ||
+      (c.req.path === "/web/session" && c.req.method === "DELETE")
+    ) {
+      await next();
+      return;
+    }
+    try {
+      await libraryAccess.run(next);
+    } catch (error) {
+      if (error instanceof LibraryTransitionError)
+        return c.json({ error: error.message }, 503);
+      throw error;
+    }
+  });
   if (host.extension)
     app.route(
       "/extension",
@@ -94,7 +186,7 @@ export function createWebApp(host: WebHost) {
         ...(host.origins ?? []),
       ]),
     );
-  const sessions = createWebSessions(host.key);
+  const sessions = host.sessions ?? createWebSessions(host.key);
   const failures = new Map<string, { count: number; until: number }>();
   const requestOrigin = (hostHeader: string | undefined) =>
     [host.origin, ...(host.origins ?? [])].find(
@@ -103,10 +195,6 @@ export function createWebApp(host: WebHost) {
   const sessionScope = (hostHeader: string | undefined) =>
     `${requestOrigin(hostHeader)}\0${host.libraryId()}`;
   app.use("*", async (c, next) => {
-    c.header("Cache-Control", "no-store");
-    c.header("X-Content-Type-Options", "nosniff");
-    c.header("Referrer-Policy", "no-referrer");
-    c.header("X-Frame-Options", "DENY");
     const origin = c.req.header("origin");
     const expectedOrigin = requestOrigin(c.req.header("host"));
     if (
@@ -131,6 +219,11 @@ export function createWebApp(host: WebHost) {
     await next();
   });
   app.post("/web/session", async (c) => {
+    if (sessions.isClosed())
+      return c.json(
+        { error: "The host is restarting. Try again shortly." },
+        503,
+      );
     if (c.req.header("origin") !== requestOrigin(c.req.header("host")))
       return c.json({ error: "Origin required." }, 403);
     const ip = getConnInfo(c).remote.address ?? "local";
@@ -151,6 +244,7 @@ export function createWebApp(host: WebHost) {
       failures.set(ip, entry);
       return c.json({ error: "The access key was not accepted." }, 401);
     }
+    await sessions.flush();
     failures.delete(ip);
     setCookie(c, COOKIE, id, {
       httpOnly: true,
@@ -164,14 +258,37 @@ export function createWebApp(host: WebHost) {
       fixtures: Boolean(host.fixture),
     });
   });
+  // Liveness contains no Library information or credentials and obeys exact-origin checks.
+  app.get("/web/ready", (c) => c.json({ instance }));
+  // Revoking the presented cookie needs no Library paths, including during shutdown.
+  app.delete("/web/session", async (c) => {
+    if (sessions.isClosed())
+      return c.json(
+        { error: "The host is restarting. Try again shortly." },
+        503,
+      );
+    if (c.req.header("origin") !== requestOrigin(c.req.header("host")))
+      return c.json({ error: "Origin required." }, 403);
+    sessions.revoke(getCookie(c, COOKIE));
+    await sessions.flush();
+    deleteCookie(c, COOKIE, { path: "/" });
+    return c.json({ ok: true });
+  });
   app.use("/web/*", async (c, next) => {
-    if (
-      !sessions.valid(getCookie(c, COOKIE), sessionScope(c.req.header("host")))
-    )
+    if (!libraryAccess.isOpen())
+      return c.json(
+        { error: "The Library is reopening. Reconnect when it is ready." },
+        503,
+      );
+    const authenticatedLibrary = host.libraryId();
+    const authenticatedScope = sessionScope(c.req.header("host"));
+    if (!sessions.valid(getCookie(c, COOKIE), authenticatedScope))
       return c.json(
         { error: "Connect to the Circé host with your access key." },
         401,
       );
+    c.set("authenticatedScope", authenticatedScope);
+    c.set("authenticatedLibrary", authenticatedLibrary);
     if (
       c.req.method !== "GET" &&
       c.req.method !== "HEAD" &&
@@ -189,14 +306,18 @@ export function createWebApp(host: WebHost) {
       );
     await next();
   });
+  app.use("/web/inference", bodyLimit({ maxSize: 8 * 1024 * 1024 }));
+  app.post("/web/inference", async (c) =>
+    host.inference
+      ? host.inference(
+          WebInferenceSchema.parse(await c.req.json()),
+          c.req.header("x-iris-library") ?? "",
+        )
+      : c.notFound(),
+  );
   app.get("/web/session", (c) =>
     c.json({ libraryId: host.libraryId(), fixtures: Boolean(host.fixture) }),
   );
-  app.delete("/web/session", (c) => {
-    sessions.revoke(getCookie(c, COOKIE));
-    deleteCookie(c, COOKIE, { path: "/" });
-    return c.json({ ok: true });
-  });
   app.get("/web/extensions", (c) =>
     c.json({ connections: host.extension?.auth.list(host.libraryId()) ?? [] }),
   );
@@ -204,25 +325,26 @@ export function createWebApp(host: WebHost) {
     await host.extension?.auth.revokeAll(host.libraryId());
     return c.json({ ok: true });
   });
-  app.get("/web/capabilities", (c) => c.json({ queries: WEB_QUERY_ACCESS }));
+  app.get("/web/capabilities", (c) =>
+    c.json({ queries: WEB_QUERY_ACCESS, host: { platform: process.platform } }),
+  );
   app.get("/web/history", async (c) =>
     host.history ? c.json(await host.history()) : c.notFound(),
   );
   app.post("/web/history", async (c) => {
     if (!host.history) return c.notFound();
     const input = z
-      .object({
+      .strictObject({
         kind: z.enum(["undo", "redo"]),
         revision: z.number().int().nonnegative(),
       })
-      .strict()
       .parse(await c.req.json());
     const result = await host.history(input);
     return result.ok === false
       ? c.json(
           {
             error:
-              "History changed in another window. Reload before Undo or Redo.",
+              "The Library's edit history changed. Reload before Undo or Redo.",
           },
           409,
         )
@@ -259,6 +381,14 @@ export function createWebApp(host: WebHost) {
         )
       : c.notFound(),
   );
+  app.delete("/web/upload/:token", async (c) => {
+    if (!host.removeUpload) return c.notFound();
+    await host.removeUpload(
+      WebUploadTokenSchema.parse(c.req.param("token")),
+      c.req.header("x-iris-library") ?? "",
+    );
+    return c.json({ ok: true });
+  });
   app.post("/web/files", async (c) =>
     host.files
       ? host.files(
@@ -267,18 +397,74 @@ export function createWebApp(host: WebHost) {
         )
       : c.notFound(),
   );
-  app.on(["GET", "HEAD"], "/web/download/:id", async (c) =>
-    host.download
-      ? host.download(c.req.raw, c.req.param("id"), host.libraryId())
-      : c.notFound(),
-  );
+  app.on(["GET", "HEAD"], "/web/download/:id", (c) => {
+    const download = host.download;
+    if (!download) return c.notFound();
+    return libraryResponse(c.req.raw, () =>
+      download(c.req.raw, c.req.param("id"), host.libraryId()),
+    );
+  });
   app.post("/web/query", async (c) => {
     const request = WebQueryRequestSchema.parse(await c.req.json());
+    if (request.name === "settings.setPrefs")
+      validateWebPreferences(request.params);
     return host.query({
       ...request,
       libraryId: c.req.header("x-iris-library"),
     });
   });
+  app.post("/web/locations", async (c) =>
+    host.locations
+      ? host.locations(
+          HostLocationsRequestSchema.parse(await c.req.json()),
+          c.req.header("x-iris-library") ?? "",
+          getCookie(c, COOKIE) ?? "",
+        )
+      : c.notFound(),
+  );
+  app.post("/web/watched-folder", async (c) =>
+    host.watchedFolder
+      ? host.watchedFolder(
+          WebWatchedFolderRequestSchema.parse(await c.req.json()),
+          c.req.header("x-iris-library") ?? "",
+          getCookie(c, COOKIE) ?? "",
+        )
+      : c.notFound(),
+  );
+  app.post("/web/copy-library", async (c) =>
+    host.copyLibrary
+      ? host.copyLibrary(
+          WebLibraryCopySchema.parse(await c.req.json()),
+          c.req.header("x-iris-library") ?? "",
+          getCookie(c, COOKIE) ?? "",
+        )
+      : c.notFound(),
+  );
+  app.post("/web/replay", async (c) => {
+    if (!host.replay) return c.notFound();
+    const session = getCookie(c, COOKIE) ?? "";
+    const authenticatedScope = c.get("authenticatedScope");
+    return host.replay(
+      WebReplayRequestSchema.parse(await c.req.json()),
+      {
+        library: c.get("authenticatedLibrary"),
+        session,
+        parentOrigin: requestOrigin(c.req.header("host")) ?? host.origin,
+        valid: () => sessions.valid(session, authenticatedScope),
+        onRevoke: (listener) => sessions.onRevoke(session, listener),
+      },
+      c.req.raw.signal,
+    );
+  });
+  app.post("/web/library", async (c) =>
+    host.library
+      ? host.library(
+          WebLibraryRequestSchema.parse(await c.req.json()),
+          c.req.header("x-iris-library") ?? "",
+          getCookie(c, COOKIE) ?? "",
+        )
+      : c.notFound(),
+  );
   app.post("/web/video", async (c) =>
     host.video
       ? host.video(
@@ -287,47 +473,41 @@ export function createWebApp(host: WebHost) {
         )
       : c.notFound(),
   );
-  app.on(["GET", "HEAD"], "/web/preview/:saveId/:filename", (c) =>
-    host.preview
-      ? host.preview(c.req.raw, c.req.param("saveId"), c.req.param("filename"))
-      : c.notFound(),
-  );
+  app.on(["GET", "HEAD"], "/web/preview/:saveId/:filename", (c) => {
+    const preview = host.preview;
+    if (!preview) return c.notFound();
+    return libraryResponse(c.req.raw, () =>
+      preview(c.req.raw, c.req.param("saveId"), c.req.param("filename")),
+    );
+  });
   app.on(["GET", "HEAD"], "/web/media/:saveId/*", (c) =>
-    host.media(
-      c.req.raw,
-      c.req.param("saveId"),
-      decodeURIComponent(c.req.path.split("/").slice(4).join("/")),
+    libraryResponse(c.req.raw, () =>
+      host.media(
+        c.req.raw,
+        c.req.param("saveId"),
+        decodeURIComponent(c.req.path.split("/").slice(4).join("/")),
+      ),
     ),
   );
   app.get("/web/events", (c) =>
     streamSSE(c, async (stream) => {
       const session = getCookie(c, COOKIE);
-      const scope = sessionScope(c.req.header("host"));
-      const valid = () =>
-        sessions.valid(session, scope) &&
-        scope === sessionScope(c.req.header("host"));
+      const scope = c.get("authenticatedScope");
+      const queue = createWebEventQueue({
+        sessionValid: () => sessions.valid(session, scope),
+        scopeCurrent: () => scope === sessionScope(c.req.header("host")),
+        write: (event) => stream.writeSSE(event),
+        abort: () => stream.abort(),
+      });
+      const valid = queue.valid;
       const off = host.subscribe((action) => {
-        if (!valid()) {
-          stream.abort();
-          return;
-        }
-        void stream
-          .writeSSE({
-            event: "sync",
-            data: stringifyWebValue(action),
-          })
-          .catch(() => cleanup());
+        queue.offer({ event: "sync", data: stringifyWebValue(action) });
       });
       const offStatus = host.subscribeStatus?.((event) => {
-        if (!valid()) {
-          stream.abort();
-          return;
-        }
-        void stream
-          .writeSSE({ event: event.name, data: event.data })
-          .catch(() => cleanup());
+        queue.offer({ event: event.name, data: event.data });
       });
       const cleanup = () => {
+        queue.dispose();
         off();
         offStatus?.();
         offRevoke();
@@ -335,7 +515,19 @@ export function createWebApp(host: WebHost) {
       const offRevoke = sessions.onRevoke(session, () => stream.abort());
       stream.onAbort(cleanup);
       try {
-        await stream.writeSSE({ event: "ready", data: host.libraryId() });
+        await stream.writeSSE({
+          event: "ready",
+          data: c.get("authenticatedLibrary"),
+        });
+        if (host.history && valid() && libraryAccess.isOpen()) {
+          const history = await host.history();
+          if (valid())
+            await stream.writeSSE({
+              event: "history",
+              data: stringifyWebValue(history),
+            });
+        }
+        queue.start();
         while (!stream.aborted && valid()) {
           await stream.writeSSE({ event: "heartbeat", data: "connected" });
           await stream.sleep(15000);
@@ -349,8 +541,7 @@ export function createWebApp(host: WebHost) {
     if (!host.fixture)
       return c.json({ error: "Fixture ingestion is disabled." }, 404);
     const { kind } = z
-      .object({ kind: WebFixtureSchema })
-      .strict()
+      .strictObject({ kind: WebFixtureSchema })
       .parse(await c.req.json());
     return c.json(await host.fixture(kind));
   });
@@ -374,17 +565,20 @@ export function createWebApp(host: WebHost) {
     c.json(
       {
         error:
-          error instanceof WebRequestError
+          error instanceof WebRequestError ||
+          error instanceof LibraryTransitionError
             ? error.message
             : error instanceof z.ZodError
               ? "Invalid browser request."
               : "The host could not complete this action.",
       },
-      error instanceof WebRequestError
-        ? error.status
-        : error instanceof z.ZodError
-          ? 422
-          : 500,
+      error instanceof LibraryTransitionError
+        ? 503
+        : error instanceof WebRequestError
+          ? error.status
+          : error instanceof z.ZodError
+            ? 422
+            : 500,
     ),
   );
   return app;

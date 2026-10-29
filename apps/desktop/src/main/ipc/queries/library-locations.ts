@@ -48,4 +48,5 @@ export const libraryLocationQueries = {
     ),
 } satisfies QueryHandlerMap;
 
+export { isWebHostRelaunchPending } from "./library-location-runtime";
 export { waitForLibraryLocationChanges };

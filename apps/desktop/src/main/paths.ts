@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
+import { libraryAccess } from "./core/library-access";
 import { resolveLibraryId } from "./lib/library-id";
 import { readLibraryPointer } from "./lib/library-pointer";
 
@@ -38,6 +39,7 @@ export function invalidatePaths(): void {
 }
 
 export function resolvePaths(libraryRootOverride?: string): PondPaths {
+  libraryAccess.assertDatabaseAvailable();
   if (cached && !libraryRootOverride) return cached;
 
   const appData = ensureDir(app.getPath("userData"));

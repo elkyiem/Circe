@@ -50,6 +50,7 @@ import { SupportDialog } from "./components/support-dialog";
 import { WhatsNewDialog } from "./components/whats-new-dialog";
 import { AgentLibraryBridge } from "./effects/agent-library-bridge";
 import { FishOpenBridge } from "./effects/fish-open-bridge";
+import { LibraryIdentityBridge } from "./effects/library-identity-bridge";
 import { MachinePace } from "./effects/machine-pace";
 import { MenuRecentsBridge } from "./effects/menu-recents-bridge";
 import "./effects/save-library-bridge";
@@ -63,6 +64,11 @@ const OrganizationReviewHost = lazy(() =>
   import("@/features/library/components/smart-collection-review").then(
     (module) => ({ default: module.OrganizationReviewHost }),
   ),
+);
+const BrowserHostLocations = lazy(() =>
+  import("./components/browser-host-locations").then((module) => ({
+    default: module.BrowserHostLocations,
+  })),
 );
 const BrowserCombineHost = lazy(() =>
   import("./components/browser-combine-host").then((module) => ({
@@ -218,6 +224,7 @@ function LibraryApp() {
               <UiSounds />
               <NotificationStatusBridge />
               <MenuRecentsBridge />
+              <LibraryIdentityBridge />
               <AgentLibraryBridge />
               <FishOpenBridge />
               <SyncStatusBridge />
@@ -236,6 +243,7 @@ function LibraryApp() {
                 <DuplicateReviewHost />
                 <OrganizationReviewHost />
                 {isBrowserRuntime() && <BrowserCombineHost />}
+                {isBrowserRuntime() && <BrowserHostLocations />}
               </Suspense>
               <ConversionDialogHost />
               <UpdateDialog />

@@ -19,6 +19,7 @@ import type {
   AssistantSendResult,
 } from "./assistant";
 import type { LibraryMarkSource } from "./library-mark";
+import type { LocalApiStatus } from "./local-api-contracts";
 import type { McpClientStatus } from "./mcp-hosts";
 import type { ProviderModelsResult } from "./provider-models";
 import type {
@@ -321,6 +322,7 @@ export interface SystemQueryResults {
     appliedAt: string;
   };
   "api.restart": OkResult<{ port?: number }>;
+  "api.status": LocalApiStatus;
   "updates.applyPrefs": OkResult;
   "updates.currentNotice": UpdateNotice | null;
   "updates.checkNow":

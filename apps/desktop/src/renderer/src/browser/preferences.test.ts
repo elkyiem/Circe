@@ -39,3 +39,44 @@ it("publishes the saved host model without reverting it to the pre-write snapsho
   );
   expect(preferences.read().agent.modelIds.codex).toBe("updated");
 });
+
+it("keeps browser zoom local while applying the other window settings to the host", async () => {
+  let stored: string | null = null;
+  let host = PrefsSchema.parse(DEFAULT_PREFS);
+  let writes = 0;
+  const preferences = createBrowserPreferences({
+    initial: host,
+    readDevice: () => stored,
+    writeDevice: (value) => {
+      stored = value;
+    },
+    saveHost: async (patch) => {
+      writes++;
+      expect(patch.window).not.toHaveProperty("interfaceZoom");
+      host = PrefsSchema.parse({
+        ...host,
+        window: { ...host.window, ...patch.window },
+      });
+      return host;
+    },
+  });
+  await preferences.write({
+    window: { interfaceZoom: 150, restorePosition: false },
+  });
+  expect(host.window.interfaceZoom).toBe(DEFAULT_PREFS.window.interfaceZoom);
+  expect(host.window.restorePosition).toBe(false);
+  expect(preferences.read().window.interfaceZoom).toBe(150);
+  expect(JSON.parse(stored ?? "{}").window).toEqual({ interfaceZoom: 150 });
+  await preferences.write({ window: { interfaceZoom: 125 } });
+  expect(writes).toBe(1);
+  preferences.receiveHost(
+    PrefsSchema.parse({
+      ...host,
+      window: { ...host.window, interfaceZoom: 80, closeToTray: false },
+    }),
+  );
+  expect(preferences.read().window).toMatchObject({
+    interfaceZoom: 125,
+    closeToTray: false,
+  });
+});

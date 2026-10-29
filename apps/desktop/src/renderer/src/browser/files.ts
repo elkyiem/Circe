@@ -1,5 +1,6 @@
 import type { QueryName } from "@shared/query-contracts";
 import { isThumbnailKind } from "@shared/save-file-names";
+import type { EagleImportProgress } from "@shared/saves-import-contracts";
 import {
   WebFileQuerySchema,
   WebUploadSchema,
@@ -8,20 +9,32 @@ import {
 import type { WebValue } from "@shared/web-serialization";
 import pLimit from "p-limit";
 import { z } from "zod";
+import { createBrowserEagleImport } from "./eagle-import";
 
 type Json = z.infer<ReturnType<typeof z.json>>;
 interface FileTransport {
   request(path: string, body?: string): Promise<WebValue>;
   headers(): Record<string, string>;
+  eagleProgress?(value: EagleImportProgress): void;
 }
 const DEVICE_QUERIES = new Set<string>([
   "library.identity.pickIcon",
+  "library.exportDebugReport",
+  "saves.setCustomThumbnail",
+  "saves.setThumbnailFromClipboard",
+  "saves.setGifThumbnail",
+  "saves.replaceFile",
+  "saves.loadSubtitles",
+  "saves.exportWebp",
+  "saves.exportDotLottie",
   "saves.pickImportPaths",
   "saves.importFiles",
   "saves.reviewImportDuplicates",
   "saves.createManual",
   "saves.importPackage",
   "saves.importEaglePackage",
+  "saves.pickEagleLibrary",
+  "saves.importEagleLibrary",
   "saves.importBookmarks",
   "saves.importMymind",
   "saves.importDataExport",
@@ -52,6 +65,9 @@ const DEVICE_QUERIES = new Set<string>([
   "agent.exportChat",
   "conversion.start",
   "conversion.status",
+  "transferJobs.retry",
+  "transferJobs.download",
+  "transferJobs.list",
 ]);
 const StringList = z.array(z.string());
 const Id = z.string().min(1);
@@ -115,11 +131,14 @@ function pickDeviceFiles(
 
 export function createBrowserFiles(transport: FileTransport) {
   const uploadLimit = pLimit(4);
-  const files = new Map<string, { file: File; upload?: Promise<string> }>();
+  const files = new Map<
+    string,
+    { file?: File; relativePath: string; upload?: Promise<string> }
+  >();
   const downloaded = new Set<string>();
   function pathForFile(file: File) {
     const token = `iris-device:${crypto.randomUUID()}`;
-    files.set(token, { file });
+    files.set(token, { file, relativePath: file.webkitRelativePath });
     return token;
   }
   async function upload(token: string) {
@@ -127,14 +146,16 @@ export function createBrowserFiles(transport: FileTransport) {
     const selected = files.get(token);
     if (!selected) throw new Error("Choose this file again on your device.");
     selected.upload ??= uploadLimit(async () => {
+      const file = selected.file;
+      if (!file) throw new Error("Choose this file again on your device.");
       const response = await fetch("/web/upload", {
         method: "PUT",
         headers: {
           ...transport.headers(),
           "content-type": "application/octet-stream",
-          "x-iris-filename": encodeURIComponent(selected.file.name),
+          "x-iris-filename": encodeURIComponent(file.name),
         },
-        body: selected.file,
+        body: file,
       });
       if (!response.ok) {
         const failure = z
@@ -146,13 +167,50 @@ export function createBrowserFiles(transport: FileTransport) {
             : "The upload failed. Choose the file and try again.",
         );
       }
-      return WebUploadSchema.parse(await response.json()).token;
+      const uploaded = WebUploadSchema.parse(await response.json()).token;
+      selected.file = undefined;
+      return uploaded;
     }).catch((error) => {
       selected.upload = undefined;
       throw error;
     });
     return selected.upload;
   }
+  const eagleUploads = new Map<string, string>();
+  const eagle = createBrowserEagleImport({
+    pick: () => pickDeviceFiles(true),
+    upload: async (file) => {
+      const selected = pathForFile(file);
+      try {
+        const token = await upload(selected);
+        eagleUploads.set(token, selected);
+        return token;
+      } catch (error) {
+        files.delete(selected);
+        throw error;
+      }
+    },
+    request: transport.request,
+    progress: (value) => transport.eagleProgress?.(value),
+    remove: async (token, keepalive) => {
+      try {
+        const response = await fetch(
+          `/web/upload/${encodeURIComponent(token)}`,
+          {
+            method: "DELETE",
+            headers: transport.headers(),
+            keepalive,
+          },
+        );
+        if (!response.ok)
+          throw new Error("The host could not remove a temporary upload.");
+      } finally {
+        const selected = eagleUploads.get(token);
+        if (selected) files.delete(selected);
+        eagleUploads.delete(token);
+      }
+    },
+  });
   async function media(
     input: { id: string; fileIndex?: number },
     kind: "selected" | "thumbnail" | "video" = "selected",
@@ -184,7 +242,7 @@ export function createBrowserFiles(transport: FileTransport) {
       prepared.relativePaths = Object.fromEntries(
         await Promise.all(
           StringList.parse(prepared.paths).flatMap((path) => {
-            const relative = files.get(path)?.file.webkitRelativePath;
+            const relative = files.get(path)?.relativePath;
             return relative
               ? [upload(path).then((token) => [token, relative])]
               : [];
@@ -216,7 +274,11 @@ export function createBrowserFiles(transport: FileTransport) {
     const downloadable = z
       .object({ download: z.string(), filename: z.string() })
       .safeParse(result);
-    if (downloadable.success && !downloaded.has(downloadable.data.download)) {
+    if (
+      downloadable.success &&
+      (name === "transferJobs.download" ||
+        !downloaded.has(downloadable.data.download))
+    ) {
       downloaded.add(downloadable.data.download);
       downloadInBrowser(downloadable.data.download, downloadable.data.filename);
     }
@@ -229,6 +291,59 @@ export function createBrowserFiles(transport: FileTransport) {
       name: QueryName,
       params: Record<string, Json>,
     ): Promise<WebValue> {
+      if (name === "saves.pickEagleLibrary") return eagle.pick();
+      if (name === "saves.importEagleLibrary") return eagle.import(params);
+      if (
+        [
+          "saves.setCustomThumbnail",
+          "saves.replaceFile",
+          "saves.loadSubtitles",
+        ].includes(name)
+      ) {
+        const id = Id.parse(params.id);
+        const [file] = await pickDeviceFiles(
+          false,
+          false,
+          name === "saves.setCustomThumbnail"
+            ? "image/*,.heic,.heif,.jxl,.tif,.tiff"
+            : name === "saves.loadSubtitles"
+              ? ".vtt,.srt"
+              : undefined,
+        );
+        if (!file) return { ok: false, reason: "cancelled" };
+        return importSelected(name, { id, paths: [pathForFile(file)] });
+      }
+      if (name === "saves.setThumbnailFromClipboard") {
+        const id = Id.parse(params.id);
+        if (!navigator.clipboard?.read)
+          return {
+            ok: false,
+            error:
+              "Clipboard images are unavailable in this browser. Choose an image with Set Thumbnail from File.",
+          };
+        let items: ClipboardItems;
+        try {
+          items = await navigator.clipboard.read();
+        } catch {
+          return {
+            ok: false,
+            error:
+              "Allow clipboard access in your browser and try again, or choose Set Thumbnail from File.",
+          };
+        }
+        for (const item of items) {
+          const type = item.types.find((value) => value.startsWith("image/"));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          return importSelected(name, {
+            id,
+            paths: [pathForFile(new File([blob], "Clipboard image", { type }))],
+          });
+        }
+        return { ok: false, error: "clipboard_empty" };
+      }
+      if (name === "saves.setGifThumbnail")
+        return transport.request("video", JSON.stringify({ name, params }));
       if (name === "library.identity.pickIcon") {
         const [file] = await pickDeviceFiles(
           false,

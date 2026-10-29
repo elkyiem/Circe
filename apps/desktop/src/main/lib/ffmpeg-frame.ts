@@ -70,13 +70,15 @@ export async function extractSampledFrames(
   videoPath: string,
   maxFrames = 12,
   strategy: "spread" | "embedding" = "spread",
+  signal?: AbortSignal,
 ): Promise<ExtractedFrames | null> {
   const { ffmpeg } = binariesAvailable();
   if (!ffmpeg) {
     log.debug("[pond ffmpeg-frame] binary unavailable, skipping", videoPath);
     return null;
   }
-  const durationSec = await probeDuration(ffmpeg, videoPath);
+  if (signal?.aborted) return null;
+  const durationSec = await probeDuration(ffmpeg, videoPath, signal);
   if (durationSec == null) return null;
   const timestamps =
     strategy === "embedding"
@@ -130,6 +132,7 @@ export async function extractSampledFrames(
       ffmpeg,
       ["-hide_banner", "-loglevel", "error", "-y", ...inputArgs, ...outputArgs],
       SAMPLE_TIMEOUT_MS,
+      signal,
     );
     if (code !== 0) {
       log.warn(
@@ -262,11 +265,13 @@ async function extractJpeg(
 async function probeDuration(
   ffmpeg: string,
   videoPath: string,
+  signal?: AbortSignal,
 ): Promise<number | null> {
   const { stderr } = await runWithTimeout(
     ffmpeg,
     ["-hide_banner", "-i", videoPath, "-t", "0", "-f", "null", "-"],
     HARD_TIMEOUT_MS,
+    signal,
   );
   const match = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(stderr);
   if (!match) return null;
@@ -286,7 +291,13 @@ function runWithTimeout(
   bin: string,
   argv: string[],
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<ProcOutcome> {
+  if (signal?.aborted)
+    return Promise.resolve({
+      code: 130,
+      stderr: "Frame extraction cancelled.",
+    });
   return new Promise((resolve) => {
     const child = spawn(bin, argv, {
       stdio: ["ignore", "ignore", "pipe"],
@@ -294,10 +305,19 @@ function runWithTimeout(
     });
     let stderr = "";
     let settled = false;
+    const abort = () => {
+      if (settled) return;
+      try {
+        killProcessTree(child, "SIGKILL");
+      } catch {}
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
 
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
+      signal?.removeEventListener("abort", abort);
       try {
         killProcessTree(child, "SIGKILL");
       } catch {}
@@ -312,12 +332,14 @@ function runWithTimeout(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       resolve({ code: -1, stderr: String(err) });
     });
     child.on("close", (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       resolve({ code: code ?? -1, stderr });
     });
   });

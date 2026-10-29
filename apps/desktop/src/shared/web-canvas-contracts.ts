@@ -16,22 +16,20 @@ export const WebCanvasRenderSchema = PrefsPatchSchema.pick({
   })
   .strict();
 export type WebCanvasRenderInput = z.infer<typeof WebCanvasRenderSchema>;
-export const CanvasRenderImageSchema = z
-  .object({
-    png: z
-      .instanceof(Uint8Array)
-      .refine(
-        (bytes) =>
-          bytes.byteLength >= 8 &&
-          bytes.byteLength <= 100 * 1024 * 1024 &&
-          [137, 80, 78, 71, 13, 10, 26, 10].every(
-            (byte, index) => bytes[index] === byte,
-          ),
-      ),
-    width: z.number().positive().max(6000),
-    height: z.number().positive().max(6000),
-  })
-  .strict();
+export const CanvasRenderImageSchema = z.strictObject({
+  png: z
+    .instanceof(Uint8Array)
+    .refine(
+      (bytes) =>
+        bytes.byteLength >= 8 &&
+        bytes.byteLength <= 100 * 1024 * 1024 &&
+        [137, 80, 78, 71, 13, 10, 26, 10].every(
+          (byte, index) => bytes[index] === byte,
+        ),
+    ),
+  width: z.number().positive().max(6000),
+  height: z.number().positive().max(6000),
+});
 export const CANVAS_RENDER_IPC = {
   ready: "iris:canvas-render-ready",
   query: "iris:canvas-render-query",

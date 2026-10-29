@@ -49,6 +49,7 @@ type MediaUnderstandingQueryDependencies = {
   readLibraryMedia: typeof readLibraryMedia;
   resolveSaveFilePath: typeof resolveSaveFilePath;
   service: MediaUnderstanding;
+  signal(): AbortSignal;
 };
 
 const defaultDependencies: MediaUnderstandingQueryDependencies = {
@@ -59,6 +60,7 @@ const defaultDependencies: MediaUnderstandingQueryDependencies = {
   readLibraryMedia,
   resolveSaveFilePath,
   service: createMediaUnderstanding(),
+  signal: () => new AbortController().signal,
 };
 
 function localProvider(value: string): LocalProvider | null {
@@ -121,6 +123,9 @@ export function createMediaUnderstandingQueries(
     "saves.understandMedia": query(
       MediaUnderstandInputSchema,
       async ({ saveId, task }) => {
+        const signal = resolved.signal();
+        if (signal.aborted)
+          return { ok: false as const, reason: "aborted" as const };
         const target = await resolved.resolveSaveFilePath(saveId, 0);
         if (!target.ok) return target;
 
@@ -160,7 +165,7 @@ export function createMediaUnderstandingQueries(
           const result = await resolved.service[task]({
             mimeType,
             bytes,
-            signal: new AbortController().signal,
+            signal,
             connection: connection.connection,
           });
           return { ok: true as const, ...result };

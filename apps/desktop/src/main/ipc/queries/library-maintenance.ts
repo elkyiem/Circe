@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { app, dialog, session, shell } from "electron";
 import log from "electron-log/main.js";
 import { z } from "zod";
+import { IPC } from "../../../shared/constants";
 import { LibraryMarkSourceSchema } from "../../../shared/library-mark";
 import type { QueryResult } from "../../../shared/query-contracts";
 import {
@@ -14,7 +15,8 @@ import { getPrefs, invalidatePrefs, setPrefs } from "../../core/prefs";
 import { reconcileLibrary } from "../../core/scan";
 import { VIDEO_CACHE_DIR } from "../../core/video-preview-proxy";
 import { closeDb } from "../../db";
-import { libraryRoot, thumbnailCacheRoot } from "../../paths";
+import { broadcast } from "../../lib/broadcast";
+import { libraryId, libraryRoot, thumbnailCacheRoot } from "../../paths";
 import { runtimeControls } from "../../runtime";
 import { type QueryHandlerMap, query } from "./params";
 
@@ -33,9 +35,11 @@ export const libraryMaintenanceQueries = {
     }),
     (params) => {
       try {
+        const identity = updateLibraryIdentity(libraryRoot(), params);
+        broadcast(IPC.libraryIdentityChanged, libraryId());
         return {
           ok: true as const,
-          ...updateLibraryIdentity(libraryRoot(), params),
+          ...identity,
         };
       } catch (error) {
         return {
@@ -136,6 +140,10 @@ export const libraryMaintenanceQueries = {
   async "storage.guardState"(): Promise<QueryResult<"storage.guardState">> {
     const { getStorageGuardState } = await import("../../core/storage-watcher");
     return getStorageGuardState();
+  },
+
+  "api.status"() {
+    return runtimeControls.httpStatus();
   },
 
   async "api.restart"(): Promise<QueryResult<"api.restart">> {

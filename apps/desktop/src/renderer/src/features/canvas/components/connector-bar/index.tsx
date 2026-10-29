@@ -13,6 +13,7 @@ import {
   lineItems,
 } from "../../lib/board-menu";
 import { type ConnectorStyle, capsOf, withCap } from "../../lib/document";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import { Bar } from "../bar";
 import { useBoard } from "../board/context";
 import styles from "./styles.module.css";
@@ -26,7 +27,8 @@ interface ConnectorBarProps {
 
 export function ConnectorBar({ id, x, y, style }: ConnectorBarProps) {
   const board = useBoard();
-  const zoom = useStore((state) => state.transform[2]);
+  const interfaceScale = useCanvasInterfaceScale();
+  const zoom = useStore((state) => state.transform[2]) / interfaceScale;
   const caps = capsOf(style);
   const LineIcon = LINE_ICONS[style.line];
   return (

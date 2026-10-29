@@ -1,10 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { z } from "zod";
 import {
   DEFAULT_LIBRARY_NAME,
   LIBRARY_SCHEMA_VERSION,
 } from "../../shared/constants";
+import { renameSyncWithRetry } from "./rename-retry";
 
 export const UNBOUND_LIBRARY_ID = "unbound";
 
@@ -41,6 +48,26 @@ export function resolveLibraryId(root: string, committed: boolean): string {
 }
 
 const StoredMetadataSchema = z.object({ id: z.string().min(1) });
+
+/** A restored snapshot is independently editable; it must not reuse its source's index or session scope. */
+export function forkLibraryId(root: string): string {
+  const file = join(root, "metadata.json");
+  const metadata = z
+    .record(z.string(), z.json())
+    .parse(JSON.parse(readFileSync(file, "utf8")));
+  StoredMetadataSchema.parse(metadata);
+  const id = randomId();
+  const temporary = join(root, `.metadata-${id}.tmp`);
+  try {
+    writeFileSync(temporary, JSON.stringify({ ...metadata, id }, null, 2), {
+      flag: "wx",
+    });
+    renameSyncWithRetry(temporary, file);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
+  return id;
+}
 
 export function readOrCreateLibraryId(
   root: string,

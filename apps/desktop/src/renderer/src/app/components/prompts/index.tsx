@@ -1,5 +1,6 @@
 import { Dialog } from "@pond/ui";
 import { useEffect, useState } from "react";
+import { hostLocationPickerStore } from "@/browser/host-locations";
 import { BrowserExtensionDialog } from "@/shared/components/browser-extension-dialog";
 import { fishIntroDialog } from "@/shared/state/fish-intro";
 import {
@@ -23,6 +24,12 @@ const CHECK_DELAY_MS = 20_000;
 
 function anotherDialogOpen(): boolean {
   return (
+    Boolean(
+      document.querySelector(
+        '[role="dialog"], [role="alertdialog"], [role="menu"]',
+      ),
+    ) ||
+    hostLocationPickerStore.state !== null ||
     setupFlow.isOpen() ||
     whatsNewDialog.isOpen() ||
     supportDialog.isOpen() ||

@@ -183,3 +183,32 @@ it("isolates cancellation between parallel transfers", async () => {
   resume.release();
   await expect(stopped).rejects.toThrow("canceled");
 });
+
+it("reserves a retry before asynchronous checkpoint loading and admits it only once", async () => {
+  const { store, request } = await fixture();
+  await expect(
+    store.run(request, async () => {
+      throw new Error("First failure");
+    }),
+  ).rejects.toThrow("First failure");
+  const [job] = await store.list();
+  if (!job) throw new Error("Missing failed transfer");
+  const ready = deferred();
+  const resume = deferred();
+  let started = 0;
+  const operation = async () => {
+    started++;
+    ready.release();
+    await resume.promise;
+    return "done";
+  };
+  const first = store.run(request, operation, job.id);
+  const second = store.run(request, operation, job.id);
+  await expect(second).rejects.toThrow("cannot be retried");
+  await ready.promise;
+  expect(started).toBe(1);
+  expect((await store.list())[0]?.status).toBe("running");
+  resume.release();
+  await expect(first).resolves.toBe("done");
+  expect((await store.list())[0]?.status).toBe("completed");
+});

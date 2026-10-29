@@ -210,7 +210,7 @@ const trash = z.object({
   confirmBeforeEmpty: z.boolean().catch(true),
 });
 
-const windowSlice = z.object({
+export const WindowPrefsSchema = z.object({
   closeToTray: z.boolean().catch(false),
   launchHidden: z.boolean().catch(false),
   restorePosition: z.boolean().catch(true),
@@ -470,7 +470,7 @@ const PrefsObject = z.object({
   sidebar: sidebar.catch(sidebar.parse({})),
   feedback: feedback.catch(feedback.parse({})),
   trash: trash.catch(trash.parse({})),
-  window: windowSlice.catch(windowSlice.parse({})),
+  window: WindowPrefsSchema.catch(WindowPrefsSchema.parse({})),
   system: system.catch(system.parse({})),
   quickCapture: quickCapture.catch(quickCapture.parse({})),
   autoImport: autoImport.catch(autoImport.parse({})),

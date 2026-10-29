@@ -48,9 +48,6 @@ import {
   normalizeManualSaveInput,
 } from "./saves-import-input";
 
-const LottieAnimationSchema = z
-  .object({ layers: z.array(z.unknown()) })
-  .passthrough();
 const blankDocumentIconCache = new Map<string, Promise<string | null>>();
 const run = promisify(execFile);
 
@@ -302,19 +299,23 @@ export const savesImportPersistenceQueries = {
       const file = row?.files[fileIndex];
       if (!row || !file || !/\.json$/i.test(file.path))
         return { ok: false, error: "Choose a Lottie JSON file." };
-      const bytes = await readLibraryMedia(saveFile(id, file.path));
-      let source: unknown;
+      const [bytes, { parseLottieAnimation, encodeDotLottie }] =
+        await Promise.all([
+          readLibraryMedia(saveFile(id, file.path)),
+          import("../../core/dot-lottie"),
+        ]);
+      let animation: ReturnType<typeof parseLottieAnimation>;
       try {
-        source = JSON.parse(bytes.toString("utf8"));
-      } catch {
-        return { ok: false, error: "This file does not contain valid JSON." };
-      }
-      const animation = LottieAnimationSchema.safeParse(source);
-      if (!animation.success)
+        animation = parseLottieAnimation(bytes);
+      } catch (error) {
         return {
           ok: false,
-          error: "This JSON file is not a Lottie animation.",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not export this animation.",
         };
+      }
       const defaultName = `${basename(
         row.title?.trim() || file.path,
         extname(row.title?.trim() || file.path),
@@ -326,24 +327,7 @@ export const savesImportPersistenceQueries = {
       });
       if (picked.canceled || !picked.filePath)
         return { ok: false, reason: "cancelled" };
-      const { default: JSZip } = await import("jszip");
-      const archive = new JSZip();
-      archive.file(
-        "manifest.json",
-        JSON.stringify({
-          version: "1.0",
-          generator: "Pond",
-          animations: [{ id: "animation", loop: true, speed: 1 }],
-        }),
-      );
-      archive.file("animations/animation.json", JSON.stringify(animation.data));
-      await writeFile(
-        picked.filePath,
-        await archive.generateAsync({
-          type: "nodebuffer",
-          compression: "DEFLATE",
-        }),
-      );
+      await writeFile(picked.filePath, await encodeDotLottie(animation));
       return { ok: true };
     },
   ),

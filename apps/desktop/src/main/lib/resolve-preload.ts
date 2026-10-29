@@ -13,6 +13,7 @@ export function resolvePreload(
   name:
     | "index.cjs"
     | "combine-images.cjs"
+    | "enrichment.cjs"
     | "canvas-render.cjs"
     | "preview.cjs"
     | "settings.cjs"

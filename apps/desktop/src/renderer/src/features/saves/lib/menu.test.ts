@@ -122,6 +122,89 @@ function previewOpenWithApps(): OpenWithApp[] {
 }
 
 describe("buildSaveMenu", () => {
+  it("sends the selected GIF frame from the browser Save menu with its actual indexed media URL", async () => {
+    const query = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal("pond", { query });
+    document.documentElement.dataset.runtime = "browser";
+    const player = document.createElement("div");
+    player.setAttribute("data-gif-player", "");
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-frame", "4");
+    player.append(canvas);
+    document.body.append(player);
+    try {
+      const save = fileSave({
+        mediaType: "image",
+        files: [
+          {
+            kind: "image",
+            path: "first.png",
+            mimeType: "image/png",
+            sha256: "a",
+            size: 1,
+          },
+          {
+            kind: "image",
+            path: "animation two.gif",
+            mimeType: "image/gif",
+            sha256: "b",
+            size: 1,
+          },
+        ],
+      });
+      const item = visibleLeafItems(
+        buildSaveMenu(save, {
+          clipboardEmpty: true,
+          opened: true,
+          fileIndex: 1,
+        }),
+      ).find(
+        (entry) =>
+          "label" in entry && entry.label === "Set Current Frame as Thumbnail",
+      );
+      if (!item || !("onClick" in item))
+        throw new Error("Missing GIF thumbnail action");
+      item.onClick?.();
+      await Promise.resolve();
+      expect(query).toHaveBeenCalledWith("saves.setGifThumbnail", {
+        id: save.id,
+        src: "/web/media/file-save/animation%20two.gif",
+        frameIndex: 4,
+      });
+    } finally {
+      player.remove();
+      delete document.documentElement.dataset.runtime;
+    }
+  });
+
+  it("shows the browser's clipboard permission guidance from the actual thumbnail menu", async () => {
+    const guidance =
+      "Allow clipboard access in your browser or choose Set Thumbnail from File.";
+    vi.stubGlobal("pond", {
+      query: async () => ({ ok: false, error: guidance }),
+    });
+    const notified = Promise.withResolvers<Event>();
+    window.addEventListener("pond:notification", notified.resolve, {
+      once: true,
+    });
+    const item = sectionItems(
+      buildSaveMenu(fileSave(), { clipboardEmpty: false }),
+      "Thumbnail",
+    )?.find(
+      (entry) =>
+        "label" in entry && entry.label === "Set Thumbnail from Clipboard",
+    );
+    if (!item || !("onClick" in item))
+      throw new Error("Missing clipboard thumbnail action");
+    item.onClick?.();
+    const event = await notified.promise;
+    if (!(event instanceof CustomEvent))
+      throw new Error("Missing notification details");
+    expect(event.detail).toEqual({
+      title: "Couldn't set the thumbnail",
+      description: guidance,
+    });
+  });
   it("keeps the detail menu focused on file actions", () => {
     const items = buildSaveDetailMenu(fileSave(), {
       clipboardEmpty: true,

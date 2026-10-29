@@ -1,4 +1,4 @@
-import { type Prefs, PrefsSchema } from "@pond/schema";
+import { type Prefs, PrefsSchema, WindowPrefsSchema } from "@pond/schema";
 import { z } from "zod";
 
 const DEVICE_SECTIONS = new Set([
@@ -15,6 +15,7 @@ const DEVICE_SECTIONS = new Set([
   "shortcuts",
 ]);
 const Patch = z.record(z.string(), z.record(z.string(), z.json()));
+const DeviceWindow = WindowPrefsSchema.pick({ interfaceZoom: true }).partial();
 
 /** Device presentation overrides never replace host provider, storage, or processing settings. */
 export function createBrowserPreferences(input: {
@@ -25,18 +26,21 @@ export function createBrowserPreferences(input: {
 }) {
   let host = input.initial;
   const listeners = new Set<(prefs: Prefs) => void>();
-  const read = () =>
-    PrefsSchema.parse({
+  const read = () => {
+    const stored = z
+      .record(z.string(), z.json())
+      .parse(JSON.parse(input.readDevice() ?? "{}"));
+    return PrefsSchema.parse({
       ...host,
       ...Object.fromEntries(
-        Object.entries(
-          z
-            .record(z.string(), z.json())
-            .parse(JSON.parse(input.readDevice() ?? "{}")),
-        ).filter(([section]) => DEVICE_SECTIONS.has(section)),
+        Object.entries(stored).filter(([section]) =>
+          DEVICE_SECTIONS.has(section),
+        ),
       ),
+      window: { ...host.window, ...DeviceWindow.parse(stored.window ?? {}) },
       setup: { version: 1 },
     });
+  };
   const publish = () => {
     const resolved = read();
     for (const listener of listeners) listener(resolved);
@@ -61,10 +65,21 @@ export function createBrowserPreferences(input: {
           DEVICE_SECTIONS.has(section),
         ),
       );
+      if (patch.window && Object.hasOwn(patch.window, "interfaceZoom"))
+        devicePatch.window = DeviceWindow.parse(patch.window);
       const hostPatch = Object.fromEntries(
-        Object.entries(patch).filter(
-          ([section]) => !DEVICE_SECTIONS.has(section),
-        ),
+        Object.entries(patch).flatMap(([section, value]) => {
+          if (DEVICE_SECTIONS.has(section)) return [];
+          const resolved =
+            section === "window"
+              ? Object.fromEntries(
+                  Object.entries(value).filter(
+                    ([key]) => key !== "interfaceZoom",
+                  ),
+                )
+              : value;
+          return Object.keys(resolved).length ? [[section, resolved]] : [];
+        }),
       );
       if (Object.keys(hostPatch).length) host = await input.saveHost(hostPatch);
       const next = PrefsSchema.parse(
@@ -77,11 +92,12 @@ export function createBrowserPreferences(input: {
       );
       input.writeDevice(
         JSON.stringify(
-          Object.fromEntries(
-            Object.entries(next).filter(([section]) =>
+          Object.fromEntries([
+            ...Object.entries(next).filter(([section]) =>
               DEVICE_SECTIONS.has(section),
             ),
-          ),
+            ["window", { interfaceZoom: next.window.interfaceZoom }],
+          ]),
         ),
       );
       return publish();

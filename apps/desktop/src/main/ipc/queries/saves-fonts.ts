@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, extname } from "node:path";
 import { saves } from "@pond/schema/db";
 import type { Transaction } from "@pond/schema/tx";
@@ -14,6 +15,7 @@ import {
   activateFont,
   clearFontActivation,
   deactivateFont,
+  fontActivationHome,
   pondFontsDir,
   readFontActivation,
   writeFontActivation,
@@ -29,6 +31,18 @@ import {
   StringListParam,
   StringParam,
 } from "./params";
+
+async function installationDirectory(installedPath?: string) {
+  const { app } = await import("electron");
+  return pondFontsDir(
+    fontActivationHome({
+      appHome: app.getPath("home"),
+      hostHome: homedir(),
+      circeHost: (process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1",
+      installedPath,
+    }),
+  );
+}
 
 export const savesFontQueries = {
   "saves.batchRename": query(
@@ -105,11 +119,10 @@ export const savesFontQueries = {
       const row = db.select().from(saves).where(eq(saves.id, id)).get();
       const file = row?.files[0];
       if (!row || !file?.path) return { ok: false, error: "missing_file" };
-      const { app } = await import("electron");
       const result = await activateFont({
         sourcePath: saveFile(id, file.path),
         saveId: id,
-        fontsDir: pondFontsDir(app.getPath("home")),
+        fontsDir: await installationDirectory(),
       });
       if (result.ok) {
         writeFontActivation(id, result.path);
@@ -128,10 +141,9 @@ export const savesFontQueries = {
     async ({ id }): Promise<QueryResult<"saves.deactivateFont">> => {
       const installed = readFontActivation(id);
       if (!installed) return { ok: true };
-      const { app } = await import("electron");
       const result = await deactivateFont({
         installedPath: installed,
-        fontsDir: pondFontsDir(app.getPath("home")),
+        fontsDir: await installationDirectory(installed),
       });
       if (result.ok) {
         clearFontActivation(id);

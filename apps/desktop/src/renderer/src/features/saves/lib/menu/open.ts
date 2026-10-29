@@ -61,6 +61,15 @@ function fileLocationItems(
   ];
 }
 
+export function openMenuLabels() {
+  return {
+    defaultApp: isBrowserRuntime()
+      ? "Download to This Device"
+      : "Open with Default App",
+    reveal: isBrowserRuntime() ? "Show Save" : REVEAL_LABEL,
+  };
+}
+
 export function buildOpenItems({
   save,
   ids,
@@ -94,9 +103,7 @@ export function buildOpenItems({
       },
     },
     {
-      label: isBrowserRuntime()
-        ? "Download to This Device"
-        : "Open with Default App",
+      label: openMenuLabels().defaultApp,
       icon: glyph(IconArrowUpRight),
       hidden: !hasFiles,
       shortcut: shortcutGlyphs("save.open"),
@@ -114,7 +121,7 @@ export function buildOpenItems({
     },
     { type: "separator" },
     {
-      label: isBrowserRuntime() ? "Show Save" : REVEAL_LABEL,
+      label: openMenuLabels().reveal,
       icon: glyph(IconFolderOpen),
       keywords: "finder explorer",
       hidden: !hasFiles,

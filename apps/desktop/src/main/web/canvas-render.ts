@@ -43,8 +43,8 @@ function register() {
     const job = jobFor(event.sender.id);
     const result = z
       .union([
-        z.object({ image: CanvasRenderImageSchema }).strict(),
-        z.object({ error: z.string().max(1000) }).strict(),
+        z.strictObject({ image: CanvasRenderImageSchema }),
+        z.strictObject({ error: z.string().max(1000) }),
       ])
       .parse(raw);
     if ("image" in result) job.complete(result.image);
@@ -73,13 +73,12 @@ function register() {
     }
     if (name === "canvases.capture") {
       const rect = z
-        .object({
+        .strictObject({
           x: z.number().min(0),
           y: z.number().min(0),
           width: z.number().positive().max(1280),
           height: z.number().positive().max(900),
         })
-        .strict()
         .parse(params);
       if (rect.x + rect.width > 1280 || rect.y + rect.height > 900)
         throw new Error("The capture rectangle is outside the render window.");

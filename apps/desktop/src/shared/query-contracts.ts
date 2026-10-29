@@ -24,6 +24,10 @@ import type {
   ConversionQueryResults,
 } from "./conversion-contracts";
 import type { DownloadActivity } from "./download-activity";
+import type {
+  EnrichmentQueryInputs,
+  EnrichmentQueryResults,
+} from "./enrichment-contracts";
 import type { FeedbackEvent } from "./feedback";
 import type { FishQueryInputs, FishQueryResults } from "./fish-contracts";
 import type {
@@ -130,7 +134,8 @@ interface SavedViewInput {
 export type { OkResult } from "./query-contracts-shared";
 
 export interface QueryInputs
-  extends AccountQueryInputs,
+  extends EnrichmentQueryInputs,
+    AccountQueryInputs,
     SafariExtensionQueryInputs,
     TransferQueryInputs,
     BulkQueryInputs,
@@ -322,6 +327,7 @@ export interface QueryInputs
   "storage.applyGuardPrefs": EmptyInput;
   "storage.guardState": EmptyInput;
   "api.restart": EmptyInput;
+  "api.status": EmptyInput;
   "updates.applyPrefs": EmptyInput;
   "updates.currentNotice": EmptyInput;
   "updates.checkNow": EmptyInput;
@@ -344,7 +350,8 @@ export interface QueryInputs
 }
 
 export interface QueryResults
-  extends AccountQueryResults,
+  extends EnrichmentQueryResults,
+    AccountQueryResults,
     SafariExtensionQueryResults,
     TransferQueryResults,
     BulkQueryResults,

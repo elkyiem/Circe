@@ -146,7 +146,35 @@
   flex-shrink: 0;
 }
 
+@media (pointer: coarse) {
+  .bar button,
+  .tools button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @container (max-width: 620px) {
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bar > :empty {
+    display: none;
+  }
+
+  .bar > .center {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .bar > .end {
+    margin-inline-start: auto;
+  }
+
   .bar[data-collapse-center] {
     grid-template-columns: auto 1fr;
     gap: 8px;

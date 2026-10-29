@@ -1,12 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { join } from "node:path";
 import log from "electron-log/main.js";
 import { z } from "zod";
 import { libraryRoot } from "../paths";
-import { createAutoImportWorker } from "./auto-import-worker";
+import { createAutoImportConfiguration } from "./auto-import-configuration";
+import { createAutoImportOwner } from "./auto-import-owner";
 import { emitFeedback } from "./feedback";
 import { createManualSave } from "./manual-import";
-import { getPrefs } from "./prefs";
+import { getPrefs, setPrefs } from "./prefs";
 
 const AutoImportLogSchema = z.object({
   entries: z.array(
@@ -21,9 +22,27 @@ const AutoImportLogSchema = z.object({
 });
 type AutoImportLog = z.infer<typeof AutoImportLogSchema>;
 
-let worker: Awaited<ReturnType<typeof createAutoImportWorker>> | null = null;
-let timer: ReturnType<typeof setInterval> | null = null;
-let generation = 0;
+const owner = createAutoImportOwner({
+  create: createWorker,
+  warn: (error) => log.warn("[pond auto-import] scan failed", error),
+});
+let quitting = false;
+
+const configuration = createAutoImportConfiguration({
+  read: async () => (await getPrefs()).autoImport,
+  normalize: async (next) => {
+    if (next.enabled) {
+      const { autoImportLocation } = await import("./auto-import-location");
+      next.path = (await autoImportLocation(next.path, libraryRoot())).path;
+    }
+    return next;
+  },
+  write: async (config) => {
+    await setPrefs({ autoImport: config });
+  },
+  start: () => owner.start(),
+});
+export const configureAutoImport = configuration.configure;
 
 function logPath(root = libraryRoot()): string {
   return join(root, "auto-import-log.json");
@@ -45,37 +64,37 @@ export function readAutoImportLog(): Promise<AutoImportLog> {
   return readLogFile(libraryRoot());
 }
 
-export async function stopAutoImport(): Promise<void> {
-  generation += 1;
-  if (timer) clearInterval(timer);
-  timer = null;
-  const previous = worker;
-  worker = null;
-  await previous?.stop();
+export const stopAutoImport = owner.stop;
+export function startAutoImport(): Promise<void> {
+  return quitting ? Promise.resolve() : owner.start();
+}
+export async function shutdownAutoImport(): Promise<void> {
+  quitting = true;
+  const configured = configuration.close();
+  try {
+    await owner.stop();
+  } finally {
+    await configured;
+  }
 }
 
-export async function startAutoImport(): Promise<void> {
-  await stopAutoImport();
-  const current = generation;
-  const root = resolve(libraryRoot());
+async function createWorker() {
+  const root = libraryRoot();
   const prefs = await getPrefs();
   const cfg = prefs.autoImport;
-  if (current !== generation || !cfg.enabled || !cfg.path) return;
-  const directory = resolve(cfg.path);
-  if (
-    directory === root ||
-    directory.startsWith(`${root}${sep}`) ||
-    root.startsWith(`${directory}${sep}`)
-  ) {
-    log.warn("[pond auto-import] watched folder overlaps the library");
-    return;
-  }
+  if (!cfg.enabled || !cfg.path) return null;
+  const [{ autoImportLocation }, { createAutoImportWorker }] =
+    await Promise.all([
+      import("./auto-import-location"),
+      import("./auto-import-worker"),
+    ]);
+  const selected = await autoImportLocation(cfg.path, root);
   const next = await createAutoImportWorker({
-    directory,
+    directory: selected.path,
     checkpointPath: join(root, "auto-import-checkpoints.json"),
     mode: cfg.mode,
     async ingest(input) {
-      if (resolve(libraryRoot()) !== root)
+      if (libraryRoot() !== root)
         throw new Error("The import library changed.");
       return createManualSave({
         filePaths: [input.path],
@@ -101,24 +120,15 @@ export async function startAutoImport(): Promise<void> {
       }
     },
   });
-  if (current !== generation) {
-    await next.stop();
-    return;
-  }
-  worker = next;
-  let scanning = false;
-  const tick = async () => {
-    if (scanning || current !== generation) return;
-
-    scanning = true;
-    try {
+  return {
+    stop: next.stop,
+    async scan() {
+      const location = await autoImportLocation(selected.path, root);
+      if (location.dev !== selected.dev || location.ino !== selected.ino)
+        throw new Error(
+          "The watched folder was replaced. Choose it again before importing.",
+        );
       await next.scan();
-    } catch (error) {
-      log.warn("[pond auto-import] scan failed", error);
-    } finally {
-      scanning = false;
-    }
+    },
   };
-  await tick();
-  if (current === generation) timer = setInterval(() => void tick(), 1000);
 }

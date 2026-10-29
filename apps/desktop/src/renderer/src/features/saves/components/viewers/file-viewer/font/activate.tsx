@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import { setFontActivation } from "@/features/saves/lib/font-activation";
 import type { Save } from "@/features/saves/types";
+import { hostDeviceName, isBrowserRuntime } from "@/shared/lib/platform";
 
 export function FontActivate({ save }: { save: Save }) {
   const [activated, setActivated] = useState(false);
@@ -21,7 +22,7 @@ export function FontActivate({ save }: { save: Save }) {
 
   return (
     <ViewerHud.Tool
-      label={activated ? "Deactivate Font" : "Activate Font"}
+      label={`${activated ? "Deactivate Font" : "Activate Font"}${isBrowserRuntime() ? ` on ${hostDeviceName()}` : ""}`}
       pressed={activated}
       onClick={() => {
         void setFontActivation(save.id, !activated).then((ok) => {

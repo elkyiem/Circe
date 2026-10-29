@@ -1,6 +1,10 @@
 import { PrefsSchema } from "@pond/schema";
 import type { Query } from "@pond/schema/filters/types";
 import { agentStreamRequest } from "@shared/assistant";
+import {
+  type EnrichmentStatus,
+  HostInferenceSchema,
+} from "@shared/enrichment-contracts";
 import type { QueryClient, QueryResult } from "@shared/query-contracts";
 import type { EagleImportProgress } from "@shared/saves-import-contracts";
 import type { UpdateNotice } from "@shared/update-notice";
@@ -19,13 +23,56 @@ import defaultAppIcon from "@/generated/app-icon-previews/aqua.png";
 import { version } from "../../../../package.json";
 import type { PondApi, StorageGuardStatusWire } from "../../../preload";
 import { createBrowserCanvases } from "./canvases";
-import { BROWSER_BRIDGE_ACCESS } from "./capabilities";
 import { openBrowserCombine } from "./combine-images";
+import { onBrowserEditRequest } from "./edit-requests";
+import { browserFeedback } from "./feedback";
 import { createBrowserFiles } from "./files";
+import { createBrowserInference } from "./inference";
+import { followBrowserInterfaceZoom } from "./interface-zoom";
+import { createBrowserLibrary, LibraryClientParamsSchema } from "./library";
 import { createBrowserPreferences } from "./preferences";
+import { createBrowserPreviews } from "./previews";
+import { installBrowserReplay } from "./replay";
+import { createBrowserWatchedFolder } from "./watched-folder";
 
 let boundLibraryId = "";
 let historyRevision = 0;
+let historySnapshot: ReturnType<typeof WebHistorySchema.parse> | null = null;
+let historyCommands: Promise<void> = Promise.resolve();
+
+function receiveHistory(state: ReturnType<typeof WebHistorySchema.parse>) {
+  if (state.revision < historyRevision) return;
+  historyRevision = state.revision;
+  historySnapshot = state;
+}
+
+function runHistory(kind: "undo" | "redo") {
+  const library = boundLibraryId;
+  const operation = historyCommands.then(async () => {
+    if (library !== boundLibraryId)
+      throw new Error(
+        "The active Library changed. Reload before Undo or Redo.",
+      );
+    if (
+      historySnapshot?.revision === historyRevision &&
+      !(kind === "undo" ? historySnapshot.canUndo : historySnapshot.canRedo)
+    )
+      return { ok: false, ...historySnapshot };
+    const state = WebHistorySchema.parse(
+      await webRequest(
+        "history",
+        JSON.stringify({ kind, revision: historyRevision }),
+      ),
+    );
+    receiveHistory(state);
+    return { ok: true, ...state };
+  });
+  historyCommands = operation.then(
+    () => {},
+    () => {},
+  );
+  return operation;
+}
 
 export async function webRequest(path: string, body?: string, method = "POST") {
   const response = await fetch(
@@ -39,9 +86,14 @@ export async function webRequest(path: string, body?: string, method = "POST") {
         },
   );
   const revision = response.headers.get("x-iris-history");
-  if (revision !== null) historyRevision = Number(revision);
-  const result = parseWebValue(await response.text());
+  if (
+    revision !== null &&
+    Number.isSafeInteger(Number(revision)) &&
+    Number(revision) >= 0
+  )
+    historyRevision = Math.max(historyRevision, Number(revision));
   if (!response.ok) {
+    const result = parseWebValue(await response.text());
     const failure = z.object({ error: z.string() }).safeParse(result);
     const message =
       response.status === 401 && path !== "session"
@@ -52,12 +104,12 @@ export async function webRequest(path: string, body?: string, method = "POST") {
     window.dispatchEvent(new CustomEvent("iris-error", { detail: message }));
     throw new Error(message);
   }
-  return result;
+  return parseWebValue(await response.text());
 }
 
 function unsupported(): never {
   const message =
-    "This action requires the Electron host. Open Pond on the host to use it.";
+    "This action needs the Circé desktop host. Open it on the host computer to continue.";
   window.dispatchEvent(new CustomEvent("iris-error", { detail: message }));
   throw new Error(message);
 }
@@ -65,24 +117,20 @@ function unsupported(): never {
 /** Native menu and window events have no producers on the visiting device. */
 const noNativeEvents = () => () => {};
 
-function unavailable(name: keyof PondApi) {
-  return () => {
-    const message =
-      BROWSER_BRIDGE_ACCESS[name] === "host-only"
-        ? "This action needs a host helper. Open Pond on the host to use it."
-        : "This browser cannot perform that action.";
-    window.dispatchEvent(new CustomEvent("iris-error", { detail: message }));
-    throw new Error(message);
-  };
-}
-
 export async function installBrowserAdapter(libraryId: string) {
   boundLibraryId = libraryId;
+  installBrowserReplay({ request: webRequest, headers: webHeaders });
+  const capabilities = z
+    .object({ host: z.object({ platform: z.string() }) })
+    .parse(await webRequest("capabilities"));
+  document.documentElement.dataset.hostPlatform = capabilities.host.platform;
   const hostPrefs = PrefsSchema.parse(
     await webRequest("query", JSON.stringify({ name: "settings.getPrefs" })),
   );
   const initialHistory = WebHistorySchema.parse(await webRequest("history"));
   historyRevision = initialHistory.revision;
+  historySnapshot = initialHistory;
+  historyCommands = Promise.resolve();
   const key = `iris:device-prefs:${libraryId}`;
   const preferences = createBrowserPreferences({
     initial: hostPrefs,
@@ -99,22 +147,44 @@ export async function installBrowserAdapter(libraryId: string) {
         ).prefs,
   });
   const syncListeners = new Set<(event: WireSyncAction) => void>();
+  const stopZoom = followBrowserInterfaceZoom(preferences);
+  window.addEventListener("pagehide", stopZoom, { once: true });
+  const eagleListeners = new Set<(event: EagleImportProgress) => void>();
   const files = createBrowserFiles({
     request: webRequest,
     headers: webHeaders,
+    eagleProgress: (value) => {
+      for (const listener of eagleListeners) listener(value);
+    },
   });
   const canvases = createBrowserCanvases(webRequest);
+  const libraries = createBrowserLibrary(webRequest);
+  const watchedFolder = createBrowserWatchedFolder(webRequest);
+  const infer = createBrowserInference({
+    request: webRequest,
+    headers: webHeaders,
+  });
   const query: QueryClient = async (name, ...args) => {
     let result:
       | WebValue
       | QueryResult<"settings.getPrefs">
       | QueryResult<"settings.setPrefs"> = null;
-    if (files.handles(name))
+    if (name === "enrichment.infer")
+      result = await infer(HostInferenceSchema.parse(args[0]));
+    else if (watchedFolder.handles(name))
+      result = await watchedFolder.query(
+        name,
+        z.record(z.string(), z.json()).parse(args[0] ?? {}),
+      );
+    else if (libraries.handles(name))
+      result = await libraries.query(
+        name,
+        LibraryClientParamsSchema.parse(args[0] ?? {}),
+      );
+    else if (files.handles(name))
       result = await files.query(
         name,
-        z
-          .record(z.string(), z.json())
-          .parse(JSON.parse(JSON.stringify(args[0] ?? {}))),
+        z.record(z.string(), z.json()).parse(args[0] ?? {}),
       );
     else if (canvases.handles(name))
       result = await canvases.query(
@@ -122,26 +192,14 @@ export async function installBrowserAdapter(libraryId: string) {
         z.record(z.string(), z.json()).parse(args[0] ?? {}),
       );
     else if (name === "settings.getPrefs") result = preferences.read();
+    else if (name === "feedback.emit")
+      result = browserFeedback(
+        z.record(z.string(), z.json()).parse(args[0]),
+        preferences.read(),
+      );
     // A visiting browser cannot detect native MCP clients on its device.
     else if (name === "agent.mcpClients") result = { clients: [] };
-    else if (name === "library.recent") {
-      const info = z
-        .object({
-          path: z.string(),
-          name: z.string(),
-          icon: z.string().nullable(),
-          accent: z.string().nullable(),
-        })
-        .parse(
-          await webRequest(
-            "query",
-            JSON.stringify({ name: "library.info", params: {} }),
-          ),
-        );
-      result = [
-        { ...info, active: true, available: true, lastOpened: Date.now() },
-      ];
-    } else if (name === "settings.setPrefs") {
+    else if (name === "settings.setPrefs") {
       const patch = z
         .record(z.string(), z.record(z.string(), z.json()))
         .parse(args[0]);
@@ -164,6 +222,15 @@ export async function installBrowserAdapter(libraryId: string) {
     /** SAFETY: the name is checked against the shared allowlist; host handlers validate inputs and retain QueryResults. Local prefs use PrefsSchema. */
     return result as QueryResult<typeof name>;
   };
+  const previews = createBrowserPreviews({
+    query,
+    exportFile: async (id, fileIndex) => {
+      await files.query("saves.exportFile", { id, fileIndex });
+    },
+    isCurrent: () => boundLibraryId === libraryId,
+    reduceMotion: () => preferences.read().preferences.reduceMotion,
+  });
+  window.addEventListener("pagehide", () => previews.dispose(), { once: true });
   const api: PondApi = {
     query,
     libraryId: () => libraryId,
@@ -174,6 +241,8 @@ export async function installBrowserAdapter(libraryId: string) {
     onPrefsChanged: (callback) => {
       return preferences.subscribe(callback);
     },
+    onLibraryIdentityChanged: (callback) =>
+      onEvent("library-identity", callback),
     rendererReady: () => {},
     sendMenuRecents: () => {},
     openExternal: async (url) => {
@@ -214,30 +283,12 @@ export async function installBrowserAdapter(libraryId: string) {
       if (transactions.length)
         await webRequest("transactions", JSON.stringify({ transactions }));
     },
-    undo: async () => {
-      const state = WebHistorySchema.parse(
-        await webRequest(
-          "history",
-          JSON.stringify({ kind: "undo", revision: historyRevision }),
-        ),
-      );
-      historyRevision = state.revision;
-      return { ok: true, ...state };
-    },
-    redo: async () => {
-      const state = WebHistorySchema.parse(
-        await webRequest(
-          "history",
-          JSON.stringify({ kind: "redo", revision: historyRevision }),
-        ),
-      );
-      historyRevision = state.revision;
-      return { ok: true, ...state };
-    },
-    openPreviewWindow: unavailable("openPreviewWindow"),
-    configurePreviewWindow: unavailable("configurePreviewWindow"),
-    navigatePreviewWindow: unavailable("navigatePreviewWindow"),
-    closePreviewWindow: unavailable("closePreviewWindow"),
+    undo: () => runHistory("undo"),
+    redo: () => runHistory("redo"),
+    openPreviewWindow: previews.open,
+    configurePreviewWindow: previews.configure,
+    navigatePreviewWindow: previews.navigate,
+    closePreviewWindow: previews.close,
     pathForFile: files.pathForFile,
     revealSave: async (id) => {
       location.assign(`/save/${encodeURIComponent(id)}`);
@@ -326,15 +377,22 @@ export async function installBrowserAdapter(libraryId: string) {
         ).catch(() => {});
       };
     },
-    onPreviewNeighborRequested: noNativeEvents,
+    onPreviewNeighborRequested: previews.subscribe,
     onNavigate: noNativeEvents,
     onOpenFiles: noNativeEvents,
-    onEditUndoRequested: noNativeEvents,
-    onEditRedoRequested: noNativeEvents,
+    onEditUndoRequested: (callback) => onBrowserEditRequest("undo", callback),
+    onEditRedoRequested: (callback) => onBrowserEditRequest("redo", callback),
     onMenuAction: noNativeEvents,
     onShortcutAction: noNativeEvents,
     onMenuOpenSave: noNativeEvents,
-    onEagleImportProgress: (callback) => onEvent("import-progress", callback),
+    onEagleImportProgress: (callback) => {
+      eagleListeners.add(callback);
+      const off = onEvent("import-progress", callback);
+      return () => {
+        eagleListeners.delete(callback);
+        off();
+      };
+    },
     onSessionImported: (callback) => onEvent("session-imported", callback),
     onSessionImportFailed: (callback) => onEvent("session-failed", callback),
     onSyncStatus: (callback) => onEvent("source-sync", callback),
@@ -344,6 +402,7 @@ export async function installBrowserAdapter(libraryId: string) {
     machinePace: async () => ({ thermal: "unknown", onBattery: false }),
     onMachinePace: noNativeEvents,
     onArchiveNavigate: noNativeEvents,
+    onEnrichmentStatus: (callback) => onEvent("enrichment", callback),
     onFish: (callback) => onEvent("fish", callback),
     onFishOpen: (callback) => onEvent("fish-open", callback),
     onAgentChunk: noNativeEvents,
@@ -368,6 +427,9 @@ export async function installBrowserAdapter(libraryId: string) {
   events.addEventListener("prefs", (event) => {
     preferences.receiveHost(PrefsSchema.parse(parseWebValue(event.data)));
   });
+  events.addEventListener("history", (event) => {
+    receiveHistory(WebHistorySchema.parse(parseWebValue(event.data)));
+  });
   let connected = false;
   events.addEventListener("ready", () => {
     // Refresh the pool after a gap rather than silently losing host mutations.
@@ -375,7 +437,7 @@ export async function installBrowserAdapter(libraryId: string) {
     connected = true;
     window.dispatchEvent(
       new CustomEvent("iris-connection", {
-        detail: "Connected to Electron host",
+        detail: "Connected to Circé",
       }),
     );
   });
@@ -402,6 +464,10 @@ export async function installBrowserAdapter(libraryId: string) {
       .catch(() => {});
   };
   window.addEventListener("pagehide", () => events.close(), { once: true });
+  window.addEventListener("pageshow", (event) => {
+    // A restored page has a closed stream and can refer to a previous host or Library.
+    if (event.persisted) location.reload();
+  });
 }
 
 function webHeaders() {
@@ -443,6 +509,8 @@ async function command<Name extends CommandName>(
 }
 
 interface BrowserHostEvents {
+  enrichment: EnrichmentStatus;
+  "library-identity": string;
   fish: Parameters<Parameters<PondApi["onFish"]>[0]>[0];
   "fish-open": Parameters<Parameters<PondApi["onFishOpen"]>[0]>[0];
   "import-progress": EagleImportProgress;

@@ -43,6 +43,7 @@ export interface DataExportImportCounts extends SavesImportCounts {
 
 export interface EagleImportProgress {
   id: string;
+  stage?: "uploading";
   processed: number;
   total: number;
   imported: number;

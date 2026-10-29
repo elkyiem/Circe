@@ -12,6 +12,23 @@ import { servePondMedia } from "../protocol";
 import { WebRequestError } from "./errors";
 import { indexedMediaPath } from "./media";
 
+async function indexedSource(src: string) {
+  const url = new URL(src, "http://iris.invalid");
+  const parts = url.pathname.split("/");
+  if (parts[1] !== "web" || parts[2] !== "media" || parts.length < 5)
+    throw new WebRequestError("Choose an indexed file in this Library.", 422);
+  const saveId = decodeURIComponent(parts[3] ?? "");
+  const filename = decodeURIComponent(parts.slice(4).join("/"));
+  const source = await indexedMediaPath(saveId, filename);
+  if (!source) throw new WebRequestError("The file is unavailable.", 404);
+  return {
+    saveId,
+    filename,
+    source,
+    pondUrl: `pond://${saveId}/${filename.split("/").map(encodeURIComponent).join("/")}`,
+  };
+}
+
 /** Compatible previews remain bound to the indexed original, never a public cache directory. */
 export function createWebVideo() {
   const previews = new Map<
@@ -23,21 +40,35 @@ export function createWebVideo() {
       raw: ReturnType<typeof WebVideoRequestSchema.parse>,
       expected: string,
     ) {
-      const { name, params } = WebVideoRequestSchema.parse(raw);
-      const url = new URL(params.src, "http://iris.invalid");
-      const parts = url.pathname.split("/");
-      if (parts[1] !== "web" || parts[2] !== "media" || parts.length < 5)
-        throw new WebRequestError(
-          "Choose an indexed video in this Library.",
-          422,
+      const request = WebVideoRequestSchema.parse(raw);
+      if (request.name === "saves.setGifThumbnail") {
+        const { id, src, frameIndex } = request.params;
+        const media = await indexedSource(src);
+        if (media.saveId !== id)
+          throw new WebRequestError("This frame belongs to another Save.", 422);
+        const { savesImportPersistenceQueries } = await import(
+          "../ipc/queries/saves-import-persistence"
         );
-      const saveId = decodeURIComponent(parts[3] ?? "");
-      const filename = decodeURIComponent(parts.slice(4).join("/"));
-      const source = await indexedMediaPath(saveId, filename);
-      if (!source) throw new WebRequestError("The video is unavailable.", 404);
+        const result = await withMutationScope(async () => {
+          if (expected !== libraryId())
+            throw new WebRequestError(
+              "The active Library changed. Reload before continuing.",
+            );
+          return savesImportPersistenceQueries[request.name]({
+            id,
+            src: media.pondUrl,
+            frameIndex,
+          });
+        });
+        return new Response(stringifyWebValue(result));
+      }
+      const { name, params } = request;
+      const { saveId, filename, source, pondUrl } = await indexedSource(
+        params.src,
+      );
       const input = {
         ...params,
-        src: `pond://${saveId}/${filename.split("/").map(encodeURIComponent).join("/")}`,
+        src: pondUrl,
       };
       if (expected !== libraryId())
         throw new WebRequestError(

@@ -4,6 +4,7 @@ import { userError } from "../../../shared/user-error";
 import { startAutoImport, stopAutoImport } from "../../core/auto-import";
 import { closeCombineImagesWindow } from "../../core/combine-images-window";
 import { resumeMutations, suspendMutations } from "../../core/executor";
+import { libraryAccess } from "../../core/library-access";
 import {
   resumeLibraryTransfers,
   stopLibraryTransfers,
@@ -17,9 +18,13 @@ import {
 import { invalidatePrefs } from "../../core/prefs";
 import { closePreviewWindows } from "../../core/preview-windows";
 import { reconcileLibrary } from "../../core/scan";
+import {
+  startStorageWatcher,
+  stopStorageWatcher,
+} from "../../core/storage-watcher";
 import { flushTagsDump, hydrateTagsFromBundle } from "../../core/tags-bundle";
 import { clearUndoHistory } from "../../core/undo";
-import { closeDb } from "../../db";
+import { closeDb, drainDb } from "../../db";
 import { rotateBundleBackups } from "../../lib/library-config";
 import { invalidatePaths, resolvePaths } from "../../paths";
 
@@ -37,6 +42,8 @@ const libraryWork = createLibraryWorkCoordinator({
 
 export async function suspendLibraryWork(): Promise<void> {
   await libraryWork.suspend();
+  libraryAccess.sealDatabase();
+  await drainDb();
 }
 
 export async function resumeLibraryWork(): Promise<void> {
@@ -49,11 +56,52 @@ let locationChange: Promise<void> = Promise.resolve();
 export async function serializeLocationChange<T>(
   operation: () => Promise<T>,
 ): Promise<T> {
+  libraryAccess.releaseCurrent();
   const next = locationChange.then(() => {
     if (relaunchPending) {
       throw userError("The library is reopening. Try again when it opens.");
     }
-    return operation();
+    return libraryAccess
+      .transition({
+        prepare: async () => {
+          const [
+            { stopEnrichmentOwner },
+            { stopAllMessages },
+            { conversionJobs },
+            { cancelAllLibraryRepairs },
+          ] = await Promise.all([
+            import("../../core/enrichment-owner"),
+            import("../../core/agent/chat"),
+            import("../../core/conversion-jobs"),
+            import("../../core/library-repair-jobs"),
+          ]);
+          stopEnrichmentOwner();
+          await Promise.all([
+            stopAutoImport(),
+            stopStorageWatcher(),
+            stopAllMessages(),
+            conversionJobs.cancelAll(),
+            cancelAllLibraryRepairs(),
+          ]);
+        },
+        operation,
+        keepClosed: () => relaunchPending,
+      })
+      .finally(() => {
+        if (!relaunchPending) {
+          void startStorageWatcher().catch((error) =>
+            log.warn("[pond] storage watcher resume failed", error),
+          );
+          void startAutoImport().catch((error) =>
+            log.warn("[pond] watched folder resume failed", error),
+          );
+          void import("../../core/enrichment-owner")
+            .then(({ startEnrichmentOwner }) => startEnrichmentOwner())
+            .catch((error) =>
+              log.error("[pond] enrichment resume failed", error),
+            );
+        }
+      });
   });
   locationChange = next.then(
     () => {},
@@ -66,6 +114,12 @@ export function waitForLibraryLocationChanges(): Promise<void> {
   return locationChange;
 }
 
+export function isWebHostRelaunchPending(): boolean {
+  return (
+    relaunchPending && (process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1"
+  );
+}
+
 export async function relaunchSoon(): Promise<void> {
   if (process.env.ELECTRON_RENDERER_URL) {
     await softRepointInDev();
@@ -74,6 +128,11 @@ export async function relaunchSoon(): Promise<void> {
   relaunchPending = true;
   setTimeout(() => {
     log.info("[pond library-ops] relaunching into new library");
+    if ((process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1") {
+      // The launcher retains the address/proxy while replacing the complete host.
+      app.quit();
+      return;
+    }
     app.relaunch();
     app.exit(0);
   }, 150);

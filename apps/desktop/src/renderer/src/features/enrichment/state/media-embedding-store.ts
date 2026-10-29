@@ -1,4 +1,5 @@
 import { Store } from "@tanstack/store";
+import { z } from "zod";
 
 interface MediaEmbeddingEntry {
   vec: Float32Array;
@@ -20,10 +21,11 @@ export async function setMediaEmbedding(
   vec: Float32Array,
   model: string,
 ): Promise<void> {
-  await window.pond.query("saves.patchDerived", {
+  const saved = await window.pond.query("saves.patchDerived", {
     id,
     patch: { clipEmbedding: Array.from(vec), clipModel: model },
   });
+  z.object({ ok: z.literal(true) }).parse(saved);
   store.setState((state) => {
     const byId = new Map(state.byId);
     byId.set(id, { vec, model });

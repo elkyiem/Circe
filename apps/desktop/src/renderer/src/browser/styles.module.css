@@ -20,6 +20,13 @@
 .connect input {
   font-size: 16px;
 }
+
+@media (pointer: coarse) {
+  .connect input,
+  .connect button {
+    min-block-size: calc(44px / var(--browser-interface-zoom, 1));
+  }
+}
 .bar {
   display: flex;
   flex-wrap: wrap;
@@ -49,6 +56,27 @@
 :global(body) {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-block-start: calc(
+    env(safe-area-inset-top, 0px) /
+    var(--browser-interface-zoom, 1)
+  );
+  padding-block-end: calc(
+    env(safe-area-inset-bottom, 0px) /
+    var(--browser-interface-zoom, 1)
+  );
+  padding-inline-start: calc(
+    env(safe-area-inset-left, 0px) /
+    var(--browser-interface-zoom, 1)
+  );
+  padding-inline-end: calc(
+    env(safe-area-inset-right, 0px) /
+    var(--browser-interface-zoom, 1)
+  );
+  zoom: var(--browser-interface-zoom, 1);
+}
+:global(html) {
   height: 100dvh;
 }
 :global(#root) {
@@ -80,23 +108,57 @@
     top: 44px;
     bottom: 0;
     z-index: 5;
-    width: min(340px, calc(100vw - 24px));
+    width: min(340px, calc(100dvw / var(--browser-interface-zoom, 1) - 24px));
     background: var(--ds-gray-2);
   }
   :global(html[data-runtime="browser"]) :global([data-slot="left"][data-open]) {
-    left: 0;
+    inset-inline-start: 0;
   }
   :global(html[data-runtime="browser"])
     :global([data-slot="right"][data-open]) {
-    right: 0;
+    inset-inline-end: 0;
   }
 }
 @media (max-width: 700px) {
   :global(html[data-runtime="browser"])
     :global([data-slot="left"][data-open])
+    > div,
+  :global(html[data-runtime="browser"])
+    :global([data-slot="right"][data-open])
     > div {
     width: 100%;
     min-width: 0;
     transform: none;
   }
+}
+
+:global(.browser-preview-dialog) {
+  position: fixed;
+  inset: 0;
+  width: calc(100dvw / var(--browser-interface-zoom, 1));
+  max-width: none;
+  height: calc(100dvh / var(--browser-interface-zoom, 1));
+  max-height: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+:global(.browser-preview-dialog iframe) {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* The shared reset makes every div relative. Zero-height portals then misreport
+   their Y scale to Floating UI under CSS zoom; let the sized host own positioning. */
+:global(html[data-runtime="browser"])
+:global([data-base-ui-portal]:not([data-contained])) {
+  position: static;
+}
+
+/* Viewport units stay unscaled when CSS zoom enlarges a fixed dialog. */
+:global(html[data-runtime="browser"]) :global([role="dialog"]),
+:global(html[data-runtime="browser"]) :global([role="alertdialog"]) {
+  max-inline-size: calc((100dvw - 32px) / var(--browser-interface-zoom, 1));
+  max-block-size: calc((100dvh - 32px) / var(--browser-interface-zoom, 1));
 }

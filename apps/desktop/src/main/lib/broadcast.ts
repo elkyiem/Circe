@@ -1,4 +1,5 @@
 import { BrowserWindow } from "electron";
+import log from "electron-log/main.js";
 
 type BroadcastListener = <Value>(channel: string, payload: Value) => void;
 const listeners = new Set<BroadcastListener>();
@@ -12,9 +13,20 @@ export function subscribeBroadcast(listener: BroadcastListener): () => void {
 }
 
 export function broadcast<T>(channel: string, payload: T): void {
-  for (const listener of listeners) listener(channel, payload);
+  for (const listener of listeners) {
+    try {
+      listener(channel, payload);
+    } catch (error) {
+      log.error("[pond] broadcast subscriber failed", { channel, error });
+    }
+  }
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
+    if (
+      !win.isDestroyed() &&
+      !win.webContents.isDestroyed() &&
+      !win.webContents.isCrashed() &&
+      !win.webContents.mainFrame.detached
+    ) {
       win.webContents.send(channel, payload);
     }
   }

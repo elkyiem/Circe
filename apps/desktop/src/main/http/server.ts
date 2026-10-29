@@ -7,6 +7,7 @@ import log from "electron-log/main.js";
 import { Hono } from "hono";
 import { DEFAULT_INGEST_PORT } from "../../shared/constants";
 import { pondMcpSnippet } from "../core/agent/mcp-hosts";
+import { LibraryTransitionError, libraryAccess } from "../core/library-access";
 import { getPrefs } from "../core/prefs";
 import { getIngestToken } from "../keychain";
 import { apiTokens } from "./api-tokens";
@@ -51,6 +52,15 @@ const authLimiter = createAuthLimiter();
 
 function buildApp(): Hono {
   const api = new Hono();
+  api.use("*", async (c, next) => {
+    try {
+      await libraryAccess.run(next);
+    } catch (error) {
+      if (error instanceof LibraryTransitionError)
+        return apiError(c, "library_unavailable", error.message);
+      throw error;
+    }
+  });
 
   api.use("*", async (c, next) => {
     const origin = c.req.header("origin");

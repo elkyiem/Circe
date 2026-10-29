@@ -1,6 +1,7 @@
 import { useReactFlow, useStore, ViewportPortal } from "@xyflow/react";
 import { type PointerEvent, useRef } from "react";
 import { turnOf } from "../../lib/edit";
+import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import {
   type Box,
   CORNERS,
@@ -35,7 +36,8 @@ export function Affordance({
   onResize,
 }: AffordanceProps) {
   const flow = useReactFlow();
-  const zoom = useStore((state) => state.transform[2]);
+  const interfaceScale = useCanvasInterfaceScale();
+  const zoom = useStore((state) => state.transform[2]) / interfaceScale;
   const grab = useRef<Grab | null>(null);
   const started = useRef(false);
   const angle = rotation ?? 0;
