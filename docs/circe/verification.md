@@ -1,5 +1,30 @@
 # Circé verification record
 
+## Image viewer mouse navigation — 2026-10-29
+
+The Windows recording showed the opened Save's image inspector. The previous
+default treated wheel events as vertical pan, rejected middle-button dragging,
+and reserved left dragging at or below fit for native file export. The browser
+now allows left and middle panning at every scale, with pointer capture and a
+grab cursor. Native file dragging at fit is preserved. CSS interface zoom is
+accounted for once in pointer and wheel coordinates.
+
+Windows browser preferences upgrade the inherited Mac scroll default to zoom
+once, on the visiting device. Subsequent explicit Image Scrolling choices survive
+reload. Mac trackpad defaults and host preferences are unchanged.
+
+The focused regression run passed 42 tests across 14 files, including panning,
+cancellation, capture loss, crop behavior and preference ownership. The finite
+`smoke-web-browser.cjs --image-navigation` acceptance passed ten actual mouse
+checks: both buttons at fit/below/above, release, wheel zoom, 150% interface scale,
+explicit Pan preference persistence, and Mac two-axis scroll/pinch. It used a
+temporary owned PNG Save, removed its upload and Save, restored browser storage,
+verified the original Library and host viewer preferences, and revoked its
+session. The first two attempts targeted the image toolbar; the corrected probe
+requires the image's `role=application` frame. Windows/Mac input was emulated in
+macOS Chromium; physical Windows OS middle-button behavior remains unverified.
+An independent read-only review found no actionable production-code issues.
+
 ## Reconnect page component consistency — 2026-10-29
 
 The offline fallback now builds the shared Empty and Button components instead

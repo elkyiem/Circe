@@ -30,6 +30,7 @@ import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { useViewerEscapeLayer } from "@/features/saves/state/viewer-escape";
 import type { Save } from "@/features/saves/types";
 import { errorCopy } from "@/shared/lib/error-copy";
+import { isBrowserRuntime } from "@/shared/lib/platform";
 import { notify } from "@/shared/lib/toast";
 import { usePrefs } from "@/shared/state/prefs";
 import { ImageControls } from "./controls";
@@ -79,6 +80,8 @@ export function ImageInspector({
   const [gifFramesOpen, setGifFramesOpen] = useState(false);
   const [draft, setDraft] = useState<ImageCrop | null>(null);
   const [busy, setBusy] = useState(false);
+  const [panning, setPanning] = useState(false);
+  const browser = isBrowserRuntime();
   const drag = useRef<ImageDrag | null>(null);
   const lastNavigate = useRef(0);
   const gestureMoved = useRef(false);
@@ -257,6 +260,8 @@ export function ImageInspector({
     onNavigate: navigate,
     pointFromClient: viewport.pointFromClient,
     poseZoom: viewport.pose.zoom,
+    panAtFit: browser,
+    onPanChange: setPanning,
     ratio: viewport.ratio,
     setDraft,
     setPosition: viewport.setPosition,
@@ -271,7 +276,9 @@ export function ImageInspector({
       <span id={instructionsId} className={styles.instructions}>
         {mode === "crop"
           ? "Crop. Edges and centers snap to guides. Arrow keys move the selection, Control or Command and arrow keys resize, Shift increases the step. Enter applies the crop. Escape cancels."
-          : "Arrow keys pan. Plus and minus zoom."}
+          : browser
+            ? "Drag with the left or middle mouse button to pan. Arrow keys pan. Plus and minus zoom."
+            : "Drag with the middle mouse button to pan. Arrow keys pan. Plus and minus zoom."}
       </span>
       <div
         ref={viewport.frame}
@@ -314,6 +321,10 @@ export function ImageInspector({
         }}
         data-background={prefs.transparentBackground ?? "none"}
         data-mode={mode}
+        data-pan={
+          (mode === "view" && (browser || viewport.pose.zoom > 1)) || undefined
+        }
+        data-panning={panning || undefined}
         {...gestures}
       >
         <div
@@ -371,7 +382,7 @@ export function ImageInspector({
               decoding="async"
               fetchPriority={active ? "high" : "low"}
               style={{ ...imageStyle, display: gif.ready ? "none" : undefined }}
-              draggable={mode === "view" && viewport.pose.zoom <= 1}
+              draggable={!browser && mode === "view" && viewport.pose.zoom <= 1}
               onDragStart={(event) => {
                 beginSaveDrag(save.id, event);
               }}

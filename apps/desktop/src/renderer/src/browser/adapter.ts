@@ -133,6 +133,7 @@ export async function installBrowserAdapter(libraryId: string) {
   historyCommands = Promise.resolve();
   const key = `iris:device-prefs:${libraryId}`;
   const preferences = createBrowserPreferences({
+    platform: navigator.platform,
     initial: hostPrefs,
     readDevice: () => localStorage.getItem(key),
     writeDevice: (value) => localStorage.setItem(key, value),

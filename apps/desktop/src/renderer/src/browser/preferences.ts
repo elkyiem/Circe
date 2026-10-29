@@ -19,6 +19,7 @@ const DeviceWindow = WindowPrefsSchema.pick({ interfaceZoom: true }).partial();
 
 /** Device presentation overrides never replace host provider, storage, or processing settings. */
 export function createBrowserPreferences(input: {
+  platform: string;
   initial: Prefs;
   readDevice(): string | null;
   writeDevice(value: string): void;
@@ -30,7 +31,7 @@ export function createBrowserPreferences(input: {
     const stored = z
       .record(z.string(), z.json())
       .parse(JSON.parse(input.readDevice() ?? "{}"));
-    return PrefsSchema.parse({
+    const resolved = PrefsSchema.parse({
       ...host,
       ...Object.fromEntries(
         Object.entries(stored).filter(([section]) =>
@@ -40,6 +41,15 @@ export function createBrowserPreferences(input: {
       window: { ...host.window, ...DeviceWindow.parse(stored.window ?? {}) },
       setup: { version: 1 },
     });
+    // Older device snapshots copied the Mac's scroll default into Windows too.
+    // Upgrade it once; subsequent explicit Image Scrolling choices remain local.
+    if (
+      input.platform.toLowerCase().includes("win") &&
+      stored.mouseControlsVersion !== 1 &&
+      resolved.viewer.wheelBehavior === "scroll"
+    )
+      resolved.viewer.wheelBehavior = "zoom";
+    return resolved;
   };
   const publish = () => {
     const resolved = read();
@@ -93,6 +103,7 @@ export function createBrowserPreferences(input: {
       input.writeDevice(
         JSON.stringify(
           Object.fromEntries([
+            ["mouseControlsVersion", 1],
             ...Object.entries(next).filter(([section]) =>
               DEVICE_SECTIONS.has(section),
             ),

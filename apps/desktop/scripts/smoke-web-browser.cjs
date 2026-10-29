@@ -307,6 +307,7 @@ app
       const previews = process.argv.includes("--previews");
       const replay = process.argv.includes("--replay");
       const interactions = process.argv.includes("--interactions");
+      const imageNavigation = process.argv.includes("--image-navigation");
       const eagle = process.argv.includes("--eagle");
       const fonts = process.argv.includes("--fonts");
       const importFormats = process.argv.includes("--import-formats");
@@ -330,6 +331,7 @@ app
         previews ||
         replay ||
         interactions ||
+        imageNavigation ||
         eagle ||
         fonts ||
         importFormats ||
@@ -557,6 +559,23 @@ app
           origin,
           evidence,
           sandbox,
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (imageNavigation) {
+        const {
+          verifyBrowserImageNavigation,
+        } = require("./web-image-navigation-cases.cjs");
+        await verifyBrowserImageNavigation({
+          win,
+          run,
+          click,
+          waitFor,
+          query,
+          origin,
+          evidence,
         });
         clearTimeout(timer);
         app.exit(0);

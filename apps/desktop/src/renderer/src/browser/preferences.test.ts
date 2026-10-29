@@ -6,6 +6,7 @@ it("publishes the saved host model without reverting it to the pre-write snapsho
   let stored: string | null = null;
   let host = PrefsSchema.parse(DEFAULT_PREFS);
   const preferences = createBrowserPreferences({
+    platform: "MacIntel",
     initial: host,
     readDevice: () => stored,
     writeDevice: (value) => {
@@ -45,6 +46,7 @@ it("keeps browser zoom local while applying the other window settings to the hos
   let host = PrefsSchema.parse(DEFAULT_PREFS);
   let writes = 0;
   const preferences = createBrowserPreferences({
+    platform: "MacIntel",
     initial: host,
     readDevice: () => stored,
     writeDevice: (value) => {
@@ -80,3 +82,45 @@ it("keeps browser zoom local while applying the other window settings to the hos
     closeToTray: false,
   });
 });
+
+it.each([null, JSON.stringify({ viewer: DEFAULT_PREFS.viewer })])(
+  "defaults Windows mouse scrolling to zoom without changing the host or overriding later choices (%s)",
+  async (legacy) => {
+    let stored = legacy;
+    let hostWrites = 0;
+    const host = PrefsSchema.parse(DEFAULT_PREFS);
+    const create = () =>
+      createBrowserPreferences({
+        platform: "Win32",
+        initial: host,
+        readDevice: () => stored,
+        writeDevice: (value) => {
+          stored = value;
+        },
+        saveHost: async () => {
+          hostWrites++;
+          return host;
+        },
+      });
+    const preferences = create();
+    expect(preferences.read().viewer.wheelBehavior).toBe("zoom");
+    expect(host.viewer.wheelBehavior).toBe("scroll");
+    await preferences.write({ viewer: { wheelBehavior: "scroll" } });
+    expect(create().read().viewer.wheelBehavior).toBe("scroll");
+    expect(hostWrites).toBe(0);
+  },
+);
+
+it.each(["MacIntel", "iPad", "Linux x86_64"])(
+  "retains trackpad scrolling defaults on %s",
+  (platform) => {
+    const preferences = createBrowserPreferences({
+      platform,
+      initial: PrefsSchema.parse(DEFAULT_PREFS),
+      readDevice: () => null,
+      writeDevice: () => {},
+      saveHost: async () => PrefsSchema.parse(DEFAULT_PREFS),
+    });
+    expect(preferences.read().viewer.wheelBehavior).toBe("scroll");
+  },
+);

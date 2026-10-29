@@ -217,6 +217,9 @@ export function useImageViewport({
       }
       if (intent !== "zoom" && state.isDragging()) return;
       const rect = element.getBoundingClientRect();
+      const scale =
+        element.clientWidth > 0 ? rect.width / element.clientWidth : 1;
+      const clientScale = scale > 0 ? scale : 1;
       if (intent === "zoom") {
         const factor = wheelZoomFactor(
           event.deltaY,
@@ -225,16 +228,16 @@ export function useImageViewport({
         );
         queuePoseRef.current((previous) =>
           zoomImageAt(previous, previous.zoom * factor, {
-            x: event.clientX - rect.left - rect.width / 2,
-            y: event.clientY - rect.top - rect.height / 2,
+            x: (event.clientX - rect.left - rect.width / 2) / clientScale,
+            y: (event.clientY - rect.top - rect.height / 2) / clientScale,
           }),
         );
         return;
       }
       queuePoseRef.current((previous) => ({
         ...previous,
-        x: previous.x - event.deltaX,
-        y: previous.y - event.deltaY,
+        x: previous.x - event.deltaX / clientScale,
+        y: previous.y - event.deltaY / clientScale,
       }));
     };
     element.addEventListener("wheel", onWheel, {

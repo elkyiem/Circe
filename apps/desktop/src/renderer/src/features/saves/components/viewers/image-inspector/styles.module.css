@@ -17,6 +17,14 @@
   overflow: hidden;
   touch-action: none;
 
+  &[data-pan] {
+    cursor: grab;
+  }
+
+  &[data-panning] {
+    cursor: grabbing;
+  }
+
   &[data-mode="crop"] {
     cursor: crosshair;
   }

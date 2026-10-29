@@ -25,6 +25,8 @@ import { cropHandleFromTarget } from "./crop-handles";
 import type { InspectorMode } from "./types";
 
 export interface ImageDrag {
+  pointerId: number;
+  scale: number;
   button: number;
   x: number;
   y: number;
@@ -48,6 +50,8 @@ interface ImageGestureOptions {
     clientY: number,
   ) => { x: number; y: number };
   poseZoom: number;
+  panAtFit: boolean;
+  onPanChange: (panning: boolean) => void;
   ratio: number | null;
   setDraft: Dispatch<SetStateAction<ImageCrop | null>>;
   setPosition: (
@@ -57,11 +61,13 @@ interface ImageGestureOptions {
 }
 
 interface ImageGestures {
+  onAuxClick: PointerEventHandler<HTMLDivElement>;
   onContextMenu: PointerEventHandler<HTMLDivElement>;
   onPointerCancel: PointerEventHandler<HTMLDivElement>;
   onPointerDown: PointerEventHandler<HTMLDivElement>;
   onPointerMove: PointerEventHandler<HTMLDivElement>;
   onPointerUp: PointerEventHandler<HTMLDivElement>;
+  onLostPointerCapture: PointerEventHandler<HTMLDivElement>;
 }
 
 export function createImageGestures({
@@ -73,16 +79,27 @@ export function createImageGestures({
   onNavigate,
   pointFromClient,
   poseZoom,
+  panAtFit,
+  onPanChange,
   ratio,
   setDraft,
   setPosition,
 }: ImageGestureOptions): ImageGestures {
+  const cancel: PointerEventHandler<HTMLDivElement> = (event) => {
+    if (drag.current?.pointerId !== event.pointerId) return;
+    drag.current = null;
+    onPanChange(false);
+  };
   return {
+    onAuxClick: (event) => {
+      if (event.button === 1) event.preventDefault();
+    },
     onContextMenu: (event) => {
       if (gestureMoved.current) event.preventDefault();
     },
     onPointerDown: (event) => {
       if (!active) return;
+      if (drag.current) return;
       const handle = cropHandleFromTarget(event.target);
       if (
         event.target instanceof Element &&
@@ -91,8 +108,9 @@ export function createImageGestures({
       )
         return;
       if (mode !== "view" && event.button !== 0) return;
-      if (event.button !== 0 && event.button !== 2) return;
-      if (event.button === 0 && mode === "view" && poseZoom <= 1) return;
+      if (![0, 1, 2].includes(event.button)) return;
+      if (event.button === 0 && mode === "view" && poseZoom <= 1 && !panAtFit)
+        return;
       const raw = pointFromClient(event.clientX, event.clientY);
       const point = snapImagePoint(clampImagePoint(raw));
       const moving =
@@ -105,8 +123,17 @@ export function createImageGestures({
       event.preventDefault();
       event.stopPropagation();
       gestureMoved.current = false;
+      event.currentTarget.focus({ preventScroll: true });
       event.currentTarget.setPointerCapture(event.pointerId);
+      onPanChange(mode === "view" && event.button !== 2);
+      const frame = event.currentTarget;
+      const scale =
+        frame.clientWidth > 0
+          ? frame.getBoundingClientRect().width / frame.clientWidth
+          : 1;
       drag.current = {
+        pointerId: event.pointerId,
+        scale: scale > 0 ? scale : 1,
         button: event.button,
         x: event.clientX,
         y: event.clientY,
@@ -120,10 +147,10 @@ export function createImageGestures({
     },
     onPointerMove: (event) => {
       const origin = drag.current;
-      if (!origin) return;
+      if (!origin || origin.pointerId !== event.pointerId) return;
       event.stopPropagation();
-      const dx = event.clientX - origin.x;
-      const dy = event.clientY - origin.y;
+      const dx = (event.clientX - origin.x) / origin.scale;
+      const dy = (event.clientY - origin.y) / origin.scale;
       if (origin.button === 2) {
         if (
           Math.abs(event.clientX - origin.startX) +
@@ -187,6 +214,7 @@ export function createImageGestures({
     },
     onPointerUp: (event) => {
       const origin = drag.current;
+      if (!origin || origin.pointerId !== event.pointerId) return;
       if (
         origin?.button === 2 &&
         Math.abs(event.clientX - origin.startX) > 80 &&
@@ -195,12 +223,12 @@ export function createImageGestures({
       )
         onNavigate(event.clientX > origin.startX ? -1 : 1);
       drag.current = null;
+      onPanChange(false);
       event.stopPropagation();
       if (event.currentTarget.hasPointerCapture(event.pointerId))
         event.currentTarget.releasePointerCapture(event.pointerId);
     },
-    onPointerCancel: () => {
-      drag.current = null;
-    },
+    onPointerCancel: cancel,
+    onLostPointerCapture: cancel,
   };
 }
