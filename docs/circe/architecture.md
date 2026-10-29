@@ -17,6 +17,15 @@ Capture card rendering, hidden source windows and per-Account sessions. This
 milestone requires Electron on the owner's machine; it is not an Electron-free
 Node service or an always-on Linux deployment.
 
+The optional local macOS Dock installer creates a separate `Circé.app` bundle
+with a small native launcher and a copied Electron runtime. Its launch manifest
+points to this checkout's built application and existing isolated profile. The
+launcher prepares the existing private address, then replaces itself with the
+Electron process, keeping the desktop and web listener in the same lifetime.
+Electron's existing profile-scoped single-instance owner handles repeated opens.
+This is a checkout launcher, not a replacement for the separately installed Pond
+release, and it does not package Library data or credentials.
+
 A separate loopback Hono listener serves the browser build and `/web` routes.
 The browser has an explicit query allowlist independent of Agent discovery.
 Existing validated query handlers own domain operations. The exhaustive query

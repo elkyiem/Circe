@@ -4,6 +4,36 @@ Checkout: `/Users/elkyiem/Documents/GitHub/Circé`, branch `web`.
 Origin: `https://github.com/elkyiem/Circe.git`.
 Upstream: `https://github.com/raphaelsalaja/pond.git`.
 To bring new Pond pushes into `web`, follow the [sync process](sync.md).
+
+## Circé in the macOS Dock
+
+After building the desktop and browser bundles, install the local Dock app:
+
+```sh
+pnpm --filter @pond/desktop install:circe:mac
+```
+
+The installer creates `~/Applications/Circé.app` with its own bundle identity and
+pins it in the Dock. Opening it starts the native app and web host together,
+prepares the existing Portless route, and checks/reconnects Tailscale. It uses the
+existing `.artifacts/iris-web-sandbox` profile and Library. No Terminal window is
+needed. Closing the app window keeps the Mac host resident; Quit Circé stops it.
+
+The first launch may ask for Documents access because the checkout and Library
+are there. Replacing the locally signed launcher can ask again; ordinary quit
+and reopen retains the permission. If the local HTTPS proxy is stopped, macOS asks for administrator
+authentication to bind port 443. Existing certificate trust is reused. The
+existing DNS/HTTPS relay services and Tailnet routes must already be configured.
+No new Serve ports, public access, or login-time automation are installed.
+
+Quit Circé before reinstalling its launcher. Reinstall after moving the checkout
+or changing Node/Electron versions. Ordinary source updates require rebuilding
+the two bundles and reopening Circé. Reinstallation refreshes the Dock bookmark
+and archives the previous owned bundle. The installed original Pond app and its
+profile are separate. Launcher errors are in `~/Library/Logs/Circé/launcher.log`.
+
+## Terminal launch
+
 Use Node 24 (`.nvmrc`) and pnpm 11.27.0 (`packageManager`). For this machine:
 
 ```sh

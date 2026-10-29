@@ -147,7 +147,13 @@ async function buildLibraryWindow(): Promise<BrowserWindow> {
   };
   if (!isMac && appIcon) options.icon = appIcon;
 
-  const win = new BrowserWindow(options);
+  const win = new BrowserWindow({ ...options, title: app.name });
+  win.on("page-title-updated", (event, title) => {
+    // The shared renderer's fallback title must not rename the Circé host window.
+    if (title !== "Pond" || app.name === "Pond") return;
+    event.preventDefault();
+    win.setTitle(app.name);
+  });
   markStartup("window-created");
   mainWindowState.current = win;
   win.once("closed", () => {

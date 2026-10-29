@@ -1,5 +1,45 @@
 # Circé verification record
 
+## Native Circé Dock launcher — 2026-10-29
+
+The local installer produced a separately named and signed `~/Applications/Circé.app`
+with bundle identifier `dev.elkyiem.circe`, and pinned exactly one Dock entry to
+that installed destination. The app menu, About panel, and main window show
+Circé. Launching this bundle loads the existing checkout and isolated Library,
+prepares the private Portless address and Tailscale, and starts the desktop and
+web host in one process. It creates no additional Tailscale Serve ports.
+
+Native UI checks exercised the loaded Library, window close/reactivation while
+the same web listener remained alive, Quit Circé, and normal installed-app
+relaunch. The final process changed from 49000 to 50899 without reinstalling or
+another permission prompt. Repeated native activation retained the same host.
+The Dock's exact application URL was verified from its preferences; direct Dock
+UI automation timed out, so the cold launch used the same installed app through
+LaunchServices. The original Pond bundle checksum, Library pointer files, and
+all unrelated pinned Dock entries remained unchanged.
+
+The existing local browser session restored after the normal restart. Its
+subsequent reuse on another origin was correctly rejected with 401. A separate
+origin-scoped login and Library query passed on the preserved `:9443` address.
+The reachable `circe.elkyiem` and `nono.elkyiem` routes both returned trusted HTTPS
+200 through the Mac's Tailnet IP. The owned probe sessions were revoked, 401 was
+verified, and the temporary private cookie file was removed.
+
+The installer refused replacement while Circé was running. After Quit, reinstall
+passed signing verification, archived and unregistered the previous owned app,
+and refreshed the Dock entry to avoid a bookmark following the backup. macOS
+required Documents access for the new app identity and again after reinstall;
+the user approved both dialogs. Normal restart then reused that permission.
+
+Verification passed the repository's 28-task check (4,951 Vitest tests), the
+12-task production build and existing budgets, three focused Node tests covering
+literal shell arguments/environment and origin preservation, and strict deep
+bundle-signature verification. The disconnected-Tailscale reconnection path and
+proxy-down administrator prompt were source-reviewed but not exercised by
+interrupting shared network infrastructure. Evidence remains private under
+`.artifacts/web-verification/dock-launcher`; check/build logs are
+`/tmp/circe-dock-final-{check,build}.log`.
+
 ## Image viewer mouse navigation — 2026-10-29
 
 The Windows recording showed the opened Save's image inspector. The previous
