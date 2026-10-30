@@ -98,6 +98,7 @@ const PackageSaveSchema = z.object({
       mimeType: z.string().nullable().optional(),
       width: z.number().nullable().optional(),
       height: z.number().nullable().optional(),
+      frameRate: z.number().finite().positive().nullable().optional(),
       sourceUrl: z.string().nullable().optional(),
     }),
   ),

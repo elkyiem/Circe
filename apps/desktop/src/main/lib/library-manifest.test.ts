@@ -3,6 +3,7 @@ import { mergeWrittenFiles } from "./library";
 import {
   applyPatchToInfo,
   type InfoFile,
+  infoFilesFromSave,
   StoredInfoDocSchema,
 } from "./library-format";
 
@@ -17,6 +18,21 @@ const original: InfoFile = {
   sourceUrl: "https://example.com/original.mp4",
 };
 describe("portable original manifest", () => {
+  it.each([24, null, undefined])(
+    "retains video frame rate %s in portable metadata and later edits",
+    (frameRate) => {
+      const files = infoFilesFromSave([{ ...original, frameRate }]);
+      const stored = StoredInfoDocSchema.parse({
+        id: "save",
+        files: JSON.parse(JSON.stringify(files)),
+      });
+      expect(stored.files[0]?.frameRate).toBe(frameRate);
+      const edited = StoredInfoDocSchema.parse(
+        applyPatchToInfo(stored, { notes: "Edited" }),
+      );
+      expect(edited.files[0]?.frameRate).toBe(frameRate);
+    },
+  );
   it("retains all originals when a new thumbnail is written", () => {
     const manifest = mergeWrittenFiles(
       [original],

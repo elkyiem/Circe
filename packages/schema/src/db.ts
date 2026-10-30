@@ -121,6 +121,7 @@ export interface SaveFile {
   mimeType?: string | null;
   width?: number | null;
   height?: number | null;
+  frameRate?: number | null;
   sourceUrl?: string | null;
   /** Set on a thumbnail you picked, so regeneration and repairs leave it alone. */
   custom?: boolean | null;

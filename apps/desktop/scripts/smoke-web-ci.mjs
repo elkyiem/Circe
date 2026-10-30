@@ -26,9 +26,13 @@ const host = spawn(process.execPath, ["scripts/start-web.mjs"], {
   stdio: "inherit",
 });
 const closed = new Promise((resolve) => host.once("exit", resolve));
-const run = (executable, args) =>
+const run = (executable, args, extraEnv = {}) =>
   new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { cwd, env, stdio: "inherit" });
+    const child = spawn(executable, args, {
+      cwd,
+      env: { ...env, ...extraEnv },
+      stdio: "inherit",
+    });
     child.once("error", reject);
     child.once("exit", (code) =>
       code === 0
@@ -39,7 +43,7 @@ const run = (executable, args) =>
 const deadline = setTimeout(() => {
   host.kill("SIGTERM");
   process.exitCode = 1;
-}, 180000);
+}, 360000);
 try {
   const started = Date.now();
   while (true) {
@@ -64,6 +68,13 @@ try {
   await run(process.execPath, ["scripts/smoke-web-canvas.mjs"]);
   await run(electron, ["scripts/smoke-web-browser.cjs"]);
   await run(electron, ["scripts/smoke-web-browser.cjs", "--identity"]);
+  await run(electron, ["scripts/smoke-web-browser.cjs", "--release-audit"], {
+    CIRCE_RELEASE_PLATFORM: "Win32",
+  });
+  await run(electron, ["scripts/smoke-web-browser.cjs", "--release-audit"], {
+    CIRCE_RELEASE_PLATFORM: "MacIntel",
+  });
+  await run(process.execPath, ["scripts/smoke-web-release.mjs"]);
 } finally {
   clearTimeout(deadline);
   host.kill("SIGTERM");

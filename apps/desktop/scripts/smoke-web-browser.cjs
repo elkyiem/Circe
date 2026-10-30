@@ -325,6 +325,7 @@ app
         process.argv.includes("--library-copy-storage-restore");
       const focusProbe = process.argv.includes("--focus-probe");
       const standalone =
+        process.argv.includes("--release-audit") ||
         process.argv.includes("--identity") ||
         libraryAdmin ||
         fileActions ||
@@ -727,6 +728,23 @@ app
           sandbox,
           refreshSession,
           settingsOnly: process.argv.includes("--identity-settings"),
+        });
+        clearTimeout(timer);
+        app.exit(0);
+        return;
+      }
+      if (process.argv.includes("--release-audit")) {
+        const { verifyBrowserRelease } = require("./web-release-cases.cjs");
+        await verifyBrowserRelease({
+          win,
+          run,
+          click,
+          waitFor,
+          snapshot,
+          query,
+          origin,
+          evidence,
+          sandbox,
         });
         clearTimeout(timer);
         app.exit(0);

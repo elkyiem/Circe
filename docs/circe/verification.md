@@ -1,5 +1,56 @@
 # Circé verification record
 
+## Browser audit of the added commits — 2026-10-30
+
+Audited every commit in `ca206520..582eba6f`, then exercised the rebuilt browser
+through an isolated shared host and disposable Libraries. Personal Library data,
+Source credentials, and provider credentials were not used as test fixtures.
+
+| Commit | Browser evidence |
+| --- | --- |
+| `a1f7cdd0` mouse side buttons | Chromium pointer back/forward input moved exactly one history entry under Win32 and MacIntel platform emulation. |
+| `2aac1c3d` Safari settings | Native-only helper remains excluded from browser UI and HTTP access; native helper tests pass. |
+| `421ed5ee` import origins | Seven visiting-device import routes retain origin in disk metadata, detail reads, and filters. Rendered Imported From detail, fresh-document reload, and `imported:files` search are exercised. |
+| `0cb8f319` requeued replies | Shared host backfill/requeue regression tests pass; browser uses the same owner. |
+| `00b7e22e` bulk updates and pagination | HTTP bulk edit/Undo across 13 Saves; tied-timestamp paging in both directions with insertion between pages, plus shared optimistic update/rollback tests. |
+| `b192f4f6` disabled switches | Actual computed opacity `0.5`, not-allowed cursor, stable hover/pressed geometry, and unchanged value/preferences after reload. |
+| `cc6224fb` All Sounds | Actual accessible control toggles and persists device-local sound state through reload; host preference remains unchanged. |
+| `e88675ff` inference pacing | Two authenticated HTTP inference calls across a 17-second idle window complete with healthy enrichment and no model downloads. Native owner smoke also exercises worker replacement and bounded audio. |
+| `6150dcdb` fullscreen and subscriptions | Browser native-event adapters register/unsubscribe without errors; shared subscription-model tests pass. Native fullscreen transitions and authenticated catalogs are separate acceptance boundaries. |
+| `b7606ec3` capture cancellation | Shared host cancellation/AbortSignal regression tests and authenticated browser queue-control workflow pass. |
+| `e8d29f1b` Source list switches | Shared Account handler/component and list-scope tests pass; HTTP classification is intact. A live browser Account flow was not exercised. |
+| `7a44082d` reply screenshots | Shared reply-v14 capture regression tests pass; browser media transport and screenshot rendering pass with offline fixtures. |
+| `4c0abf53` models, Dock, extension badge | Shared model-picker and extension background tests pass; browser host bridge remains intact. Native Dock and installed-extension badge appearance are not browser-page controls. |
+| `b2f79f51` extension Save Page | Fresh browser connection setup, extension capture/authentication bridge, and extension toolbar/stale-settings regression tests pass. |
+| `e79d09ec` Library restart | Real browser name/icon changes replace the host, reconnect, preserve identity and restore fixtures. |
+| `582eba6f` integration | Core/media/auth, network, parity edits, identity, imports, package restart, Canvas export, desktop/mobile browser shell, and image mouse workflows pass. |
+| `d0fe59bc`, `99cfaee5`, `5b13f47d`, `effe705a` releases/Casks | Browser app reports `2.0.3-web`; release assets build coherently. Homebrew casks do not execute in a browser. |
+
+The runtime audit found a pre-existing video-frame-rate loss: package parsing and
+portable metadata omitted `frameRate`. The canonical optional field, metadata
+writer/reader, and package parser now preserve numeric, unknown/null, and absent
+values. Six regression cases cover that path, and the original exact package
+round-trip/import/restart check passes without relaxing its metadata comparison.
+
+The existing smoke setup also lacked the quote fixture required by later import
+checks and asserted a redundant cache-header spelling. It now seeds all three
+media fixtures and explicitly requires the `no-store` directive. Private media
+still cannot be stored in caches.
+
+`--release-audit` adds the pointer/switch/sound/origin UI checks to the ordinary
+browser harness. `smoke-web-release.mjs` adds seven origin routes, bulk/history,
+paging and idle inference checks, with disposable-profile and canonical-Library
+containment guards, owned cleanup, pipeline-state restoration and session logout.
+The existing CI driver now runs both platform variants and the HTTP checks.
+
+These are offline integration checks on macOS Chromium with device-platform
+emulation. They do not claim physical Windows/iPad acceptance, live X/Threads
+rendering or Account sync, authenticated subscription/provider execution,
+installed-extension badge appearance, or native Safari/fullscreen interactions.
+Watched-folder imports retain their native owner; they are not one of the seven
+visiting-device import routes exercised here. Evidence stays private under
+`.artifacts/web-verification/added-commits-20261030` and `/tmp/circe-browser-*`.
+
 ## Pond 2.0.3 sync and dev promotion — 2026-10-30
 
 Merged all 18 upstream commits through `a1f7cdd0`, preserving Circé's browser

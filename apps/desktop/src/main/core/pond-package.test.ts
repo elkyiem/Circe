@@ -106,6 +106,41 @@ function destination(root: string) {
 }
 
 describe("Pond package transfer", () => {
+  it.each([24, null, undefined])(
+    "preserves video frame rate %s through package import",
+    async (frameRate) => {
+      const { root, directory } = await fixture([
+        ["clip.mp4", "video original"],
+      ]);
+      const manifestPath = join(directory, "pond-export.json");
+      const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+      const video = manifest.saves[0].files.find(
+        (file: { path: string }) => file.path === "clip.mp4",
+      );
+      expect(video).toBeDefined();
+      video.kind = "video";
+      video.frameRate = frameRate;
+      await writeFile(manifestPath, JSON.stringify(manifest));
+      const target = destination(root);
+      await importPondPackage(directory, target.dependencies);
+      const row = target.imported.get("local-source");
+      expect(row).toBeDefined();
+      const metadata = JSON.parse(
+        await readFile(
+          join(root, row?.id ?? "missing", "metadata.json"),
+          "utf8",
+        ),
+      );
+      expect(
+        metadata.files.find(
+          (file: { path: string }) => file.path === "clip.mp4",
+        ).frameRate,
+      ).toBe(frameRate);
+      expect(
+        await readFile(join(root, row?.id ?? "missing", "clip.mp4"), "utf8"),
+      ).toBe("video original");
+    },
+  );
   it("round trips every original, metadata dates and nested membership; reimport skips existing Saves", async () => {
     const { root, directory } = await fixture();
     const target = destination(root);

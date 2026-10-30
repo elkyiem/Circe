@@ -14,6 +14,7 @@ export interface InfoFile {
   mimeType?: string;
   width?: number;
   height?: number;
+  frameRate?: number | null;
 }
 
 export type SaveUserData = Pick<
@@ -107,6 +108,13 @@ export const StoredInfoDocSchema = z.object({
         mimeType: z.string().optional().catch(undefined),
         width: z.number().optional().catch(undefined),
         height: z.number().optional().catch(undefined),
+        frameRate: z
+          .number()
+          .finite()
+          .positive()
+          .nullable()
+          .optional()
+          .catch(undefined),
       }),
     )
     .catch([]),
@@ -123,6 +131,7 @@ export function infoFilesFromSave(files: Save["files"]): InfoFile[] {
     mimeType: file.mimeType ?? undefined,
     width: file.width ?? undefined,
     height: file.height ?? undefined,
+    frameRate: file.frameRate,
     sourceUrl: file.sourceUrl ?? undefined,
   }));
 }

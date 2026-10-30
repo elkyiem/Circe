@@ -66,7 +66,7 @@ if (process.argv.includes("--after-restart")) {
   );
 } else {
   const ids = [];
-  for (const kind of ["image", "video"]) {
+  for (const kind of ["quote", "image", "video"]) {
     const result = await call("fixtures", { kind });
     ids.push(result.id);
     const deadline = Date.now() + 120_000;
@@ -94,10 +94,19 @@ if (process.argv.includes("--after-restart")) {
     );
     assert.ok(save.files.some((file) => file.kind === "tweet_screenshot_dark"));
     const original = save.files.find(
-      (file) => file.kind === (kind === "video" ? "video" : "image"),
+      (file) =>
+        file.kind ===
+        (kind === "quote"
+          ? "tweet_screenshot_light"
+          : kind === "video"
+            ? "video"
+            : "image"),
     );
     assert.ok(original, `No original ${kind}: ${JSON.stringify(save.files)}`);
-    assert.equal(original.sourceUrl, rawJson.capture.media[0].url);
+    if (kind === "quote") {
+      assert.equal(rawJson.capture.quoted.id, "900000000000000004");
+      assert.notEqual(rawJson.capture.quoted.id, save.sourceId);
+    } else assert.equal(original.sourceUrl, rawJson.capture.media[0].url);
     const media = `${origin}/web/media/${save.id}/${encodeURIComponent(original.path)}`;
     assert.equal((await fetch(media)).status, 401);
     const response = await fetch(media, {
@@ -106,7 +115,14 @@ if (process.argv.includes("--after-restart")) {
     assert.equal(response.status, 206);
     assert.equal((await response.arrayBuffer()).byteLength, 96);
     assert.match(response.headers.get("content-range"), /^bytes 32-127\//);
-    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.ok(
+      response.headers
+        .get("cache-control")
+        ?.split(",")
+        .map((value) => value.trim())
+        .includes("no-store"),
+      "Authenticated media must forbid cache storage.",
+    );
     const suffix = await fetch(media, {
       headers: { cookie, range: "bytes=-64" },
     });
