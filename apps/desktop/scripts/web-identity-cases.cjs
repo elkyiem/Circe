@@ -145,7 +145,11 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
       debuggerApi.removeListener("message", listener);
     }
   };
-  const connect = async ({ previous, navigate = false } = {}) => {
+  const connect = async ({
+    previous,
+    previousDocument,
+    navigate = false,
+  } = {}) => {
     await waitUntil(async () => {
       const next = await instance();
       return !previous || next !== previous;
@@ -155,10 +159,11 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
     const connected =
       'Boolean(document.querySelector(\'[aria-label="Library Menu"], [aria-label="Library Name"], [data-library-search]\'))';
     await waitUntil(
-      () => run(previous ? login : `(${login}) || (${connected})`),
-      previous
-        ? "the replacement host login form"
-        : "the browser connection page",
+      () =>
+        run(
+          `${previousDocument === undefined ? "true" : `performance.timeOrigin !== ${previousDocument}`} && ((${login}) || (${connected}))`,
+        ),
+      "the browser connection page or restored Library session",
     );
     if (await run(login)) {
       await pickFile(
@@ -268,8 +273,9 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
     if (mark) await icon();
     await replaceInput(nameField, name);
     const previous = await instance();
+    const previousDocument = await run("performance.timeOrigin");
     await click(`${customize} button[type="submit"]`);
-    await connect({ previous });
+    await connect({ previous, previousDocument });
     const expected = { name };
     if (mark) expected.mark = mark;
     const value = await verify(expected);
@@ -376,8 +382,9 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
     const settingsName = `${prefix} settings`;
     await replaceInput('[aria-label="Library Name"]', settingsName);
     const previous = await instance();
+    const previousDocument = await run("performance.timeOrigin");
     key("Enter");
-    await connect({ previous });
+    await connect({ previous, previousDocument });
     const renamed = await verify({
       name: settingsName,
       mark: settingsOnly ? initial.mark : rocket,
@@ -460,7 +467,7 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
         combinedNameAndMark: true,
       }),
       settingsName: true,
-      restartLogin: true,
+      restartReconnect: true,
       restored: true,
     }),
   );

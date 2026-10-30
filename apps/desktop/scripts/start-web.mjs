@@ -23,6 +23,7 @@ function startHost() {
       ...runtimeEnv,
       POND_SANDBOX: sandbox,
       CIRCE_WEB: "1",
+      CIRCE_WEB_SUPERVISED: "1",
       CIRCE_LOCAL_API_PORT: process.env.CIRCE_LOCAL_API_PORT ?? "4788",
       CIRCE_WEB_FIXTURES:
         process.env.CIRCE_WEB_FIXTURES ?? process.env.IRIS_WEB_FIXTURES ?? "0",

@@ -95,6 +95,7 @@ import {
   markStartup,
   watchMainThreadStalls,
 } from "./startup-timing";
+import { relaunchWebHost } from "./web/relaunch";
 import {
   beginQuit,
   createWindow,
@@ -678,7 +679,7 @@ app.on("before-quit", async (event) => {
   log.info("[pond] quit prepared");
   quitPrepared = true;
   if (isWebHostRelaunchPending()) {
-    app.exit(75);
+    relaunchWebHost(app, process.env.CIRCE_WEB_SUPERVISED === "1");
     return;
   }
   /** Everything is flushed by now; a window that refuses to close must not keep Pond running. */

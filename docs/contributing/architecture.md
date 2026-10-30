@@ -222,7 +222,10 @@ HTTP, chat, routine and conversion work. Location changes close admission, stop
 background owners and drain readers before sealing database/path access. Transition
 callers leave their own request lease so they cannot wait on themselves. The web
 launcher retains its address while replacing an Electron child after a prepared
-Library relaunch; a new process restores valid digest-only sessions and has a distinct readiness nonce.
+Library relaunch. It sets `CIRCE_WEB_SUPERVISED=1` so the child requests replacement
+with exit code 75. A standalone host, including the Dock app, schedules its own
+Electron relaunch after the same shutdown preparation. A new process restores valid
+digest-only sessions and has a distinct readiness nonce.
 
 The native history owner publishes revision and committed Undo/Redo availability
 after background work as well as ordinary edits. Reads during an in-flight command

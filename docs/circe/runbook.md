@@ -18,6 +18,9 @@ pins it in the Dock. Opening it starts the native app and web host together,
 prepares the existing Portless route, and checks/reconnects Tailscale. It uses the
 existing `.artifacts/iris-web-sandbox` profile and Library. No Terminal window is
 needed. Closing the app window keeps the Mac host resident; Quit Circé stops it.
+Library renames and other location changes reopen the prepared host automatically.
+The Dock host relaunches itself; the terminal launcher marks its child as supervised
+and replaces it after exit code 75. Ordinary Quit does not restart either host.
 
 The first launch may ask for Documents access because the checkout and Library
 are there. Replacing the locally signed launcher can ask again; ordinary quit

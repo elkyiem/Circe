@@ -325,6 +325,7 @@ app
         process.argv.includes("--library-copy-storage-restore");
       const focusProbe = process.argv.includes("--focus-probe");
       const standalone =
+        process.argv.includes("--identity") ||
         libraryAdmin ||
         fileActions ||
         hostMaintenance ||
