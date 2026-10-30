@@ -1,4 +1,5 @@
 import {
+  WebFileImportSchema,
   WebFileQuerySchema,
   WebImportRelativePathsSchema,
 } from "@shared/web-files-contracts";
@@ -6,6 +7,41 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createBrowserFiles } from "./files";
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("retains clipboard import origin through the visiting-device upload boundary", async () => {
+  const token = "iris-upload:11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal("navigator", {
+    clipboard: {
+      read: async () => [
+        {
+          types: ["image/png"],
+          getType: async () => new Blob(["pixels"], { type: "image/png" }),
+        },
+      ],
+    },
+  });
+  vi.stubGlobal("fetch", async () =>
+    Response.json({ token, name: "Pasted image.png", size: 6 }),
+  );
+  const request = vi.fn(async (_path: string, _body?: string) => ({
+    ok: true,
+    ids: [],
+  }));
+  const adapter = createBrowserFiles({ request, headers: () => ({}) });
+  await adapter.query("saves.importClipboard", {});
+  const prepared = WebFileQuerySchema.parse(
+    JSON.parse(request.mock.calls[0]?.[1] ?? "{}"),
+  );
+  expect(prepared.name).toBe("saves.importFiles");
+  expect(WebFileImportSchema.parse(prepared.params)).toMatchObject({
+    paths: [token],
+    origin: "clipboard",
+  });
+  expect(WebFileImportSchema.parse({ paths: [token] }).origin).toBe("files");
+  expect(() =>
+    WebFileImportSchema.parse({ paths: [token], origin: "eagle" }),
+  ).toThrow();
+});
 
 it("uploads a large selection within host admission limits and retains directory names", async () => {
   let active = 0;

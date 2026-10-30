@@ -59,7 +59,7 @@ describe("enrichment sweep preferences", () => {
     expect(run).toHaveBeenCalledExactlyOnceWith(target, current.ai);
   });
 
-  it("rescans when media routing or fallback changes but not for unrelated preferences", () => {
+  it("rescans when processing features, media routing or fallback changes", () => {
     let current = prefs();
     const listeners = new Set<() => void>();
     const refresh = vi.fn();
@@ -77,7 +77,7 @@ describe("enrichment sweep preferences", () => {
 
     current = { ...current, ai: { ...current.ai, enableCaption: true } };
     publish();
-    expect(refresh).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
 
     current = {
       ...current,
@@ -100,7 +100,7 @@ describe("enrichment sweep preferences", () => {
     };
     publish();
 
-    expect(refresh).toHaveBeenCalledTimes(4);
+    expect(refresh).toHaveBeenCalledTimes(5);
     unsubscribe();
     expect(listeners.size).toBe(0);
   });

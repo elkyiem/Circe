@@ -14,6 +14,7 @@ import {
   subscribeMachinePace,
 } from "@/shared/lib/machine-pace";
 import { getPrefsSnapshot, subscribePrefsSnapshot } from "@/shared/state/prefs";
+import { releaseIdleInferenceWorker } from "./inference-client";
 import { ENRICHERS, ENRICHERS_BY_ID } from "./registry";
 import type { Enricher } from "./types";
 
@@ -33,10 +34,7 @@ export function createEnrichmentPreferenceAccess(
 }
 
 function mediaUnderstandingPreferenceKey(prefs: PrefsSnapshot): string {
-  const ai = prefs?.ai;
-  return ai
-    ? `${ai.mediaUnderstandingMode}\u0000${ai.mediaUnderstandingProvider}\u0000${ai.mediaUnderstandingModelId}\u0000${ai.mediaUnderstandingFallbackToFlorence}`
-    : "";
+  return JSON.stringify(prefs?.ai ?? null);
 }
 
 export function subscribeMediaUnderstandingRefresh(dependencies: {
@@ -171,7 +169,15 @@ function schedule(enricher: Enricher, save: Save): void {
   publishActivity();
   void limit(async () => {
     await whenIdle();
-    if (suspended()) {
+    const current = pool.get(save.id);
+    const prefs = getPrefsSnapshot();
+    if (
+      suspended() ||
+      !current ||
+      !enricher.enabled(prefs) ||
+      !enrichmentPreferenceAccess.eligible(enricher, current, prefs) ||
+      !dependenciesSatisfied(enricher, current, prefs)
+    ) {
       inflight.delete(key);
       publishActivity();
       return;
@@ -179,13 +185,6 @@ function schedule(enricher: Enricher, save: Save): void {
     const startedAt = performance.now();
     let elapsed = 0;
     try {
-      const current = pool.get(save.id);
-      if (
-        !current ||
-        !enrichmentPreferenceAccess.eligible(enricher, current) ||
-        !enricher.enabled(getPrefsSnapshot())
-      )
-        return;
       await persist(enricher, current);
     } catch (err) {
       failed.add(key);
@@ -302,6 +301,7 @@ export function startEnrichmentSweep(): () => void {
   let wasSuspended = suspended();
   const detachPace = subscribeMachinePace(() => {
     const next = suspended();
+    if (next) releaseIdleInferenceWorker();
     if (wasSuspended && !next) scheduleScan();
     wasSuspended = next;
   });

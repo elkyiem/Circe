@@ -76,6 +76,7 @@ export default defineConfig({
       },
     },
     build: {
+      minify: true,
       externalizeDeps: { exclude: ["@pond/schema"] },
       rollupOptions: {
         input: {

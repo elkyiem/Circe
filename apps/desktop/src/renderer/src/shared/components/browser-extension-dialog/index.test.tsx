@@ -142,7 +142,8 @@ it("falls back to Allow unsigned extensions when Safari refuses the call", async
     {
       ok: false,
       reason: "unsigned-build",
-      error: "Safari did not open Pond's extension settings.",
+      error:
+        "Safari hides extensions from unsigned builds until you allow them in its Developer settings.",
     },
   );
   try {
@@ -150,6 +151,41 @@ it("falls back to Allow unsigned extensions when Safari refuses the call", async
     expect(view.text()).toContain("Allow unsigned extensions");
     /** Keeps the user moving instead of leaving the button looking broken. */
     expect(view.calls).toContain("extension.openSafari");
+  } finally {
+    await view.cleanup();
+  }
+});
+
+it("keeps a signed build off the unsigned steps when Safari refuses", async () => {
+  const view = await renderDialog(
+    "MacIntel",
+    { state: "disabled", ...SIGNED },
+    {
+      ok: false,
+      reason: "safari-refused",
+      error:
+        "Safari didn't open Pond's settings. Turn Pond on in Safari, under Extensions.",
+    },
+  );
+  try {
+    await view.click("Open Safari Settings");
+    expect(view.text()).toContain("Turn Pond on in Safari, under Extensions.");
+    expect(view.text()).toContain("Turn on Pond.");
+    expect(view.text()).not.toContain("Allow unsigned extensions");
+    expect(view.calls).toContain("extension.openSafari");
+  } finally {
+    await view.cleanup();
+  }
+});
+
+it("asks a signed build Safari has not listed yet to open Safari once", async () => {
+  const view = await renderDialog("MacIntel", {
+    state: "not_registered",
+    ...SIGNED,
+  });
+  try {
+    expect(view.text()).toContain("Open Safari once to finish setting it up");
+    expect(view.text()).not.toContain("unsigned");
   } finally {
     await view.cleanup();
   }

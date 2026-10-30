@@ -300,6 +300,7 @@ export const queryOperationAccess = {
   "video.preparePreview": "hidden",
   "video.saveFrame": "review",
   "video.sampleFrames": "hidden",
+  "media.decodeAudio": "hidden",
   "video.setThumbnail": "review",
   "watches.add": "review",
   "watches.list": "read",

@@ -128,9 +128,29 @@ export async function extractSampledFrames(
       "1",
       path,
     ]);
+    const samplingArgs =
+      strategy === "embedding"
+        ? [
+            "-threads",
+            "2",
+            "-i",
+            videoPath,
+            "-vf",
+            "fps=1:start_time=0:round=up:eof_action=pass,scale=384:384:force_original_aspect_ratio=increase,crop=384:384",
+            "-vsync",
+            "vfr",
+            "-frames:v",
+            String(timestamps.length),
+            "-q:v",
+            "4",
+            "-start_number",
+            "0",
+            join(outputDir, "frame-%d.jpg"),
+          ]
+        : [...inputArgs, ...outputArgs];
     const { code, stderr } = await runWithTimeout(
       ffmpeg,
-      ["-hide_banner", "-loglevel", "error", "-y", ...inputArgs, ...outputArgs],
+      ["-hide_banner", "-loglevel", "error", "-y", ...samplingArgs],
       SAMPLE_TIMEOUT_MS,
       signal,
     );

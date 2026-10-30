@@ -5,18 +5,6 @@ export interface LoadedEmbeddingProfile {
   dispose(): Promise<void>;
 }
 
-export type EmbeddingProfileConfig =
-  | { audio_config: null }
-  | { vision_config: null };
-
-export function embeddingProfileConfig(
-  profile: EmbeddingProfile,
-): EmbeddingProfileConfig {
-  return profile === "text-image"
-    ? { audio_config: null }
-    : { vision_config: null };
-}
-
 export interface EmbeddingProfileCache<T extends LoadedEmbeddingProfile> {
   use<R>(profile: EmbeddingProfile, run: (loaded: T) => Promise<R>): Promise<R>;
   dispose(): Promise<void>;
@@ -31,11 +19,9 @@ export function createEmbeddingProfileCache<T extends LoadedEmbeddingProfile>(
   return {
     use(profile, run) {
       const operation = transition.then(async () => {
-        if (loaded?.profile !== profile) {
-          if (loaded) {
-            await loaded.dispose();
-            loaded = null;
-          }
+        // One bundle includes both encoders and the shared text weights.
+        // Modality changes must not repeatedly reconstruct that backbone.
+        if (!loaded) {
           loaded = await load(profile);
         }
         return run(loaded);

@@ -81,6 +81,7 @@ export const WebEagleImportSchema = z.strictObject({
   progressId: z.string().min(1).max(200).optional(),
 });
 export const WebFileImportSchema = z.object({
+  origin: z.enum(["files", "clipboard"]).default("files"),
   paths: z.array(WebUploadTokenSchema).min(1).max(10000),
   tags: z.array(z.string()).default([]),
   folderIds: z.array(z.string()).default([]),

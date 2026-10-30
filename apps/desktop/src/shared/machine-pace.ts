@@ -13,6 +13,7 @@ export type ThermalState = z.infer<typeof ThermalStateSchema>;
 export const MachinePaceWireSchema = z.object({
   thermal: ThermalStateSchema,
   onBattery: z.boolean(),
+  memoryPressure: z.enum(["normal", "warning", "critical"]).optional(),
 });
 
 export type MachinePaceWire = z.infer<typeof MachinePaceWireSchema>;
@@ -23,6 +24,7 @@ export interface MachinePace {
   onBattery: boolean;
   thermal: ThermalState;
   reliefAt: number | null;
+  memoryPressure?: "normal" | "warning" | "critical";
 }
 
 /** Keep heavy work paused after the Mac leaves serious or critical heat so it can cool. */
@@ -50,7 +52,12 @@ export function motionPaused(pace: MachinePace, now: number): boolean {
 
 /** Inference stops while the window is hidden or the Mac is hot. A background window still finishes work, more slowly. */
 export function enrichmentSuspended(pace: MachinePace, now: number): boolean {
-  return pace.hidden || thermalHot(pace, now);
+  return (
+    pace.hidden ||
+    thermalHot(pace, now) ||
+    pace.memoryPressure === "warning" ||
+    pace.memoryPressure === "critical"
+  );
 }
 
 export function enrichmentCooldownFactor(pace: MachinePace): number {

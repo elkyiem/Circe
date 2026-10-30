@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   createEmbeddingProfileCache,
   type EmbeddingProfile,
-  embeddingProfileConfig,
   type LoadedEmbeddingProfile,
 } from "./embedding-profile";
 
@@ -50,7 +49,7 @@ describe("embedding profile cache", () => {
     expect(loader.disposed).toEqual([]);
   });
 
-  it("disposes the previous profile exactly once when switching", async () => {
+  it("shares one multimodal model across image and audio requests", async () => {
     const loader = testLoader();
     const cache = createEmbeddingProfileCache(loader.load);
 
@@ -62,8 +61,9 @@ describe("embedding profile cache", () => {
     );
 
     expect(audio).toBe(reusedAudio);
-    expect(loader.loaded).toEqual(["text-image", "text-audio"]);
-    expect(loader.disposed).toEqual([image.instance]);
+    expect(audio).toBe(image);
+    expect(loader.loaded).toEqual(["text-image"]);
+    expect(loader.disposed).toEqual([]);
   });
 
   it("can retry after a failed load", async () => {
@@ -94,7 +94,7 @@ describe("embedding profile cache", () => {
     expect(loader.loaded).toEqual(["text-image"]);
   });
 
-  it("waits for in-flight work before disposing during a profile switch", async () => {
+  it("serializes image and audio inference without replacing the model", async () => {
     const events: string[] = [];
     let releaseImage = () => {};
     const imageGate = new Promise<void>((resolve) => {
@@ -134,18 +134,18 @@ describe("embedding profile cache", () => {
       "load:text-image",
       "work:text-image:start",
       "work:text-image:end",
-      "dispose:text-image",
-      "load:text-audio",
       "work:text-audio",
     ]);
   });
 
-  it("loads mutually exclusive encoder configurations", () => {
-    expect(embeddingProfileConfig("text-image")).toEqual({
-      audio_config: null,
-    });
-    expect(embeddingProfileConfig("text-audio")).toEqual({
-      vision_config: null,
-    });
+  it("releases the model on disposal and reloads for the next request", async () => {
+    const loader = testLoader();
+    const cache = createEmbeddingProfileCache(loader.load);
+    const first = await cache.use("text-image", async (profile) => profile);
+    await cache.dispose();
+    expect(loader.disposed).toEqual([first.instance]);
+    const next = await cache.use("text-audio", async (profile) => profile);
+    expect(next).not.toBe(first);
+    expect(loader.loaded).toEqual(["text-image", "text-audio"]);
   });
 });

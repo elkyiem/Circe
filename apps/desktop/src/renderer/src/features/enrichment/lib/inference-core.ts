@@ -17,6 +17,7 @@ import {
 } from "@huggingface/transformers";
 import {
   embeddingClassificationLabel,
+  embeddingDimensions,
   normalizedEmbeddingVector,
   tokenizeEmbeddingTexts,
 } from "@shared/embeddings";
@@ -31,7 +32,6 @@ import { unitCosine } from "@/shared/lib/vector";
 import {
   createEmbeddingProfileCache,
   type EmbeddingProfile,
-  embeddingProfileConfig,
   type LoadedEmbeddingProfile,
 } from "./embedding-profile";
 
@@ -117,21 +117,29 @@ export async function coreFlorence(
   const { model, processor, tokenizer } = await getFlorence();
   const prompts = processor.construct_prompts(task);
   const inputs = await processor(image, prompts);
-  const generated = await model.generate({
-    ...inputs,
-    max_new_tokens: 256,
-    num_beams: 1,
-    do_sample: false,
-  });
-  if (!(generated instanceof Tensor)) return "";
-  const decoded = tokenizer.batch_decode(generated, {
-    skip_special_tokens: false,
-  });
-  const result = processor.post_process_generation(decoded[0] ?? "", task, [
-    image.width,
-    image.height,
-  ]);
-  return CaptionSchema.parse(result[task]).trim();
+  try {
+    const generated = await model.generate({
+      ...inputs,
+      max_new_tokens: 256,
+      num_beams: 1,
+      do_sample: false,
+    });
+    if (!(generated instanceof Tensor)) return "";
+    try {
+      const decoded = tokenizer.batch_decode(generated, {
+        skip_special_tokens: false,
+      });
+      const result = processor.post_process_generation(decoded[0] ?? "", task, [
+        image.width,
+        image.height,
+      ]);
+      return CaptionSchema.parse(result[task]).trim();
+    } finally {
+      generated.dispose();
+    }
+  } finally {
+    disposeInputs(inputs);
+  }
 }
 
 interface EmbeddingBundle extends LoadedEmbeddingProfile {
@@ -149,7 +157,6 @@ async function loadEmbeddingBundle(
       EMBEDDING_MODEL.id,
       options,
     );
-    Object.assign(config, embeddingProfileConfig(profile));
     const model = await AutoModel.from_pretrained(EMBEDDING_MODEL.id, {
       ...options,
       config,
@@ -161,7 +168,7 @@ async function loadEmbeddingBundle(
         AutoProcessor.from_pretrained(EMBEDDING_MODEL.id, options),
         AutoTokenizer.from_pretrained(EMBEDDING_MODEL.id, options),
       ]);
-      console.info(`[embedding-gemma] ${profile} ready (${device}/q4)`);
+      console.info(`[embedding-gemma] multimodal ready (${device}/q4)`);
       return {
         model,
         processor,
@@ -192,19 +199,43 @@ function sentenceEmbeddingRows(
   if (!(tensor instanceof Tensor)) {
     throw new Error("[embedding-gemma] model returned no sentence embedding");
   }
-  const rows = EmbeddingRowsSchema.parse(tensor.tolist());
-  if (rows.length !== expectedRows) {
-    throw new Error(
-      `[embedding-gemma] expected ${expectedRows} embedding rows, received ${rows.length}`,
-    );
+  try {
+    const rows = EmbeddingRowsSchema.parse(tensor.tolist());
+    if (rows.length !== expectedRows) {
+      throw new Error(
+        `[embedding-gemma] expected ${expectedRows} embedding rows, received ${rows.length}`,
+      );
+    }
+    return rows.map((row) => Float32Array.from(normalizedEmbeddingVector(row)));
+  } finally {
+    for (const value of Object.values(output)) {
+      if (value instanceof Tensor) value.dispose();
+    }
   }
-  return rows.map((row) => Float32Array.from(normalizedEmbeddingVector(row)));
+}
+
+async function runEmbedding(
+  model: PreTrainedModel,
+  inputs: Parameters<PreTrainedModel>[0],
+  expectedRows: number,
+): Promise<Float32Array[]> {
+  try {
+    return sentenceEmbeddingRows(await model(inputs), expectedRows);
+  } finally {
+    disposeInputs(inputs);
+  }
+}
+
+function disposeInputs(inputs: Parameters<PreTrainedModel>[0]): void {
+  for (const value of Object.values(inputs)) {
+    if (value instanceof Tensor) value.dispose();
+  }
 }
 
 export async function coreClipImage(image: RawImage): Promise<Float32Array> {
   return embeddingProfiles.use("text-image", async ({ model, processor }) => {
     const inputs = await processor(null, image);
-    const [vector] = sentenceEmbeddingRows(await model(inputs), 1);
+    const [vector] = await runEmbedding(model, inputs, 1);
     if (!vector) {
       throw new Error("[embedding-gemma] model returned no image embedding");
     }
@@ -255,7 +286,7 @@ export async function coreEmbedTexts(texts: string[]): Promise<Float32Array[]> {
       (batch, options) => tokenizer(batch, options),
       texts,
     );
-    return sentenceEmbeddingRows(await model(inputs), texts.length);
+    return runEmbedding(model, inputs, texts.length);
   });
 }
 
@@ -264,7 +295,7 @@ export async function coreEmbedAudio(
 ): Promise<Float32Array> {
   return embeddingProfiles.use("text-audio", async ({ model, processor }) => {
     const inputs = await processor(null, null, audio);
-    const [vector] = sentenceEmbeddingRows(await model(inputs), 1);
+    const [vector] = await runEmbedding(model, inputs, 1);
     if (!vector) {
       throw new Error("[embedding-gemma] model returned no audio embedding");
     }
@@ -277,16 +308,37 @@ export async function coreEmbedVideoFrames(
   duration: number,
 ): Promise<Float32Array> {
   return embeddingProfiles.use("text-image", async ({ model, processor }) => {
-    const video = new RawVideo(
-      frames.map((frame) => new RawVideoFrame(frame.image, frame.timestamp)),
-      duration,
-    );
-    const inputs = await processor(null, null, null, video);
-    const [vector] = sentenceEmbeddingRows(await model(inputs), 1);
-    if (!vector) {
-      throw new Error("[embedding-gemma] model returned no video embedding");
+    if (frames.length === 0) throw new Error("Video has no frames");
+    const combined = new Float32Array(embeddingDimensions());
+    // Keep every sampled frame, bounding attention and vision scratch space
+    // instead of allocating one graph for the entire 32-frame sequence.
+    const batchSize = 16;
+    for (let start = 0; start < frames.length; start += batchSize) {
+      const batch = frames.slice(start, start + batchSize);
+      const first = batch[0];
+      const last = batch.at(-1);
+      if (!first || !last) continue;
+      const video = new RawVideo(
+        batch.map(
+          (frame) =>
+            new RawVideoFrame(frame.image, frame.timestamp - first.timestamp),
+        ),
+        Math.min(
+          duration - first.timestamp,
+          last.timestamp - first.timestamp + 1,
+        ),
+      );
+      const inputs = await processor(null, null, null, video);
+      const [vector] = await runEmbedding(model, inputs, 1);
+      if (!vector)
+        throw new Error("[embedding-gemma] model returned no video embedding");
+      const weight = batch.length / frames.length;
+      for (let index = 0; index < combined.length; index += 1) {
+        combined[index] =
+          (combined[index] ?? 0) + (vector[index] ?? 0) * weight;
+      }
     }
-    return vector;
+    return Float32Array.from(normalizedEmbeddingVector(combined));
   });
 }
 
@@ -322,4 +374,16 @@ export async function coreTranscribe(audio: Float32Array): Promise<string> {
   });
   const text = Array.isArray(out) ? out.map((o) => o.text).join(" ") : out.text;
   return (text ?? "").trim();
+}
+
+export async function disposeInferenceModels(): Promise<void> {
+  await embeddingProfiles.dispose();
+  for (const bundle of florenceCache.values())
+    await (await bundle).model.dispose();
+  florenceCache.clear();
+  for (const transcriber of transcriberCache.values())
+    await (await transcriber).dispose();
+  transcriberCache.clear();
+  const { disposeSensitiveModel } = await import("./sensitive-model");
+  await disposeSensitiveModel();
 }

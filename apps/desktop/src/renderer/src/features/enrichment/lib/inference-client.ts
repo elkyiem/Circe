@@ -125,6 +125,51 @@ let workerBroken = false;
 let workerEverStarted = false;
 let nextId = 1;
 const pending = new Map<number, Pending>();
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+let releaseWhenIdle = false;
+
+export function releaseIdleInferenceWorker(): void {
+  releaseWhenIdle = true;
+  if (pending.size > 0) return;
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = null;
+  releaseWhenIdle = false;
+  const current = worker;
+  if (!current) return;
+  const id = nextId++;
+  const finish = (): void => {
+    if (pending.size === 0 && worker === current) {
+      current.terminate();
+      worker = null;
+      workerReady = null;
+      releaseWhenIdle = false;
+    }
+  };
+  const timer = setTimeout(
+    () =>
+      breakWorker(
+        new Error("The inference worker did not release its models."),
+      ),
+    30000,
+  );
+  pending.set(id, { timer, resolve: finish, reject: finish });
+  try {
+    current.postMessage({ id, op: "dispose" } satisfies InferenceRequest);
+  } catch {
+    clearTimeout(timer);
+    pending.delete(id);
+    finish();
+  }
+}
+
+function scheduleIdleRelease(): void {
+  if (pending.size > 0 || !worker) return;
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(
+    releaseIdleInferenceWorker,
+    releaseWhenIdle ? 0 : 15_000,
+  );
+}
 
 function failAllPending(error: Error): void {
   for (const p of pending.values()) {
@@ -136,6 +181,9 @@ function failAllPending(error: Error): void {
 
 function breakWorker(error: Error): void {
   clearTimeout(startupTimer);
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = null;
+  releaseWhenIdle = false;
   workerBroken = true;
   worker?.terminate();
   worker = null;
@@ -179,6 +227,7 @@ function ensureWorker(): Worker | null {
       pending.delete(msg.id);
       if (msg.ok) p.resolve(msg.result);
       else p.reject(new Error(msg.error));
+      scheduleIdleRelease();
     };
     w.onerror = (event) => {
       console.error("[inference] worker crashed", {
@@ -221,6 +270,8 @@ async function callWorker<T extends InferenceResult>(
 ): Promise<T> {
   if (document.documentElement.dataset.enrichmentOwner !== "true")
     return callHost(result, msg);
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = null;
   const w = ensureWorker();
   if (!w) return Promise.reject(new Error("inference worker unavailable"));
   await workerReady;
@@ -250,6 +301,7 @@ async function callWorker<T extends InferenceResult>(
     } catch (error) {
       clearTimeout(timer);
       pending.delete(id);
+      scheduleIdleRelease();
       reject(error);
     }
   });

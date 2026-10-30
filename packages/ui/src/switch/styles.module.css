@@ -25,17 +25,18 @@
     background: var(--ds-accent-9);
   }
 
-  &:hover,
+  &:hover:not([data-disabled]),
   &[data-demo-state="hover"] {
     background: var(--ds-gray-a7);
   }
 
-  &[data-checked]:hover,
+  &[data-checked]:hover:not([data-disabled]),
   &[data-checked][data-demo-state="hover"] {
     background: var(--ds-accent-10);
   }
 
-  &:disabled {
+  /* Base UI renders the root as a `<span>`, so `:disabled` never matches. */
+  &[data-disabled] {
     cursor: not-allowed;
     opacity: 0.5;
   }
@@ -58,7 +59,7 @@
   }
 }
 
-.root:active:not(:disabled) .thumb {
+.root:active:not([data-disabled]) .thumb {
   width: 15px;
   transition:
     translate var(--ds-duration-bounce) var(--ds-easing-bounce),

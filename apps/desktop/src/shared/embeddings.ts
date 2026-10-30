@@ -21,9 +21,9 @@ export function tokenizeEmbeddingTexts<T>(
 }
 
 const TEXT_PREPROCESSING_VERSION = 4;
-const MEDIA_PREPROCESSING_VERSION = 4;
+const MEDIA_PREPROCESSING_VERSION = 5;
 const MEDIA_PREPROCESSING =
-  "image-v1+audio-mono16k-30s+video-1fps-32f-32s+normalized-mean-v1";
+  "image-v1+audio-mono16k-30s+video-1fps-32f-32s+normalized-mean-v1+video-batches-16-v1";
 
 function embeddingVersion(
   task: "document" | "media",

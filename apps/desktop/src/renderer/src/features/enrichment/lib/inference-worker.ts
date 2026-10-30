@@ -12,6 +12,7 @@ import {
   coreFlorence,
   coreSensitiveContent,
   coreTranscribe,
+  disposeInferenceModels,
 } from "./inference-core";
 import type {
   InferenceRequest,
@@ -35,6 +36,9 @@ async function handle(
   req: InferenceRequest,
 ): Promise<{ result: InferenceResult; transfer: Transferable[] }> {
   switch (req.op) {
+    case "dispose":
+      await disposeInferenceModels();
+      return { result: "", transfer: [] };
     case "florence":
       return {
         result: await coreFlorence(toRawImage(req.image), req.task),

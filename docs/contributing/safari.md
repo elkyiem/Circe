@@ -59,6 +59,16 @@ signs `Contents/PlugIns`, so `apps/desktop/scripts/sign-mac.cjs` re-signs the ap
 the release identity before the app is sealed. Without Xcode the script skips locally
 and fails in CI.
 
+The same script compiles `apps/extension/safari/safari-settings.m` into
+`safari-settings.node`, the Node-API module behind **Open Safari Settings**, which
+electron-builder copies to `Contents/Resources`. Safari answers
+`SFSafariApplication.showPreferencesForExtension` only for the main process of the app
+that contains the extension. A helper executable gets `SFErrorDomain` error 1
+(`SFErrorNoExtensionFound`) for an extension Safari lists, whether it sits in
+`Contents/MacOS` or `Contents/Resources`, so Electron's main process loads the module and
+makes the call itself. Node-API is ABI-stable, so the module built against the
+`node-api-headers` headers needs no rebuild when Electron updates.
+
 Quit any other Pond first, open the packaged app from `apps/desktop/dist`, then enable
 the extension in Safari's settings. An ad hoc build also needs **Allow unsigned
 extensions** in Safari's Developer settings.

@@ -37,6 +37,16 @@ profile are separate. Launcher errors are in `~/Library/Logs/Circé/launcher.log
 
 ## Terminal launch
 
+For a finite offline regression check of the resident inference owner after a
+merge, build first and run:
+
+```sh
+env -u ELECTRON_RUN_AS_NODE pnpm --filter @pond/desktop exec electron scripts/smoke-desktop.cjs --enrichment-owner --use-mock-keychain
+```
+
+This uses a temporary Library, verifies idle worker replacement without a model
+download, and decodes bounded synthetic audio through the actual owner preload.
+
 Use Node 24 (`.nvmrc`) and pnpm 11.27.0 (`packageManager`). For this machine:
 
 ```sh

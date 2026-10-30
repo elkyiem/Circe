@@ -35,14 +35,14 @@ export function SoundPreferences() {
     <Settings.List>
       <Settings.Item>
         <Settings.ItemDetails>
-          <Settings.ItemTitle>Interface Sounds</Settings.ItemTitle>
+          <Settings.ItemTitle>All Sounds</Settings.ItemTitle>
           <Settings.ItemDescription>
             Control all sound feedback in Pond.
           </Settings.ItemDescription>
         </Settings.ItemDetails>
         <Settings.ItemControl>
           <Switch.Root
-            aria-label="Interface Sounds"
+            aria-label="All Sounds"
             checked={preferences.soundsEnabled}
             disabled={!preferencesLoaded}
             onCheckedChange={(soundsEnabled) =>

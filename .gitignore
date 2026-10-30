@@ -78,7 +78,6 @@ apps/desktop/resources/bin/pond-apple-model
 
 # Safari App Extension compiled by apps/desktop/scripts/build-safari-extension.mjs
 apps/desktop/resources/SafariExtension/
-apps/desktop/resources/bin/pond-safari-settings
 apps/desktop/.safari-build/
 
 # Share extension compiled by apps/desktop/scripts/build-share-extension.mjs

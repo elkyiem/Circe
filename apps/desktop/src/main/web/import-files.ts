@@ -67,6 +67,7 @@ export function importUploadedFiles(
       const imported = await importFiles(
         {
           paths: [file.path],
+          origin: input.origin,
           tags: input.tags,
           useExisting,
           folderIds: [

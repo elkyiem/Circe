@@ -20,6 +20,7 @@ import {
 import {
   IPC,
   type MenuActionEvent,
+  type NavigationDirection,
   type RecentMenuEntry,
 } from "../shared/constants";
 import {
@@ -72,6 +73,11 @@ const openFiles = createNavigationMailbox<string[]>();
 ipcRenderer.on(IPC.openFiles, (_: IpcRendererEvent, paths: string[]) =>
   openFiles.receive(paths),
 );
+/** A reload in full screen reports the state before React subscribes. */
+const fullScreen = createNavigationMailbox<boolean>();
+ipcRenderer.on(IPC.windowFullScreen, (_: IpcRendererEvent, on: boolean) =>
+  fullScreen.receive(on),
+);
 /** A browser capture for a fish can open the window before the renderer subscribes. */
 const fishOpen = createNavigationMailbox<FishOpen>();
 ipcRenderer.on(IPC.fishOpen, (_: IpcRendererEvent, open: FishOpen) =>
@@ -123,6 +129,9 @@ const api = {
   },
   openCombineImagesWindow(input: CombineImagesWindowOpen): Promise<void> {
     return ipcRenderer.invoke(COMBINE_IMAGES_WINDOW_IPC.open, input);
+  },
+  onFullScreenChange(callback: (fullScreen: boolean) => void): () => void {
+    return fullScreen.subscribe(callback);
   },
   onPrefsChanged(callback: (prefs: Prefs) => void): () => void {
     const listener = (_event: IpcRendererEvent, prefs: Prefs) =>
@@ -227,6 +236,13 @@ const api = {
       cb(action);
     ipcRenderer.on(IPC.menuAction, listener);
     return () => ipcRenderer.off(IPC.menuAction, listener);
+  },
+
+  onNavigationSwipe(cb: (direction: NavigationDirection) => void): () => void {
+    const listener = (_: IpcRendererEvent, direction: NavigationDirection) =>
+      cb(direction);
+    ipcRenderer.on(IPC.navigationSwipe, listener);
+    return () => ipcRenderer.off(IPC.navigationSwipe, listener);
   },
 
   onShortcutAction(cb: (id: ShortcutId) => void): () => void {

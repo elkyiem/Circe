@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { powerMonitor } from "electron";
 import { IPC } from "../../shared/constants";
 import {
@@ -7,6 +8,8 @@ import {
 import { safeHandle } from "../ipc/helpers";
 import { broadcast } from "../lib/broadcast";
 
+let memoryPressure: "normal" | "warning" | "critical" = "normal";
+
 function readPace(): MachinePaceWire {
   const parsed = MachinePaceWireSchema.safeParse({
     thermal:
@@ -14,6 +17,7 @@ function readPace(): MachinePaceWire {
         ? powerMonitor.getCurrentThermalState()
         : "unknown",
     onBattery: powerMonitor.isOnBatteryPower(),
+    memoryPressure,
   });
   return parsed.success
     ? parsed.data
@@ -24,6 +28,34 @@ function readPace(): MachinePaceWire {
 export function startMachinePace(): void {
   safeHandle(IPC.machinePace, () => readPace());
   const publish = (): void => broadcast(IPC.machinePaceChanged, readPace());
+  const updatePressure = (): void => {
+    const update = (next: typeof memoryPressure): void => {
+      if (memoryPressure === next) return;
+      memoryPressure = next;
+      publish();
+    };
+    if (process.platform === "darwin") {
+      // macOS fills free RAM with reclaimable caches; use kernel pressure.
+      execFile(
+        "/usr/sbin/sysctl",
+        ["-n", "kern.memorystatus_vm_pressure_level"],
+        { timeout: 1500, maxBuffer: 1024 },
+        (error, stdout) => {
+          if (error) return;
+          const level = Number(stdout.trim());
+          update(level === 4 ? "critical" : level === 2 ? "warning" : "normal");
+        },
+      );
+    } else {
+      const info = process.getSystemMemoryInfo();
+      const ratio = (info.available ?? info.free) / info.total;
+      update(ratio < 0.02 ? "critical" : ratio < 0.05 ? "warning" : "normal");
+    }
+  };
+  updatePressure();
+  const timer = setInterval(updatePressure, 5000);
+  timer.unref();
+  process.once("exit", () => clearInterval(timer));
   powerMonitor.on("on-battery", publish);
   powerMonitor.on("on-ac", publish);
   if (process.platform === "darwin") {

@@ -46,6 +46,10 @@ import type {
   LibraryRepairQueryResults,
 } from "./library-repair-contracts";
 import type {
+  MediaProcessingQueryInputs,
+  MediaProcessingQueryResults,
+} from "./media-processing-contracts";
+import type {
   BatchRenameInput,
   CancellableResult,
   EmptyInput,
@@ -153,6 +157,7 @@ export interface QueryInputs
     SavesOpenWithQueryInputs,
     QueueQueryInputs,
     LibraryRepairQueryInputs,
+    MediaProcessingQueryInputs,
     TagGroupQueryInputs {
   "saves.understandMedia": MediaUnderstandInput;
   "folders.rules.get": { id: string };
@@ -356,6 +361,7 @@ export interface QueryResults
     TransferQueryResults,
     BulkQueryResults,
     SystemQueryResults,
+    MediaProcessingQueryResults,
     FolderQueryResults,
     InspectQueryResults,
     CanvasQueryResults,

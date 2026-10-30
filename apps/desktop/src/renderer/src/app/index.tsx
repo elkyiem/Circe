@@ -194,6 +194,16 @@ function LibraryApp() {
   useEffect(() => {
     document.documentElement.dataset.colorSpace = systemPrefs.displayColorSpace;
   }, [systemPrefs.displayColorSpace]);
+  useEffect(
+    () =>
+      window.pond.onFullScreenChange((fullScreen) =>
+        document.documentElement.toggleAttribute(
+          "data-full-screen",
+          fullScreen,
+        ),
+      ),
+    [],
+  );
 
   const queryClient = useMemo(
     () =>

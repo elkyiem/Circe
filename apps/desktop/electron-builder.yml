@@ -116,6 +116,10 @@ mac:
   extraResources:
     - from: node_modules/ffmpeg-static/ffmpeg
       to: bin/ffmpeg
+    # Loaded by the main process to open Safari at Pond's extension; Safari answers
+    # only the main process of the app that holds the extension.
+    - from: resources/SafariExtension/safari-settings.node
+      to: safari-settings.node
   # App extensions: the Safari App Extension (scripts/build-safari-extension.mjs) and
   # the Share extension (scripts/build-share-extension.mjs). Safari cannot launch an
   # external native-messaging host, so its handler ships inside the app bundle; macOS

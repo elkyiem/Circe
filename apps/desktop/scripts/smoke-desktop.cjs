@@ -1,4 +1,4 @@
-const { app } = require("electron");
+const { app, BrowserWindow } = require("electron");
 const assert = require("node:assert/strict");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -23,15 +23,23 @@ process.once("exit", () => {
   }
 });
 let complete = false;
+let inferenceReadyCount = 0;
+const checkEnrichment = process.argv.includes("--enrichment-owner");
 let resolvePreview;
 const previewReady = new Promise((resolve) => {
   resolvePreview = resolve;
 });
-const timer = setTimeout(() => {
-  console.error("SMOKE_FAILED: renderer did not become ready");
-  app.exit(1);
-}, 30000);
+const timer = setTimeout(
+  () => {
+    console.error("SMOKE_FAILED: renderer did not become ready");
+    app.exit(1);
+  },
+  checkEnrichment ? 60000 : 30000,
+);
 app.on("web-contents-created", (_, contents) => {
+  contents.on("console-message", (event) => {
+    if (event.message === "[inference] worker ready") inferenceReadyCount++;
+  });
   contents.on("did-fail-load", (_, code, description) =>
     console.error("LOAD_FAILED", code, description),
   );
@@ -101,6 +109,65 @@ app.on("web-contents-created", (_, contents) => {
       await contents.executeJavaScript(
         `window.pond.closePreviewWindow(${state.preview.windowId})`,
       );
+      if (checkEnrichment) {
+        // Empty batches exercise the real worker without downloading a model.
+        const infer = () =>
+          contents.executeJavaScript(
+            'window.pond.query("enrichment.infer", { op: "embedTexts", texts: [] })',
+          );
+        assert.deepEqual(await infer(), []);
+        assert.equal(inferenceReadyCount, 1);
+        await new Promise((resolve) => setTimeout(resolve, 17000));
+        assert.deepEqual(await infer(), []);
+        assert.equal(
+          inferenceReadyCount,
+          2,
+          "Idle release must allow a fresh inference worker.",
+        );
+
+        const audioPath = join(sandbox, "bounded-audio.wav");
+        const wav = Buffer.alloc(44 + 32000);
+        wav.write("RIFF");
+        wav.writeUInt32LE(wav.length - 8, 4);
+        wav.write("WAVEfmt ", 8);
+        wav.writeUInt32LE(16, 16);
+        wav.writeUInt16LE(1, 20);
+        wav.writeUInt16LE(1, 22);
+        wav.writeUInt32LE(16000, 24);
+        wav.writeUInt32LE(32000, 28);
+        wav.writeUInt16LE(2, 32);
+        wav.writeUInt16LE(16, 34);
+        wav.write("data", 36);
+        wav.writeUInt32LE(32000, 40);
+        writeFileSync(audioPath, wav);
+        const src = await contents.executeJavaScript(`(async () => {
+          const result = await window.pond.query("saves.createManual", { filePaths: [${JSON.stringify(audioPath)}] });
+          if (!result.ok) throw new Error("Audio fixture import failed");
+          const save = await window.pond.query("saves.get", { id: result.id });
+          return "pond://" + result.id + "/" + encodeURIComponent(save.files[0].path);
+        })()`);
+        const owner = BrowserWindow.getAllWindows().find((win) =>
+          win.webContents.getURL().includes("enrichment.html"),
+        );
+        assert.ok(owner, "The resident enrichment owner must exist.");
+        const decoded =
+          await owner.webContents.executeJavaScript(`(async () => {
+          const result = await window.pond.query("media.decodeAudio", { src: ${JSON.stringify(src)}, maxSamples: 8000 });
+          return { samples: result.audio.length, finite: result.audio.every(Number.isFinite), hasMore: result.hasMore };
+        })()`);
+        assert.deepEqual(decoded, {
+          samples: 8000,
+          finite: true,
+          hasMore: true,
+        });
+        console.log(
+          "ENRICHMENT_OWNER_PASSED",
+          JSON.stringify({
+            workerStarts: inferenceReadyCount,
+            boundedAudio: decoded,
+          }),
+        );
+      }
       complete = true;
       clearTimeout(timer);
       console.log(

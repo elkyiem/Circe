@@ -72,6 +72,7 @@ export const WEB_QUERY_ACCESS = {
   "enrichment.status": "read",
   "enrichment.run": "write",
   "enrichment.infer": "browser",
+  "media.decodeAudio": "host",
   "fish.list": "read",
   "fish.create": "write",
   "fish.update": "write",

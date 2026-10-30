@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { shell } from "electron";
@@ -10,6 +11,40 @@ import type {
 } from "../../shared/query-contracts-shared";
 
 const execFileAsync = promisify(execFile);
+
+const requireNative = createRequire(import.meta.url);
+
+/**
+ * Runs a command the way `execFile` does: resolves with what it printed, or rejects with
+ * an `Error` carrying `stdout` and `stderr` when it exits non-zero.
+ */
+export type RunCommand = (
+  command: string,
+  args: string[],
+) => Promise<{ stdout: string; stderr: string }>;
+
+const runCommand: RunCommand = async (command, args) => {
+  const { stdout, stderr } = await execFileAsync(command, args, {
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  return { stdout, stderr };
+};
+
+/** `safari-settings.node`, built from `apps/extension/safari/safari-settings.m`. */
+export interface SafariSettingsModule {
+  /** Opens Safari's settings at the extension, or rejects with Safari's error. */
+  showPreferences(identifier: string): Promise<void>;
+}
+
+/** What the Safari checks read from the running process; tests pass their own. */
+interface SafariExtensionDeps {
+  platform?: NodeJS.Platform;
+  /** The app's `Contents/Resources`. */
+  resourcesPath?: string;
+  run?: RunCommand;
+  /** The settings module, or null for a build without one. */
+  settings?: SafariSettingsModule | null;
+}
 
 /** Safari's own UTI for web extensions; the only plug-in type this module looks at. */
 const SAFARI_EXTENSION_POINT = "com.apple.Safari.web-extension";
@@ -80,15 +115,20 @@ export function parsePluginkit(output: string): RegisteredExtension[] {
 }
 
 /** The bundle's Info.plist as XML, converting if Xcode produced a binary plist. */
-async function plistText(path: string): Promise<string | null> {
+async function plistText(
+  path: string,
+  run: RunCommand,
+): Promise<string | null> {
   try {
     const raw = readFileSync(path);
     if (raw.subarray(0, 8).toString("latin1").startsWith("bplist")) {
-      const { stdout } = await execFileAsync(
-        "plutil",
-        ["-convert", "xml1", "-o", "-", path],
-        { maxBuffer: 4 * 1024 * 1024 },
-      );
+      const { stdout } = await run("plutil", [
+        "-convert",
+        "xml1",
+        "-o",
+        "-",
+        path,
+      ]);
       return stdout;
     }
     return raw.toString("utf8");
@@ -102,11 +142,13 @@ async function plistText(path: string): Promise<string | null> {
  * The Safari appex this copy of Pond ships, if any. `Contents/PlugIns` is a sibling of
  * `Contents/Resources`, which is what `process.resourcesPath` points at.
  */
-async function bundledExtension(): Promise<{
+async function bundledExtension(
+  resources: string | undefined,
+  run: RunCommand,
+): Promise<{
   path: string;
   bundleId: string | null;
 } | null> {
-  const resources = process.resourcesPath;
   if (!resources) return null;
   const plugIns = join(resources, "..", "PlugIns");
   if (!existsSync(plugIns)) return null;
@@ -119,7 +161,7 @@ async function bundledExtension(): Promise<{
   for (const entry of entries) {
     if (!entry.endsWith(".appex")) continue;
     const path = join(plugIns, entry);
-    const text = await plistText(join(path, "Contents", "Info.plist"));
+    const text = await plistText(join(path, "Contents", "Info.plist"), run);
     if (!text?.includes(SAFARI_EXTENSION_POINT)) continue;
     const bundleId =
       text.match(
@@ -130,9 +172,11 @@ async function bundledExtension(): Promise<{
   return null;
 }
 
-async function registeredExtensions(): Promise<RegisteredExtension[]> {
+async function registeredExtensions(
+  run: RunCommand,
+): Promise<RegisteredExtension[]> {
   try {
-    const { stdout } = await execFileAsync("pluginkit", [
+    const { stdout } = await run("pluginkit", [
       "-m",
       "-v",
       "-p",
@@ -160,37 +204,43 @@ function captureOf(cause: unknown) {
   };
 }
 
-/** How the appex is signed, which decides whether Safari lists it unaided. */
+/**
+ * How the appex is signed, which decides whether Safari lists it unaided. `codesign -d`
+ * writes its report to stderr whether or not it succeeds, so stdout alone is always empty.
+ * A signature that is neither Developer ID nor ad hoc stays `unknown` rather than being
+ * blamed on a missing signature.
+ */
 async function signatureKind(
   appexPath: string,
+  run: RunCommand,
 ): Promise<SafariExtensionSignature> {
-  try {
-    const { stdout } = await execFileAsync("codesign", ["-dvv", appexPath]);
-    return stdout.includes("Authority=Developer ID Application")
-      ? "developer-id"
-      : "ad-hoc";
-  } catch (cause) {
-    /** `codesign -d` writes its report to stderr, so a non-zero exit still carries it. */
-    const { stdout, stderr } = captureOf(cause);
-    const report = `${stdout}\n${stderr}`;
-    if (report.includes("Authority=Developer ID Application"))
-      return "developer-id";
-    if (report.includes("Signature=adhoc")) return "ad-hoc";
-    return "unknown";
-  }
+  const { stdout, stderr } = await run("codesign", ["-dvv", appexPath]).catch(
+    captureOf,
+  );
+  const report = `${stdout}\n${stderr}`;
+  if (report.includes("Authority=Developer ID Application"))
+    return "developer-id";
+  if (report.includes("Signature=adhoc")) return "ad-hoc";
+  return "unknown";
 }
 
-export async function safariExtensionStatus(): Promise<SafariExtensionStatus> {
-  if (process.platform !== "darwin") {
+export async function safariExtensionStatus(
+  deps: SafariExtensionDeps = {},
+): Promise<SafariExtensionStatus> {
+  const run = deps.run ?? runCommand;
+  if ((deps.platform ?? process.platform) !== "darwin") {
     return { state: "not_bundled", bundleId: null, signature: "unknown" };
   }
-  const appex = await bundledExtension();
+  const appex = await bundledExtension(
+    deps.resourcesPath ?? process.resourcesPath,
+    run,
+  );
   if (!appex) {
     return { state: "not_bundled", bundleId: null, signature: "unknown" };
   }
-  const signature = await signatureKind(appex.path);
+  const signature = await signatureKind(appex.path, run);
 
-  const registered = await registeredExtensions();
+  const registered = await registeredExtensions(run);
   const match = appex.bundleId
     ? registered.find((extension) => extension.id === appex.bundleId)
     : registered.find((extension) => extension.path === appex.path);
@@ -204,26 +254,61 @@ export async function safariExtensionStatus(): Promise<SafariExtensionStatus> {
   };
 }
 
-/** Where `build-safari-extension.mjs` puts the settings helper. */
-function settingsHelper(): string {
-  const resources = process.resourcesPath;
-  if (!resources) return "";
-  return join(resources, "bin", "pond-safari-settings");
+/** Gives the dialog a way out if Safari never calls back. */
+const SETTINGS_TIMEOUT_MS = 15_000;
+
+/**
+ * The settings module electron-builder copies to `Contents/Resources`. Safari answers
+ * `SFSafariApplication` only for the main process of the app that holds the extension; a
+ * helper executable gets `SFErrorNoExtensionFound` from anywhere in the bundle. So the call
+ * runs here, in Electron's main process, through a Node-API module.
+ */
+function loadSettingsModule(
+  resources: string | undefined,
+): SafariSettingsModule | null {
+  if (!resources) return null;
+  const path = join(resources, "safari-settings.node");
+  if (!existsSync(path)) return null;
+  try {
+    /** SAFETY: safari-settings.m exports exactly `showPreferences(identifier): Promise<void>`. */
+    return requireNative(path) as SafariSettingsModule;
+  } catch (cause) {
+    log.warn("[pond safari] could not load the settings module", path, cause);
+    return null;
+  }
+}
+
+/** Rejects when Safari has not answered in time, so the dialog never waits forever. */
+async function answeredInTime(request: Promise<void>): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      request,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Safari did not answer")),
+          SETTINGS_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
  * Opens Safari's settings at Pond's extension.
  *
- * `SFSafariApplication.showPreferencesForExtension` is the only supported way in; it is
- * reached through a small signed helper because Electron cannot call it directly. Safari
- * refuses the call when it does not list the extension — which is exactly the case a
+ * `SFSafariApplication.showPreferencesForExtension` is the only supported way in. Safari
+ * also refuses the call when it does not list the extension — which is exactly the case a
  * locally built, ad-hoc signed copy hits — so the failure is reported with the reason
  * instead of silently opening Safari's start page.
  */
 export async function openSafariSettings(
   status: SafariExtensionStatus,
+  deps: SafariExtensionDeps = {},
 ): Promise<OpenSafariResult> {
-  if (process.platform !== "darwin") {
+  if ((deps.platform ?? process.platform) !== "darwin") {
     return {
       ok: false,
       reason: "unsupported",
@@ -238,8 +323,11 @@ export async function openSafariSettings(
     };
   }
 
-  const helper = settingsHelper();
-  if (!helper || !existsSync(helper)) {
+  const settings =
+    deps.settings === undefined
+      ? loadSettingsModule(deps.resourcesPath ?? process.resourcesPath)
+      : deps.settings;
+  if (!settings) {
     return {
       ok: false,
       reason: "helper-missing",
@@ -247,21 +335,26 @@ export async function openSafariSettings(
     };
   }
 
-  const args = [status.bundleId];
   try {
-    await execFileAsync(helper, args, { timeout: 15_000 });
+    await answeredInTime(settings.showPreferences(status.bundleId));
     return { ok: true };
   } catch (cause) {
-    const { stderr } = captureOf(cause);
-    const detail = stderr.trim();
-    log.warn("[pond safari] settings helper failed", helper, detail, cause);
+    /** Safari's own text reads "SFErrorDomain error 1", which only belongs in the log. */
+    log.warn("[pond safari] Safari did not open the settings", cause);
     /** An ad-hoc build is refused for the signature reason, so point at that setting. */
-    return {
-      ok: false,
-      reason:
-        status.signature === "ad-hoc" ? "unsigned-build" : "safari-refused",
-      error: detail || "Safari did not open Pond's extension settings.",
-    };
+    return status.signature === "ad-hoc"
+      ? {
+          ok: false,
+          reason: "unsigned-build",
+          error:
+            "Safari hides extensions from unsigned builds until you allow them in its Developer settings.",
+        }
+      : {
+          ok: false,
+          reason: "safari-refused",
+          error:
+            "Safari didn't open Pond's settings. Turn Pond on in Safari, under Extensions.",
+        };
   }
 }
 

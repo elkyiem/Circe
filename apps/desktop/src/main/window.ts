@@ -8,6 +8,7 @@ import { attachEditableContextMenu } from "./context-menu";
 import { hardenArchiveWebviews } from "./core/archive-viewer";
 import { getPrefs, setPrefs, subscribePrefs } from "./core/prefs";
 import { consumePendingDeepLink } from "./deep-link";
+import { settleDockAfterClose, showDock } from "./dock";
 import { followInterfaceZoom } from "./lib/follow-interface-zoom";
 import { lockRendererZoom } from "./lib/lock-renderer-zoom";
 import { resolveMainOut, resolvePreload } from "./lib/resolve-preload";
@@ -130,7 +131,6 @@ async function buildLibraryWindow(): Promise<BrowserWindow> {
     minWidth: MIN_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
     show: false,
-    fullscreenable: false,
     backgroundColor: themedBackground,
     autoHideMenuBar: true,
     titleBarStyle: isMac ? "hiddenInset" : "default",
@@ -158,6 +158,15 @@ async function buildLibraryWindow(): Promise<BrowserWindow> {
   mainWindowState.current = win;
   win.once("closed", () => {
     if (mainWindowState.current === win) mainWindowState.current = null;
+    if (!isQuitting) void settleDockAfterClose();
+  });
+  win.on("show", () => void showDock());
+  // Mouse utilities such as Logi Options+ send back and forward buttons as
+  // swipes on macOS, as do three-finger trackpad swipes.
+  win.on("swipe", (_event, direction) => {
+    if (direction === "left") win.webContents.send(IPC.navigationSwipe, "back");
+    if (direction === "right")
+      win.webContents.send(IPC.navigationSwipe, "forward");
   });
   lockRendererZoom(win.webContents);
   followInterfaceZoom(win.webContents, { getPrefs, subscribePrefs });
@@ -186,8 +195,13 @@ async function buildLibraryWindow(): Promise<BrowserWindow> {
   };
   win.on("resize", saveBounds);
   win.on("move", saveBounds);
-  /** The zoom button keeps zooming; a granted video full-screen request enables full screen until it ends. */
-  win.on("leave-full-screen", () => win.setFullScreenable(false));
+  /** macOS hides the traffic lights in full screen, so the renderer drops their inset. */
+  const sendFullScreen = () => {
+    if (!win.isDestroyed())
+      win.webContents.send(IPC.windowFullScreen, win.isFullScreen());
+  };
+  win.on("enter-full-screen", sendFullScreen);
+  win.on("leave-full-screen", sendFullScreen);
 
   win.on("close", (event) => {
     if (isQuitting) return;
@@ -197,11 +211,12 @@ async function buildLibraryWindow(): Promise<BrowserWindow> {
     if (mainWindowState.current !== win) return;
     event.preventDefault();
     win.hide();
-    if (process.platform === "darwin") app.dock?.hide();
+    void settleDockAfterClose();
   });
 
   win.webContents.on("did-finish-load", () => {
     if (win.isDestroyed()) return;
+    if (win.isFullScreen()) sendFullScreen();
     const route = consumePendingDeepLink();
     if (route) {
       win.webContents.send(IPC.nav, route);
@@ -306,7 +321,7 @@ export async function openLibraryWindow(): Promise<void> {
 }
 
 export async function handleActivate(): Promise<void> {
-  if (process.platform === "darwin") app.dock?.show();
+  await showDock();
   await openLibraryWindow();
 }
 

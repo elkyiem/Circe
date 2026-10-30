@@ -13,6 +13,7 @@ export interface SerializedVideoFrame {
 }
 
 export type InferenceRequest =
+  | { id: number; op: "dispose" }
   | {
       id: number;
       op: "florence";

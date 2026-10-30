@@ -1,7 +1,8 @@
 import { IconArrowLeft, IconArrowRight } from "@pond/icons";
 import { Button } from "@pond/ui";
+import type { NavigationDirection } from "@shared/constants";
 import { useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { libraryChrome } from "@/features/library/state/library-chrome";
 import {
   navigationHistory,
@@ -78,6 +79,58 @@ export function ChromeHistoryNav() {
     });
   }, [router]);
 
+  const backDisabled =
+    browser || isSave ? !canBack : history.index === 0 && !canBack;
+  const forwardDisabled =
+    browser || isSave
+      ? !canForward
+      : !hasSaveAhead &&
+        history.index >= history.entries.length - 1 &&
+        (!canForward || hasStaleSaveAhead);
+
+  const goBack = () => {
+    if (browser || isSave) {
+      router.history.back();
+      return;
+    }
+    const target = navigationHistory.back();
+    if (target) libraryChrome.setNav(target);
+    else router.history.back();
+  };
+
+  const goForward = () => {
+    if (browser || isSave || hasSaveAhead) {
+      router.history.forward();
+      return;
+    }
+    const target = navigationHistory.forward();
+    if (target) libraryChrome.setNav(target);
+    else if (!hasStaleSaveAhead) router.history.forward();
+  };
+
+  const navigate = useEffectEvent((direction: NavigationDirection) => {
+    if (direction === "back") {
+      if (!backDisabled) goBack();
+    } else if (!forwardDisabled) goForward();
+  });
+
+  useEffect(() => {
+    // Buttons 3 and 4 are a mouse's back and forward side buttons.
+    const onMouseUp = (event: MouseEvent) => {
+      if (event.button !== 3 && event.button !== 4) return;
+      event.preventDefault();
+      navigate(event.button === 3 ? "back" : "forward");
+    };
+    window.addEventListener("mouseup", onMouseUp);
+    const stopSwipes = window.pond.onNavigationSwipe((direction) =>
+      navigate(direction),
+    );
+    return () => {
+      window.removeEventListener("mouseup", onMouseUp);
+      stopSwipes();
+    };
+  }, []);
+
   return (
     <div className={styles.nav}>
       <Button
@@ -85,18 +138,8 @@ export function ChromeHistoryNav() {
         size="sm"
         variant="ghost"
         aria-label="Back"
-        disabled={
-          browser || isSave ? !canBack : history.index === 0 && !canBack
-        }
-        onClick={() => {
-          if (browser || isSave) {
-            router.history.back();
-            return;
-          }
-          const target = navigationHistory.back();
-          if (target) libraryChrome.setNav(target);
-          else router.history.back();
-        }}
+        disabled={backDisabled}
+        onClick={goBack}
       >
         <IconArrowLeft />
       </Button>
@@ -105,22 +148,8 @@ export function ChromeHistoryNav() {
         size="sm"
         variant="ghost"
         aria-label="Forward"
-        disabled={
-          browser || isSave
-            ? !canForward
-            : !hasSaveAhead &&
-              history.index >= history.entries.length - 1 &&
-              (!canForward || hasStaleSaveAhead)
-        }
-        onClick={() => {
-          if (browser || isSave || hasSaveAhead) {
-            router.history.forward();
-            return;
-          }
-          const target = navigationHistory.forward();
-          if (target) libraryChrome.setNav(target);
-          else if (!hasStaleSaveAhead) router.history.forward();
-        }}
+        disabled={forwardDisabled}
+        onClick={goForward}
       >
         <IconArrowRight />
       </Button>

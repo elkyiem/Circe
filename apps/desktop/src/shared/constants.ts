@@ -27,6 +27,7 @@ export const IPC = {
   appInfo: "pond:app-info",
   rendererReady: "pond:renderer-ready",
   nav: "pond:nav",
+  windowFullScreen: "pond:window-full-screen",
   prefsChanged: "pond:prefs-changed",
   libraryIdentityChanged: "pond:library-identity-changed",
   openExternal: "pond:open-external",
@@ -59,6 +60,7 @@ export const IPC = {
   editRedoRequested: "pond:edit-redo-requested",
   shortcutAction: "pond:shortcut-action",
   menuAction: "pond:menu-action",
+  navigationSwipe: "pond:navigation-swipe",
   libraryId: "pond:library-id",
   menuRecents: "pond:menu-recents",
   menuOpenSave: "pond:menu-open-save",
@@ -221,6 +223,8 @@ export type MenuActionId =
   | "help.export-debug-report";
 
 export type MenuActionSource = "accelerator" | "menu" | "automation";
+
+export type NavigationDirection = "back" | "forward";
 
 export interface MenuActionEvent {
   id: MenuActionId;

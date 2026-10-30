@@ -27,12 +27,11 @@
   -webkit-app-region: drag;
 }
 
-:global(html[data-platform="mac"]) .chrome {
+:global(
+    html[data-platform="mac"]:not([data-full-screen], [data-runtime="browser"])
+  )
+  .chrome {
   padding-left: 96px;
-}
-
-:global(html[data-runtime="browser"]) .chrome {
-  padding-left: 12px;
 }
 
 .main {

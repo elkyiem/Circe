@@ -16,6 +16,7 @@ import {
 } from "../../shared/enrichment-contracts";
 import { getDb } from "../db";
 import { safeHandle } from "../ipc/helpers";
+import { mediaProcessingQueries } from "../ipc/queries/media-processing";
 import {
   createMediaUnderstandingQueries,
   mediaUnderstandingQueries,
@@ -72,6 +73,7 @@ const reads = {
   "saves.patchDerived": savesQueries["saves.patchDerived"],
   "tags.list": tagsQueries["tags.list"],
   "video.sampleFrames": videoQueries["video.sampleFrames"],
+  "media.decodeAudio": mediaProcessingQueries["media.decodeAudio"],
   "saves.understandMedia": mediaUnderstandingQueries["saves.understandMedia"],
 };
 const Names = z.enum(Object.keys(reads));

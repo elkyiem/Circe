@@ -154,6 +154,14 @@ The Saves feature owns result navigation, the gallery cursor, and full-query sel
 
 Bulk selection mutations cross IPC as explicit IDs through `saves.bulkEdit`. Main loads only the metadata needed to prepare rating, tag, trash, restore, and purge operations; the renderer pool is an optimistic projection and never determines mutation membership. Main validates the complete selection before committing one transaction batch. Purge remains permanent and does not add an unusable undo entry. Clipboard and external-open commands hydrate missing rows before resolving files or links; enrichment commands run against the resident host owner, which hydrates the authoritative Library pool.
 
+## On-device processing resources
+
+Enrichment revalidates the current Save and enabled preference when a queued job starts. Processing preference changes rescan eligibility. The inference worker serializes requests, reuses one multimodal embedding bundle with shared text weights, and releases the worker after fifteen seconds without pending requests. Main reports macOS kernel memory pressure, or available-memory pressure on other platforms, through the existing machine-pacing bridge; inference yields under pressure and resumes automatically.
+
+`media.decodeAudio` is an internal, validated IPC operation for files in the active Library. Main runs bounded FFmpeg extraction and returns at most thirty seconds of mono 16 kHz PCM. It never reads a complete video into the renderer to obtain that segment. Full transcription retains its existing complete-recording behaviour and byte limit, enforced during the response stream. Video sampling uses one decoder for the first thirty-two seconds. Video inference retains every sampled frame and aggregates frame-count-weighted batches of at most sixteen; the media preprocessing version distinguishes these derived vectors from earlier whole-video embeddings.
+
+`scripts/verify-enrichment.cjs` runs finite Electron checks against an isolated Library with real models. Performance comparisons prepare identical media and posters before admission, retain enabled processing preferences, wait for persisted results and a drained queue, and record active and idle resource use separately. The large-file and queued-cancellation modes remain separate from timed comparisons.
+
 ## Auxiliary window composition
 
 Settings has a dedicated renderer and scoped preload. Its singleton native window reuses the section registry, search and provider UI without booting Library selection, ingestion or enrichment effects. Main broadcasts committed preferences to every renderer; Settings delegates Processing rescans to the resident enrichment owner rather than starting a second loop. Settings deep links and native commands select the same window, while app activation explicitly creates or focuses the Library.

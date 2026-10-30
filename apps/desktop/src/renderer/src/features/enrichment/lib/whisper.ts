@@ -25,38 +25,54 @@ export async function decodeMono16k(
   url: string,
   options: DecodeMono16kOptions = {},
 ): Promise<Float32Array> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`fetch failed (${res.status}) for ${url}`);
-  const bytes = await res.arrayBuffer();
-  if (bytes.byteLength > MAX_TRANSCRIPT_BYTES) {
-    throw new Error(`audio too large (${bytes.byteLength})`);
+  if (options.maxSamples != null) {
+    const result = await window.pond.query("media.decodeAudio", {
+      src: url,
+      maxSamples: options.maxSamples,
+    });
+    return result.audio;
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Audio fetch failed (${response.status})`);
+  if (!response.body) throw new Error("Audio response has no body");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_TRANSCRIPT_BYTES) {
+        await reader.cancel();
+        throw new Error("Audio exceeds the transcription byte budget");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
   }
   const Ctx = window.AudioContext ?? window.webkitAudioContext;
-  if (!Ctx) throw new Error("no AudioContext available");
-  const ctx = new Ctx({ sampleRate: 16000 });
+  if (!Ctx) throw new Error("No AudioContext available");
+  const context = new Ctx({ sampleRate: 16000 });
   try {
-    const buffer = await ctx.decodeAudioData(bytes);
-    const length = Math.min(
-      buffer.length,
-      options.maxSamples ?? Number.POSITIVE_INFINITY,
-    );
-    if (buffer.numberOfChannels === 1) {
-      return buffer.getChannelData(0).slice(0, length);
-    }
-    const channels = buffer.numberOfChannels;
-    const mono = new Float32Array(length);
-    for (let ch = 0; ch < channels; ch += 1) {
-      const data = buffer.getChannelData(ch);
-      for (let i = 0; i < length; i += 1) {
-        mono[i] = (mono[i] ?? 0) + (data[i] ?? 0);
-      }
-    }
-    for (let i = 0; i < length; i += 1) {
-      mono[i] = (mono[i] ?? 0) / channels;
+    const buffer = await context.decodeAudioData(bytes.buffer);
+    const mono = new Float32Array(buffer.length);
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const data = buffer.getChannelData(channel);
+      for (let index = 0; index < mono.length; index += 1)
+        mono[index] =
+          (mono[index] ?? 0) + (data[index] ?? 0) / buffer.numberOfChannels;
     }
     return mono;
   } finally {
-    await ctx.close();
+    await context.close();
   }
 }
 

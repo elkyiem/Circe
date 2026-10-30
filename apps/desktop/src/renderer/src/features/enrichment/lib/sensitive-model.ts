@@ -190,3 +190,9 @@ export async function runSensitiveModel(images: RawImage[]): Promise<number[]> {
   }
   return scores;
 }
+
+export async function disposeSensitiveModel(): Promise<void> {
+  const current = sessionPromise;
+  sessionPromise = null;
+  if (current) await (await current).release();
+}

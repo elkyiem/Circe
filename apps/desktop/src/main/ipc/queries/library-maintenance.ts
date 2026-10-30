@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { app, dialog, session, shell } from "electron";
+import { dialog, session, shell } from "electron";
 import log from "electron-log/main.js";
 import { z } from "zod";
 import { IPC } from "../../../shared/constants";
@@ -15,6 +15,7 @@ import { getPrefs, invalidatePrefs, setPrefs } from "../../core/prefs";
 import { reconcileLibrary } from "../../core/scan";
 import { VIDEO_CACHE_DIR } from "../../core/video-preview-proxy";
 import { closeDb } from "../../db";
+import { showDock } from "../../dock";
 import { broadcast } from "../../lib/broadcast";
 import { libraryId, libraryRoot, thumbnailCacheRoot } from "../../paths";
 import { runtimeControls } from "../../runtime";
@@ -203,9 +204,7 @@ export const libraryMaintenanceQueries = {
         ? { mode: "fixed_servers", proxyRules: prefs.proxyUrl }
         : { mode: prefs.proxyMode === "direct" ? "direct" : "system" },
     );
-    if (process.platform === "darwin" && prefs.dockVisibility === "always") {
-      await app.dock?.show();
-    }
+    if (prefs.dockVisibility === "always") await showDock();
     return { ok: true as const, restartRequired: true };
   },
 } satisfies QueryHandlerMap;

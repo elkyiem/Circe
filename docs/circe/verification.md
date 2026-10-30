@@ -1,5 +1,32 @@
 # Circé verification record
 
+## Pond 2.0.3 sync and dev promotion — 2026-10-30
+
+Merged all 18 upstream commits through `a1f7cdd0`, preserving Circé's browser
+transport, native launcher, Library identity events, mouse controls, and resident
+inference owner. Browser history retains its device-local routing while receiving
+the new mouse side-button handling. Native fullscreen/swipe events have explicit
+browser adapters. The new bounded audio decoder remains host-only and is admitted
+through the resident owner's existing validated query boundary.
+
+Browser clipboard uploads retain the new `clipboard` import origin through a
+narrow files/clipboard contract. Unit coverage and a real authenticated upload,
+import, and Save read verified persistence. Browser UI checks passed logo upload,
+reset, cancellation, invalid images, icon, emoji, name, combined name/icon,
+Settings rename, automatic host reconnection, and temporary Library restoration.
+
+The 28-task check passed, including 5,070 desktop tests (47 skipped). Production
+desktop, browser, and Circé extension builds passed. All existing size budgets
+remain unchanged: main output is minified and extension CSS uses esbuild
+minification. The native desktop smoke passed; its enrichment-owner option
+verified two real worker starts across idle release and 8,000 finite audio samples
+with further data correctly reported. No model downloads or personal Library
+fixtures were required. React Doctor remained 76/100 before and after the merge.
+
+`dev` is promoted to the same validated history as `web`; `main` continues to
+mirror upstream. The [sync guide](sync.md) documents the manual fast-forward
+promotion. No automatic sync workflow was enabled.
+
 ## Native Circé Dock launcher — 2026-10-29
 
 The local installer produced a separately named and signed `~/Applications/Circé.app`

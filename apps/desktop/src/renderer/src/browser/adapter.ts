@@ -380,6 +380,8 @@ export async function installBrowserAdapter(libraryId: string) {
     },
     onPreviewNeighborRequested: previews.subscribe,
     onNavigate: noNativeEvents,
+    onFullScreenChange: noNativeEvents,
+    onNavigationSwipe: noNativeEvents,
     onOpenFiles: noNativeEvents,
     onEditUndoRequested: (callback) => onBrowserEditRequest("undo", callback),
     onEditRedoRequested: (callback) => onBrowserEditRequest("redo", callback),

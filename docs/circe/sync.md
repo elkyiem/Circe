@@ -4,6 +4,10 @@
 device connection and network adaptations. Updating `main` does not update `web`
 or the running host.
 
+`dev` mirrors the validated Circé integration on `web`. It must include the full
+merged history, including the browser features and local fixes. It is no longer
+the old Pond 1.6.3 snapshot.
+
 ## Sync an updated main
 
 Start with a clean working tree on Node 24 and pnpm 11.27.0:
@@ -38,6 +42,22 @@ Use the shared host for finite HTTP/browser smoke checks from the
 it to load the rebuilt bundles. Keep the existing sandbox, origin configuration
 and Tailscale gateway; a source update does not require certificate or DNS setup
 again.
+
+## Keep dev in sync
+
+After the `web` merge passes verification, fast-forward `dev` to the same commit:
+
+```sh
+git switch dev
+git pull --ff-only origin dev
+git merge --ff-only web
+git push origin web dev
+git switch web
+```
+
+This preserves all commits. If `dev` gains independent work and cannot
+fast-forward, merge that work into `web`, validate the combined result, then
+fast-forward `dev`. Do not reset or force-push a branch to hide divergence.
 
 ## Automate the repetitive work
 

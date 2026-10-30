@@ -448,7 +448,10 @@ export function createBrowserFiles(transport: FileTransport) {
             );
         }
         if (selected.length)
-          return importSelected("saves.importFiles", { paths: selected });
+          return importSelected("saves.importFiles", {
+            paths: selected,
+            origin: "clipboard",
+          });
         const text = await navigator.clipboard.readText();
         if (!text.trim())
           return { ok: false, error: "The clipboard is empty." };

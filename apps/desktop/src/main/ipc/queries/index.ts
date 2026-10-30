@@ -28,6 +28,7 @@ import { foldersQueries } from "./folders";
 import { inspectQueries } from "./inspect";
 import { libraryQueries } from "./library";
 import { libraryRepairQueries } from "./library-repairs";
+import { mediaProcessingQueries } from "./media-processing";
 import { mediaUnderstandingQueries } from "./media-understanding";
 import { openWithQueries } from "./open-with";
 import type { QueryHandlerMap, QueryParams } from "./params";
@@ -69,6 +70,7 @@ const queryRegistry = {
   ...libraryQueries,
   ...libraryRepairQueries,
   ...mediaUnderstandingQueries,
+  ...mediaProcessingQueries,
   ...inspectQueries,
   ...videoQueries,
   ...syncHistoryQueries,

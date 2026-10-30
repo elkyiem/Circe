@@ -74,7 +74,11 @@ function readFocus() {
 }
 
 function bindHost(
-  onHost: (host: { thermal: ThermalState; onBattery: boolean }) => void,
+  onHost: (host: {
+    thermal: ThermalState;
+    onBattery: boolean;
+    memoryPressure?: MachinePace["memoryPressure"];
+  }) => void,
 ): () => void {
   if (!("window" in globalThis) || !("pond" in window)) return () => {};
   const { machinePace, onMachinePace } = window.pond;
@@ -114,6 +118,7 @@ function listen(): () => void {
     patch({
       onBattery: host.onBattery,
       thermal: host.thermal,
+      memoryPressure: host.memoryPressure,
       reliefAt,
     });
   });

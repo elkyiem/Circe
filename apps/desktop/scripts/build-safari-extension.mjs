@@ -6,6 +6,8 @@
  *
  * The appex is signed here ad hoc with its own entitlements; `sign-mac.cjs` re-signs it
  * with the release identity, because electron-builder never signs Contents/PlugIns.
+ * It also builds `safari-settings.node`, which electron-builder copies to
+ * Contents/Resources and signs with the rest of the app.
  *
  * Skipped outside macOS. Without Xcode it skips locally and fails in CI, so a release
  * cannot ship without Safari.
@@ -15,6 +17,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import nodeApiHeaders from "node-api-headers";
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const extensionRoot = resolve(desktopRoot, "../extension");
@@ -135,20 +138,38 @@ run("codesign", [
   appex,
 ]);
 
-// The settings helper: Electron cannot call SFSafariApplication itself, and Safari has
-// no URL scheme for its Extensions pane.
-const helper = join(desktopRoot, "resources/bin/pond-safari-settings");
-mkdirSync(dirname(helper), { recursive: true });
+/**
+ * The settings module: Safari has no URL scheme for its Extensions pane, and it answers
+ * SFSafariApplication only for the main process of the app that holds the extension, so
+ * Electron loads this Node-API module instead of spawning a helper. Node-API is ABI-stable,
+ * so Node's headers build a module Electron can load.
+ */
+const settings = join(outDir, "safari-settings.node");
 run("xcrun", [
   "--sdk",
   "macosx",
-  "swiftc",
-  "-O",
+  "clang",
+  "-O2",
+  "-fobjc-arc",
+  "-bundle",
+  "-undefined",
+  "dynamic_lookup",
+  "-arch",
+  "arm64",
+  "-arch",
+  "x86_64",
+  `-mmacosx-version-min=${DEPLOYMENT_TARGET}`,
+  "-I",
+  nodeApiHeaders.include_dir,
+  "-framework",
+  "Foundation",
+  "-framework",
+  "SafariServices",
   "-o",
-  helper,
-  resolve(extensionRoot, "safari/pond-safari-settings.swift"),
+  settings,
+  resolve(extensionRoot, "safari/safari-settings.m"),
 ]);
-run("codesign", ["--force", "--sign", "-", helper]);
+run("codesign", ["--force", "--sign", "-", settings]);
 
 console.log(`[pond safari] extension bundled at ${appex}`);
-console.log(`[pond safari] settings helper at ${helper}`);
+console.log(`[pond safari] settings module at ${settings}`);

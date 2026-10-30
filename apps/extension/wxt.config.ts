@@ -41,6 +41,7 @@ export default defineConfig({
     },
   },
   vite: () => ({
+    build: { cssMinify: "esbuild" },
     define: { "import.meta.env.CIRCE_EXTENSION": JSON.stringify(CIRCE_BUILD) },
     resolve: {
       alias: {
@@ -70,7 +71,7 @@ export default defineConfig({
   },
   manifest: ({ browser }) => ({
     name: CIRCE_BUILD ? "Circé" : "Pond",
-    version: "2.0.1",
+    version: "2.0.3",
     ...(browser === "firefox"
       ? {
           browser_specific_settings: {

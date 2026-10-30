@@ -56,6 +56,18 @@ it("rests longer on battery, in the background, and under fair heat", () => {
   ).toBe(4);
 });
 
+it("pauses inference under memory pressure and resumes when pressure clears", () => {
+  expect(enrichmentSuspended(pace({ memoryPressure: "warning" }), now)).toBe(
+    true,
+  );
+  expect(enrichmentSuspended(pace({ memoryPressure: "critical" }), now)).toBe(
+    true,
+  );
+  expect(enrichmentSuspended(pace({ memoryPressure: "normal" }), now)).toBe(
+    false,
+  );
+});
+
 it("caps the rest between runs so a long inference still yields the CPU", () => {
   expect(enrichmentRestMs(100, 1)).toBe(400);
   expect(enrichmentRestMs(2_000, 1)).toBe(1_000);
