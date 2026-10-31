@@ -108,6 +108,16 @@ exports.verifyBrowserRelease = async function verifyBrowserRelease({
     await waitFor(
       `document.querySelector(${JSON.stringify(disabled)})?.hasAttribute('data-disabled')`,
     );
+    await run(
+      `document.querySelector(${JSON.stringify(disabled)}).scrollIntoView({ block: 'center', inline: 'nearest' })`,
+    );
+    await waitFor(`(() => {
+      const root = document.querySelector(${JSON.stringify(disabled)});
+      const rect = root.getBoundingClientRect();
+      const x = rect.x + rect.width / 2;
+      const y = rect.y + rect.height / 2;
+      return x > 0 && x < innerWidth && y > 0 && y < innerHeight && root.contains(document.elementFromPoint(x, y));
+    })()`);
     const style = () =>
       run(`(() => {
       const root = document.querySelector(${JSON.stringify(disabled)});
@@ -166,6 +176,7 @@ exports.verifyBrowserRelease = async function verifyBrowserRelease({
       cursor: before.cursor,
       stableHoverAndPress: true,
       blockedChange: true,
+      pointerTargetVisible: true,
     };
     await snapshot(`release-${platform}-disabled-switch`);
     await setSounds(true);
