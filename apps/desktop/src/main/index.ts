@@ -98,6 +98,7 @@ import {
   markStartup,
   watchMainThreadStalls,
 } from "./startup-timing";
+import { setUpdateInstallPreparation } from "./update-restart";
 import { relaunchWebHost } from "./web/relaunch";
 import {
   beginQuit,
@@ -309,7 +310,9 @@ app.whenReady().then(async () => {
     setMenuRecents(Array.isArray(entries) ? entries : []);
   });
 
-  const loginItem = app.getLoginItemSettings();
+  /** Electron reports login items on macOS and Windows only; Linux uses the XDG entry's flag. */
+  const loginItem =
+    process.platform === "linux" ? null : app.getLoginItemSettings();
   const launchPrefs = await getPrefs().catch(() => null);
   const wantsLaunchHidden = launchPrefs?.window.launchHidden === true;
   setCloseToTray(launchPrefs?.window.closeToTray === true);
@@ -317,8 +320,9 @@ app.whenReady().then(async () => {
     platform: process.platform,
     requested:
       wantsLaunchHidden ||
-      loginItem.wasOpenedAtLogin === true ||
-      (process.platform === "win32" && process.argv.includes(LOGIN_LAUNCH_ARG)),
+      loginItem?.wasOpenedAtLogin === true ||
+      ((process.platform === "win32" || process.platform === "linux") &&
+        process.argv.includes(LOGIN_LAUNCH_ARG)),
     trayEnabled: launchPrefs?.quickCapture.menuBarIcon !== false,
   });
   if (shouldOpenInitialWindow(launchedHidden, initialDestination)) {
@@ -597,16 +601,17 @@ if (process.platform === "win32") {
   });
 }
 
-app.on("before-quit", async (event) => {
-  if (quitPrepared) return;
-  if (!started) {
-    quitPreparing = true;
-    return;
-  }
-  event.preventDefault();
-  if (quitPreparing) return;
-  quitPreparing = true;
-  beginQuit();
+let quitPreparation: Promise<void> | null = null;
+
+function armQuitStall(): void {
+  /** Everything is flushed by now; a window that refuses to close must not keep Pond running. */
+  setTimeout(() => {
+    log.warn("[pond] quit stalled; exiting");
+    app.exit(0);
+  }, QUIT_STALL_MS).unref();
+}
+
+async function shutdownForQuit(): Promise<void> {
   stopMediaWarmer?.();
   try {
     const { stopEnrichmentOwner } = await import("./core/enrichment-owner");
@@ -685,16 +690,42 @@ app.on("before-quit", async (event) => {
   } catch (err) {
     log.warn("[pond] fish MCP close failed", err);
   }
-  log.info("[pond] quit prepared");
-  quitPrepared = true;
+}
+
+/** Marks the app quitting first, so a later `quitAndInstall` close is not cancelled. */
+function prepareQuit(): Promise<void> {
+  if (quitPrepared) return Promise.resolve();
+  if (quitPreparation) return quitPreparation;
+  quitPreparing = true;
+  beginQuit();
+  quitPreparation = shutdownForQuit().then(
+    () => {
+      log.info("[pond] quit prepared");
+      quitPrepared = true;
+    },
+    (error) => {
+      log.warn("[pond] quit preparation failed", error);
+      quitPrepared = true;
+    },
+  );
+  return quitPreparation;
+}
+
+setUpdateInstallPreparation(prepareQuit);
+
+app.on("before-quit", async (event) => {
+  if (quitPrepared) return;
+  if (!started) {
+    quitPreparing = true;
+    return;
+  }
+  event.preventDefault();
+  if (quitPreparing) return;
+  await prepareQuit();
   if (isWebHostRelaunchPending()) {
     relaunchWebHost(app, process.env.CIRCE_WEB_SUPERVISED === "1");
     return;
   }
-  /** Everything is flushed by now; a window that refuses to close must not keep Pond running. */
-  setTimeout(() => {
-    log.warn("[pond] quit stalled; exiting");
-    app.exit(0);
-  }, QUIT_STALL_MS).unref();
+  armQuitStall();
   app.quit();
 });

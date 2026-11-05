@@ -1,3 +1,4 @@
+import { ArenaLinkConversion } from "@/features/settings/components/sections/storage/arena-links";
 import { StorageLocationSettings } from "@/features/settings/components/sections/storage/location";
 import { StorageSummary } from "@/features/settings/components/sections/storage/storage-summary";
 import {
@@ -17,6 +18,24 @@ export const storageSection = defineSection("storage", {
       title: "Location",
       fullWidth: true,
       render: () => <StorageLocationSettings />,
+    },
+    {
+      title: "Web Pages",
+      items: [
+        {
+          control: "switch",
+          key: "autoArchive",
+          title: "Archive Web Pages Automatically",
+          description: "Off keeps the title, description, and preview image.",
+        },
+        {
+          control: "custom",
+          key: "convertArenaLinks",
+          title: "Convert Are.na Links",
+          keywords: ["are.na", "arena", "link", "block", "web page", "convert"],
+          render: () => <ArenaLinkConversion />,
+        },
+      ],
     },
     {
       title: "Storage Limits",

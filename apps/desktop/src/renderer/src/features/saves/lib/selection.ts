@@ -1,3 +1,4 @@
+import { isWebPageSave } from "@shared/web-page-save";
 import { z } from "zod";
 import { statusFeed } from "@/features/downloads/status-feed";
 import { resolveFileIndex } from "@/features/saves/lib/actions";
@@ -192,16 +193,19 @@ export async function copyFilePathsForSelection(
   const saves = (await resolve(ids)).filter(
     (save) => resolveFileIndex(save) != null,
   );
-  const paths: string[] = [];
-  for (const save of saves) {
-    const result = FilePathReplySchema.parse(
-      await window.pond.query("saves.filePath", {
-        id: save.id,
-        fileIndex: resolveFileIndex(save) ?? 0,
-      }),
-    );
-    if (result.ok && result.path) paths.push(result.path);
-  }
+  const replies = await Promise.all(
+    saves.map(async (save) =>
+      FilePathReplySchema.parse(
+        await window.pond.query("saves.filePath", {
+          id: save.id,
+          fileIndex: resolveFileIndex(save) ?? 0,
+        }),
+      ),
+    ),
+  );
+  const paths = replies.flatMap((result) =>
+    result.ok && result.path ? [result.path] : [],
+  );
   if (paths.length === 0) {
     return { ok: false, message: "No files in selection" };
   }
@@ -404,7 +408,7 @@ export async function archiveSitesForSelection(
   ids: readonly string[],
 ): Promise<void> {
   for (const save of await resolve(ids)) {
-    if (!save.url || save.source !== "web" || save.deletedAt) continue;
+    if (!save.url || !isWebPageSave(save) || save.deletedAt) continue;
     await window.pond.archiveSite(save.id);
   }
 }

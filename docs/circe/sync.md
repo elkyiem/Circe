@@ -32,6 +32,7 @@ pnpm check
 pnpm build
 pnpm --filter @pond/desktop build:web
 pnpm --filter @pond/extension build:circe
+pnpm --filter @pond/desktop smoke:upstream-parity
 git diff --check
 git commit -m "chore(circe): merge main into web"
 git push origin web

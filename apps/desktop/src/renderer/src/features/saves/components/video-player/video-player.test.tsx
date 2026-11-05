@@ -161,6 +161,76 @@ it("composes one top video toolbar and one bottom playback toolbar", async () =>
   expect(host.querySelector("[data-anchor]")).toBeNull();
 });
 
+it("keeps Space toggling playback after the seek bar is clicked", async () => {
+  const play = vi.fn(() => Promise.resolve());
+  Object.defineProperty(HTMLMediaElement.prototype, "play", {
+    configurable: true,
+    value: play,
+  });
+  await act(async () => {
+    root.render(<TestVideoPlayer />);
+  });
+  const seek = host.querySelector('[aria-label="Seek"]');
+  const thumb = seek?.querySelector("input");
+  if (!seek || !thumb) throw new Error("Missing seek bar");
+
+  thumb.focus();
+  await act(async () => {
+    seek.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
+  expect(seek.contains(document.activeElement)).toBe(false);
+
+  play.mockClear();
+  await act(async () => {
+    (document.activeElement ?? document.body).dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }),
+    );
+  });
+  expect(play).toHaveBeenCalledTimes(1);
+});
+
+it("seeks to the pressed point on the seek track", async () => {
+  await act(async () => {
+    root.render(<TestVideoPlayer />);
+  });
+  const video = host.querySelector("video");
+  const control = host.querySelector('[aria-label="Seek"]')?.firstElementChild;
+  if (!video || !(control instanceof HTMLElement)) {
+    throw new Error("Missing seek track");
+  }
+  Object.defineProperty(video, "duration", { configurable: true, value: 60 });
+  await act(async () => video.dispatchEvent(new Event("durationchange")));
+  control.getBoundingClientRect = () => new DOMRect(0, 0, 200, 24);
+  control.setPointerCapture = () => {};
+  control.hasPointerCapture = () => false;
+
+  await act(async () => {
+    control.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 100,
+        clientY: 12,
+        pointerId: 1,
+        pointerType: "mouse",
+      }),
+    );
+    document.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 12,
+        pointerId: 1,
+        pointerType: "mouse",
+      }),
+    );
+  });
+
+  expect(video.currentTime).toBe(30);
+});
+
 it("always fits video inside the viewer", async () => {
   await act(async () => {
     root.render(<TestVideoPlayer />);

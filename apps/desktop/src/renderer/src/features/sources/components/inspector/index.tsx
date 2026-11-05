@@ -14,7 +14,7 @@ import {
   watchKindLabel,
   watchSourceLabel,
 } from "@pond/schema/watches";
-import { Button, Input, Settings, Sidebar } from "@pond/ui";
+import { Button, Input, Settings, Sidebar, Switch } from "@pond/ui";
 import type { SourceTargetInput } from "@shared/account-contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import Fuse from "fuse.js";
@@ -392,6 +392,7 @@ function FolderData({
       path: status.path,
       imported: imported.length,
       watching: status.enabled,
+      mode: status.mode,
     },
     () => void client.invalidateQueries({ queryKey: ["watched-folder"] }),
   );
@@ -408,7 +409,6 @@ function FolderData({
         { label: "Source", value: "Local" },
         { label: "Type", value: "Folder" },
         { label: "Imported Items", value: formatNumber(imported.length) },
-        { label: "Mode", value: status.mode === "move" ? "Move" : "Copy" },
         { label: "Status", value: status.enabled ? "Watching" : "Paused" },
       ],
     }),
@@ -727,6 +727,14 @@ function ActionRows({ rows }: { rows: SourceActionRow[] }) {
                 {action.label}
               </Button>
             ))}
+            {row.toggle ? (
+              <Switch.Root
+                aria-label={row.title}
+                checked={row.toggle.checked}
+                disabled={row.disabled}
+                onCheckedChange={row.toggle.onCheckedChange}
+              />
+            ) : null}
           </Settings.ItemControl>
         </Settings.Item>
       ))}

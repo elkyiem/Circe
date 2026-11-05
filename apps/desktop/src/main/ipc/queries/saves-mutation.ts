@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { isManualSensitiveDecision } from "@pond/schema/content-safety";
 import { saves } from "@pond/schema/db";
 import { EXTERNAL_SOURCE_IDS } from "@pond/schema/sources";
 import type { Transaction } from "@pond/schema/tx";
@@ -13,13 +14,14 @@ import { mediaEmbeddingVersion } from "../../../shared/embeddings";
 import type { QueryResult } from "../../../shared/query-contracts";
 import type { OkFailure } from "../../../shared/query-contracts-shared";
 import { duplicateGroups } from "../../core/duplicate-groups";
-import { executeBatch } from "../../core/executor";
+import { executeBatch, withMutationScope } from "../../core/executor";
 import { extractImageMetadata } from "../../core/image-metadata";
 import { extractMediaMetadata } from "../../core/media-metadata";
 import { mergeDuplicateSaves } from "../../core/merge-duplicates";
 import { persistSave } from "../../core/persist-save";
 import { retryFailedSaves } from "../../core/pipeline/enqueue";
 import { skipSaves } from "../../core/pipeline/reconciler-client";
+import { readSave } from "../../core/pipeline/workers/apply";
 import { runEnsurePoster } from "../../core/pipeline/workers/ensure-poster";
 import { runRenderTextCover } from "../../core/pipeline/workers/render-text-cover";
 import {
@@ -42,46 +44,6 @@ import {
   StringListParam,
   StringParam,
 } from "./params";
-
-async function analyzeSaveColors(
-  row: typeof saves.$inferSelect,
-  force: boolean,
-): Promise<boolean> {
-  const { extractPalette } = await import("../../lib/palette");
-  const { encodeBlurhash, pickBlurhashStill } = await import(
-    "../../lib/blurhash"
-  );
-  const { encodePhash } = await import("../../lib/phash");
-  const { saveFile } = await import("../../paths");
-  const still = pickBlurhashStill(row);
-  if (!still) return false;
-  const needsColors =
-    row.mediaType === "image" &&
-    (force || (row.dominantColors ?? []).length === 0);
-  const needsHash = force || !row.blurhash;
-  const needsPerceptualHash =
-    row.mediaType === "image" && (force || !row.phash);
-  if (!needsColors && !needsHash && !needsPerceptualHash) return false;
-  const path = saveFile(row.id, still.path);
-  const patch: Parameters<typeof persistSave>[1] = {};
-  if (needsColors) {
-    const colors = await extractPalette(path);
-    if (colors.length > 0) patch.dominantColors = colors;
-  }
-  if (needsHash) {
-    const hash = await encodeBlurhash(path);
-    if (hash) patch.blurhash = hash;
-  }
-  if (needsPerceptualHash) {
-    const hash = await encodePhash(path);
-    if (hash) patch.phash = hash;
-  }
-  if (Object.keys(patch).length === 0) return false;
-  await persistSave(row.id, patch, {
-    actorReason: force ? "color:reanalyze" : "color:backfill",
-  });
-  return true;
-}
 
 async function analyzeSaveMetadata(
   row: typeof saves.$inferSelect,
@@ -234,8 +196,24 @@ export const savesMutationQueries = {
       if (!params.id) return SAVE_NOT_FOUND;
       if (Object.keys(params.patch).length === 0)
         return { ok: false, error: "Nothing to update." };
-      const updated = await persistSave(params.id, params.patch, {
-        actorReason: "enrichment:derived",
+      const updated = await withMutationScope(async () => {
+        const current = await readSave(params.id);
+        if (!current) return null;
+        const {
+          sensitiveScore: _score,
+          sensitiveModel,
+          ...otherDerived
+        } = params.patch;
+        // A classifier from another window may have started before the user's correction.
+        const patch =
+          isManualSensitiveDecision(current.sensitiveModel) &&
+          !isManualSensitiveDecision(sensitiveModel)
+            ? otherDerived
+            : params.patch;
+        if (Object.keys(patch).length === 0) return current;
+        return persistSave(params.id, patch, {
+          actorReason: "enrichment:derived",
+        });
       });
       if (!updated) return SAVE_NOT_FOUND;
       if (params.patch.clipEmbedding) {
@@ -250,7 +228,7 @@ export const savesMutationQueries = {
   async "saves.backfillColors"() {
     const db = await getDb();
     const rows = await db.select().from(saves);
-
+    const { analyzeSaveColors } = await import("../../core/save-colors");
     let updated = 0;
     for (const row of rows) if (await analyzeSaveColors(row, false)) updated++;
     return { ok: true as const, updated };
@@ -271,6 +249,7 @@ export const savesMutationQueries = {
       const db = await getDb();
       const row = db.select().from(saves).where(eq(saves.id, id)).get();
       if (!row) return SAVE_NOT_FOUND;
+      const { analyzeSaveColors } = await import("../../core/save-colors");
       const updated = await analyzeSaveColors(row, true);
       return updated
         ? { ok: true, updated }
@@ -434,4 +413,24 @@ export const savesMutationQueries = {
     z.object({ keepId: StringParam, ids: StringListParam }),
     async (params) => mergeDuplicateSaves(params),
   ),
+
+  "saves.split": query(
+    z.object({ ids: z.array(StringParam).min(1).max(1_000) }),
+    async ({ ids }) => {
+      const { splitSaves } = await import("../../core/split-save");
+      return splitSaves(ids);
+    },
+  ),
+  "saves.splittableCount": query(z.object({}), async () => {
+    const { countSplittableSaves } = await import("../../core/split-all");
+    return { count: await countSplittableSaves() };
+  }),
+  "saves.splitAll": query(z.object({}), async () => {
+    const { startSplitAll } = await import("../../core/split-all");
+    return startSplitAll();
+  }),
+  "saves.splitAllStatus": query(z.object({}), async () => {
+    const { splitAllStatus } = await import("../../core/split-all");
+    return splitAllStatus();
+  }),
 } satisfies QueryHandlerMap;

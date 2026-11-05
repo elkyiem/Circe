@@ -7,6 +7,7 @@ import { undoRevision } from "../core/undo";
 import { accountsQueries } from "../ipc/queries/accounts";
 import { agentQueries } from "../ipc/queries/agent";
 import { apiTokensQueries } from "../ipc/queries/api-tokens";
+import { arenaLinkQueries } from "../ipc/queries/arena-links";
 import { bulkQueries } from "../ipc/queries/bulk";
 import { canvasesQueries } from "../ipc/queries/canvases";
 import { conversionQueries } from "../ipc/queries/conversion";
@@ -35,6 +36,7 @@ import { updateWebCanvas } from "./canvases";
 import { WebRequestError } from "./errors";
 
 const handlers = {
+  ...arenaLinkQueries,
   ...apiTokensQueries,
   ...libraryRepairQueries,
   ...enrichmentQueries,
@@ -73,6 +75,8 @@ export async function runWebQuery(
     libraryId: expectedLibrary,
   } = WebQueryRequestSchema.parse(request);
   if (
+    name === "arenaLinks.convert" ||
+    name === "saves.splitAll" ||
     name === "libraryRepairs.preview" ||
     name === "libraryRepairs.apply" ||
     name === "libraryRepairs.cancel"

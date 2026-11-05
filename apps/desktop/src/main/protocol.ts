@@ -19,6 +19,7 @@ import {
 import { VIDEO_CACHE_HOST } from "./core/video-preview-proxy";
 import { byteRange } from "./lib/byte-range";
 import { isPathInside } from "./lib/path-identity";
+import { canonicalPondSaveId } from "./lib/pond-url";
 import { clampThumbWidth } from "./lib/thumbnail";
 import { libraryRoot, resolvePaths, saveFile } from "./paths";
 
@@ -71,9 +72,8 @@ export function registerProtocol() {
 export async function servePondMedia(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    // Chromium lowercases standard-scheme hosts; Save directories keep uppercase ULIDs.
     const host = isUlid(url.hostname)
-      ? url.hostname.toUpperCase()
+      ? canonicalPondSaveId(url.hostname)
       : url.hostname;
     const file = decodeURIComponent(url.pathname.replace(/^\//, ""));
     if (!host || !file) {
@@ -217,7 +217,7 @@ function resolveTarget(host: string, file: string): ProtocolTarget {
     return { resolved: resolve(join(base, file)), root: base };
   }
   return {
-    resolved: resolve(saveFile(host, file)),
+    resolved: resolve(saveFile(canonicalPondSaveId(host), file)),
     root: resolvePaths().savesDir,
   };
 }

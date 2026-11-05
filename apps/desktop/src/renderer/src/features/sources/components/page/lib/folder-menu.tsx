@@ -1,6 +1,7 @@
 import {
   IconFolderOpen,
   IconFolderPen,
+  IconFolderXmark,
   IconMediaPause,
   IconMediaPlay,
   IconTrash,
@@ -20,6 +21,7 @@ interface FolderMenuTarget {
   name: string;
   imported: number;
   watching: boolean;
+  mode: "copy" | "move";
 }
 
 function revealLabel() {
@@ -41,6 +43,30 @@ async function setWatching(
 ): Promise<void> {
   await window.pond.query("autoImport.set", { enabled });
   onChanged();
+}
+
+function setDeleteAfterImport(
+  target: FolderMenuTarget,
+  enabled: boolean,
+  onChanged: () => void,
+): void {
+  const apply = async () => {
+    await window.pond.query("autoImport.set", {
+      mode: enabled ? "move" : "copy",
+    });
+    onChanged();
+  };
+  if (!enabled) {
+    void apply();
+    return;
+  }
+  Dialog.confirm({
+    title: "Delete After Import",
+    description: `Pond moves each file in ${target.name} to the Trash once it's in your library, including files it already imported.`,
+    confirmLabel: "Turn On",
+    confirmVariant: "destructive",
+    onConfirm: apply,
+  });
 }
 
 function confirmStop(target: FolderMenuTarget, onChanged: () => void): void {
@@ -80,6 +106,20 @@ export function buildFolderRows(
             onClick: () => void pickWatchedFolder(),
           },
         ],
+      },
+      {
+        id: "delete-after-import",
+        title: "Delete After Import",
+        description:
+          target.mode === "move"
+            ? "Pond moves each file to the Trash once it's in your library."
+            : "Files stay in the folder after Pond imports them.",
+        actions: [],
+        toggle: {
+          checked: target.mode === "move",
+          onCheckedChange: (checked) =>
+            setDeleteAfterImport(target, checked, onChanged),
+        },
       },
     ],
     fetch: [],
@@ -145,9 +185,23 @@ export function buildFolderMenu(
         },
         {
           label: "Stop Watching",
-          icon: <IconTrash />,
+          icon: <IconFolderXmark />,
           variant: "destructive",
           onClick: () => confirmStop(target, onChanged),
+        },
+      ],
+    },
+    { type: "separator" },
+    {
+      type: "group",
+      items: [
+        {
+          type: "checkbox",
+          label: "Delete After Import",
+          icon: <IconTrash />,
+          checked: target.mode === "move",
+          onCheckedChange: (checked) =>
+            setDeleteAfterImport(target, checked, onChanged),
         },
       ],
     },

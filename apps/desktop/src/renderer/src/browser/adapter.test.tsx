@@ -190,3 +190,38 @@ it("delivers deletion feedback on the visiting device without a host query or fa
     window.removeEventListener("iris-error", receive);
   }
 });
+
+it("delivers Are.na conversion progress through the browser subscription and removes listeners", async () => {
+  vi.stubGlobal("EventSource", BrowserEvents);
+  vi.stubGlobal("fetch", async (path: string) => {
+    if (path === "/web/capabilities")
+      return Response.json({ host: { platform: "darwin" } });
+    if (path === "/web/query") return Response.json(DEFAULT_PREFS);
+    if (path === "/web/history")
+      return Response.json({ revision: 0, canUndo: false, canRedo: false });
+    throw new Error(`Unexpected host request: ${path}`);
+  });
+  await installBrowserAdapter("arena-progress-test");
+  const received: number[] = [];
+  const off = window.pond.onArenaLinkProgress((progress) =>
+    received.push(progress.processed),
+  );
+  const events = BrowserEvents.latest;
+  if (!events) throw new Error("Missing host event connection");
+  const send = (processed: number) =>
+    events.dispatchEvent(
+      new MessageEvent("arena-link-progress", {
+        data: JSON.stringify({
+          id: "conversion",
+          processed,
+          total: 2,
+          converted: processed,
+          failed: 0,
+        }),
+      }),
+    );
+  send(1);
+  off();
+  send(2);
+  expect(received).toEqual([1]);
+});

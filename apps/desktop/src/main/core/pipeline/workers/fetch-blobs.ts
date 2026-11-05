@@ -1,5 +1,5 @@
 import { extname } from "node:path";
-import type { SaveFile } from "@pond/schema/db";
+import type { Save, SaveFile } from "@pond/schema/db";
 import { type RawJson, walkCaptureMedia } from "@pond/schema/raw";
 import {
   IMAGE_KIND,
@@ -7,6 +7,7 @@ import {
   isOriginalImageKind,
   VIDEO_KIND,
 } from "@shared/save-file-names";
+import { isAvatarUrl } from "@shared/tweet-card";
 import log from "electron-log/main.js";
 import { fetchMediaBatch } from "../../../lib/blob";
 import type { TransferOptions } from "../../../lib/download-transfer";
@@ -35,14 +36,28 @@ export async function runFetchBlobs(
   const save = await readSave(saveId);
   if (!save) return;
 
-  if (save.source === "web") {
-    try {
-      await fetchSourceIcon(saveId, save);
-    } catch (err) {
-      log.warn("[pond pipeline:fetch-blobs] source icon failed", saveId, err);
-    }
+  const icon =
+    save.source === "web"
+      ? fetchSourceIcon(saveId, save).catch((err) => {
+          log.warn(
+            "[pond pipeline:fetch-blobs] source icon failed",
+            saveId,
+            err,
+          );
+        })
+      : undefined;
+  try {
+    await fetchMissingMedia(saveId, save, ctx);
+  } finally {
+    await icon;
   }
+}
 
+async function fetchMissingMedia(
+  saveId: string,
+  save: Save,
+  ctx: FetchBlobsContext,
+): Promise<void> {
   const { autoDownload } = await getVideoDownloadPrefs(save.source);
   const urls = collectMediaUrls(save.rawJson, { includeVideo: autoDownload });
   if (urls.length === 0) {
@@ -237,6 +252,8 @@ export function collectMediaUrls(
       (!opts.includeVideo || !hasDirectVideoExtension(m.url))
     )
       continue;
+    /* A harvest can store the author's avatar as tweet media; it is not part of the post, and a failed avatar fetch must not fail the save. */
+    if (isAvatarUrl(m.url)) continue;
     if (seen.has(m.url)) continue;
     seen.add(m.url);
     out.push(m.url);

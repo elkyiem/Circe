@@ -16,6 +16,10 @@ import type {
   AccountQueryInputs,
   AccountQueryResults,
 } from "./account-contracts";
+import type {
+  ArenaLinkQueryInputs,
+  ArenaLinkQueryResults,
+} from "./arena-link-contracts";
 import type { assistantSend } from "./assistant";
 import type { BulkQueryInputs, BulkQueryResults } from "./bulk-contracts";
 import type { CanvasQueryInputs, CanvasQueryResults } from "./canvas-contracts";
@@ -161,6 +165,7 @@ export interface QueryInputs
     SavesClipboardQueryInputs,
     SavesOpenWithQueryInputs,
     QueueQueryInputs,
+    ArenaLinkQueryInputs,
     LibraryRepairQueryInputs,
     MediaProcessingQueryInputs,
     TagGroupQueryInputs {
@@ -381,6 +386,7 @@ export interface QueryResults
     SavesClipboardQueryResults,
     SavesOpenWithQueryResults,
     QueueQueryResults,
+    ArenaLinkQueryResults,
     LibraryRepairQueryResults,
     TagGroupQueryResults {
   "folders.rules.get": { tags: string[]; inheritedTags: string[] };

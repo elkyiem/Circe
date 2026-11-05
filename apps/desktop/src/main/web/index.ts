@@ -263,6 +263,7 @@ export async function startWebHost() {
           [IPC.storageStatus, "storage"],
           [IPC.updateNotice, "update"],
           [IPC.eagleImportProgress, "import-progress"],
+          [IPC.arenaLinkProgress, "arena-link-progress"],
           [IPC.agentFilter, "agent-filter"],
           [IPC.agentCite, "agent-cite"],
           [IPC.agentOverlay, "agent-overlay"],

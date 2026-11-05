@@ -173,6 +173,12 @@ async function runMessage(
     } else if (prefs.agent.enabledKeys[provider] !== true) {
       throw new Error("Add an enabled provider key in Settings.");
     }
+    const catalogPending = deps
+      .loadModelCatalog()
+      .catch(() => ({ models: [], fetchedAt: 0 }));
+    const toolsPending = deps
+      .prepareTools()
+      .catch((error) => log.warn("[pond fish] MCP prepare failed", error));
     const scope: LibraryScope =
       input.scope.kind === "attachments"
         ? { saveIds: input.attachmentIds }
@@ -240,6 +246,9 @@ async function runMessage(
     }
     controller.signal.throwIfAborted();
     const attachments = context.sources();
+    const imagesPending = deps.imagesForSaves(attachmentIds);
+    /** Rejection is surfaced at the await after the user message is saved; this only covers earlier throws. */
+    imagesPending.catch(() => undefined);
     const files = await deps.loadLocalAttachments(input.fileAttachmentIds);
     const userMetadata: AssistantMetadata = {
       attachments: attachments.filter((save) =>
@@ -290,7 +299,7 @@ async function runMessage(
     ]
       .filter(Boolean)
       .join(" ");
-    const images = await deps.imagesForSaves(attachmentIds);
+    const images = await imagesPending;
     const hasImages =
       images.length > 0 ||
       files.some((file) => file.mediaType.startsWith("image/"));
@@ -302,9 +311,7 @@ async function runMessage(
       runControlsForOptions(
         agentModelOptionsFor(prefs.agent.modelOptions, agentProvider, modelId),
       );
-    const catalog = await deps
-      .loadModelCatalog()
-      .catch(() => ({ models: [], fetchedAt: 0 }));
+    const catalog = await catalogPending;
     const modelMetadata =
       model.local && hasImages
         ? (
@@ -352,9 +359,7 @@ async function runMessage(
             onEvent: (event) => routineEvents.push(event),
           }),
         ];
-    await deps
-      .prepareTools()
-      .catch((error) => log.warn("[pond fish] MCP prepare failed", error));
+    await toolsPending;
     controller.signal.throwIfAborted();
     emit({ type: "activity", activity: "thinking" });
     await deps.completeWithTools({

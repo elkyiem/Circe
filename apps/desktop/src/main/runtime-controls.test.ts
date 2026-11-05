@@ -40,7 +40,7 @@ function setup(
       events.push(`tray:${visible}`);
     },
     isPackaged,
-    setLoginItemSettings(settings) {
+    async setLoginItemSettings(settings) {
       events.push(`login:${settings.openAtLogin}`);
     },
     setCloseToTray(enabled) {

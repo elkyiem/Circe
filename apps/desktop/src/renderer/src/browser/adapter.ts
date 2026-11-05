@@ -403,6 +403,7 @@ export async function installBrowserAdapter(libraryId: string) {
         off();
       };
     },
+    onArenaLinkProgress: (callback) => onEvent("arena-link-progress", callback),
     onSessionImported: (callback) => onEvent("session-imported", callback),
     onSessionImportFailed: (callback) => onEvent("session-failed", callback),
     onSyncStatus: (callback) => onEvent("source-sync", callback),
@@ -524,6 +525,9 @@ interface BrowserHostEvents {
   fish: Parameters<Parameters<PondApi["onFish"]>[0]>[0];
   "fish-open": Parameters<Parameters<PondApi["onFishOpen"]>[0]>[0];
   "import-progress": EagleImportProgress;
+  "arena-link-progress": Parameters<
+    Parameters<PondApi["onArenaLinkProgress"]>[0]
+  >[0];
   "session-imported": WireSessionImported;
   "session-failed": WireSessionImportFailed;
   "source-sync": WireSyncStatusUpdate;

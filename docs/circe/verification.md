@@ -1,5 +1,54 @@
 # Circé verification record
 
+## Pond 2.2.2 and subsequent upstream features — 2026-11-05
+
+The upstream base advances from `60b40a9a` to `ab860ed9`, including the
+2.2.1/2.2.2 releases and the later carousel, Are.na Link, collection sync,
+watched-folder, archive and video changes. Merge conflicts preserve Circé's
+browser transport, Library boundaries, media routes and host lifecycle.
+
+The browser allowlist now includes single/batch splitting and Are.na conversion.
+Conversion progress crosses the authenticated status feed. Batch jobs retain
+their native mutation ownership, so conversion does not hold a browser mutation
+scope while waiting for pipeline work. Reserved media filename characters are
+encoded in both runtimes. A late-classifier regression found during acceptance
+now preserves manual sensitivity corrections inside the serialized host write
+and after the renderer awaits persistence.
+
+`pnpm --filter @pond/desktop smoke:upstream-parity` launches one disposable
+Library and runs identical renderer actions first in the desktop app through
+preload, then in an isolated Chromium window through HTTP without a preload.
+It compares all ten acceptance results:
+
+- A context-menu split produces one image per Save, preserves Unicode tags,
+  notes and folder membership, and does not duplicate slides on repetition.
+- Settings splits the remaining carousel and reports completion without failures.
+- Image and video filenames containing spaces, `#`, `%` and `?` load correctly.
+- Clicking the video seek bar changes playback time; Space still toggles playback.
+- A manual Sensitive Content correction survives a later classifier write.
+- Split Into Saves and automatic page archive switches persist to the shared host.
+- A local fixture page replaces an older Are.na block URL while preserving Source
+  and Source ID. With automatic archives disabled, no archive file is created.
+- Both clients receive the final Are.na progress event and settle the same job.
+
+The finite check exits cleanly and removes its temporary Library. It starts no
+watch process and leaves the personal Twitter Library unchanged. Screenshots,
+text and the two matching result JSON files are in
+`.artifacts/web-verification/upstream-222/`. The test is included in Circé CI.
+
+`pnpm check` passed all 28 tasks: 756 desktop test files passed/five skipped,
+5,340 tests passed/47 skipped. The focused Electron ABI run passed 46 database,
+split and pipeline tests. Visible desktop startup, `pnpm build`, the separate
+browser build and Circé extension build passed without raising performance
+budgets. React Doctor's changed-source scan reported 83/100; its three layout
+animation errors are in the pre-existing FilterToolbar motion, unchanged by this
+integration.
+
+Instagram collection fallback, scope changes, Cosmos collection sync and watched
+folder behavior passed their offline suites. Live signed-in Source sessions,
+physical Windows/iPad input and Linux packaging were not exercised here.
+
+
 ## Minimal automatic pairing screen — 2026-11-01
 
 The sign-in screen now centers the logo with the Circé title to its right, six

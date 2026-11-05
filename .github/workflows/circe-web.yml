@@ -35,6 +35,8 @@ jobs:
           sudo chown root:root "$SANDBOX"
           sudo chmod 4755 "$SANDBOX"
           xvfb-run -a node apps/desktop/scripts/smoke-web-ci.mjs
+      - name: Compare native and browser upstream features
+        run: xvfb-run -a pnpm --filter @pond/desktop smoke:upstream-parity
       - name: Preserve failed fixture screenshots
         if: failure()
         uses: actions/upload-artifact@v6
@@ -43,6 +45,7 @@ jobs:
           if-no-files-found: ignore
           include-hidden-files: true
           path: |
+            .artifacts/web-verification/upstream-222/*-failed.*
             .artifacts/web-verification/failed.png
             .artifacts/web-verification/failed.txt
             .artifacts/web-verification/library-identity-failed.png

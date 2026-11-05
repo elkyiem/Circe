@@ -38,7 +38,7 @@ Provider settings list only added Cloud, Subscription, and Local connections, in
 
 Settings groups Providers, Models, Personalization, and Model Context Protocol under Intelligence. Providers retains the `/settings/models` route and its existing aliases. Models is `/settings/agent-models` (`ai-models` alias) and lists every catalog model in one searchable table with visibility controls. Bookmarks to `/settings/models/$provider` redirect there. Model Context Protocol is `/settings/mcp`. Pond is a local stdio MCP server for this library. Settings lists Access switches (Search, Open, Export), setup steps for each MCP host, and the live Pond command under Advanced. Pond does not host an MCP URL. Personalization stores optional `userProfile` and `responseInstructions` fields in app-scoped Agent preferences on this computer. The main chat entry point reads them for each turn and includes them in completion context, with the current request taking precedence. Empty fields contribute no personalization context.
 
-Library settings use focused routes: `/settings/library` owns identity and lifecycle, `/settings/storage` owns disk location and limits, `/settings/backups` owns backup and restore, `/settings/search` owns query behavior, `/settings/processing` owns on-device enrichments, and the Harvesting group splits incoming media across `/settings/schedule` (fetch schedule), `/settings/sources` (per-source download overrides, with child pages at `/settings/sources-<source>`), `/settings/images`, and `/settings/videos`. App shortcut editing lives at `/settings/shortcuts`; the workspace menu links to that page. Browser extension settings live at `/settings/extension` in the app-wide `extension` prefs slice; the extension reads them with the `extension.settings` native request and keeps a local copy for when Pond is closed. Legacy merged-page paths and anchors redirect to the focused owner. These pages reuse the existing preference sections and main-process operations; navigation does not create a storage migration.
+Library settings use focused routes: `/settings/library` owns identity and lifecycle, `/settings/storage` owns disk location, limits, and whether web URL saves archive the page, `/settings/backups` owns backup and restore, `/settings/search` owns query behavior, `/settings/processing` owns on-device enrichments, and the Harvesting group splits incoming media across `/settings/schedule` (fetch schedule), `/settings/sources` (per-source download overrides, with child pages at `/settings/sources-<source>`), `/settings/images`, and `/settings/videos`. App shortcut editing lives at `/settings/shortcuts`; the workspace menu links to that page. Browser extension settings live at `/settings/extension` in the app-wide `extension` prefs slice; the extension reads them with the `extension.settings` native request and keeps a local copy for when Pond is closed. Legacy merged-page paths and anchors redirect to the focused owner. These pages reuse the existing preference sections and main-process operations; navigation does not create a storage migration.
 
 The Agent composer and document viewer share Lexical Markdown extensions and ordinary block commands from renderer `shared/markdown-editor`. Agent keeps Markdown drafts, slash actions, Save mentions and submission in its own feature. The document viewer retains its custom nodes, embeds and Save persistence. The shared UI composer accepts an editor slot and remains independent of Lexical.
 
@@ -88,6 +88,8 @@ Library encryption and folder locking are not product features. Library files, m
 
 Save previews may open in image presentation and detached image/video windows with optional always-on-top. Detached video owns playback resources and releases them when its target changes or the window closes. Main remains the sole owner of file access, and auxiliary windows receive only the capabilities they need for the active Library. Image rotation and horizontal flip may explicitly replace supported originals; destructive transforms require confirmation and run through the executor journal so failure recovery and Undo cover the original bytes and index update together. Interface zoom may be configured from 50 to 200 percent, independently of media zoom.
 
+Splitting a multi-media Save writes `split` into its `source.json`: the post's Source ID and the positions, in `walkCaptureMedia` order, of the media that Save holds. The original keeps the post's Source ID, so sync dedupe still matches it. Each new Save gets a Source ID made from the post's Source ID plus a hash of its file. Harvest, reseed, and list-kind sync read the post's Source ID from `split` and narrow a fresh Capture to the Save's own media, so a refresh never pulls the other slides back in. `main/core/split-save` copies every slide's files and Folder memberships before it changes the original, and removes moved files only after the original's metadata no longer lists them. `main/core/split-all` splits every eligible Save through that same operation, one at a time in small batches, and keeps no checkpoint: a split Save no longer qualifies, and a slide left by a quit is found again by its Source ID, so a rerun only picks up what's left. It skips sources whose own Split Into Saves setting is off.
+
 Compatibility fixtures under `apps/desktop/test/fixtures/compatibility` freeze the plaintext and external representations that Pond must continue to read. Storage, window, transform, and zoom changes must retain behavior tests against those baselines before changing a serialized format.
 
 ## Verification boundaries
@@ -111,6 +113,10 @@ Application composition mounts one `Dialog.Host` inside `Dialog.PortalProvider`.
 Controlled flows must retain their last popup content while `open` becomes false. Base UI completes portal cleanup from the popup exit lifecycle; removing only Popup immediately can leave an invisible backdrop intercepting clicks. SourceFlowHost retains its last page and depth for this exit. Connect and Watch setup stay in that paged dialog. Account and Watch details open as a full page at `/sources/<kind>/<id>`.
 
 RSS and Atom Watches use Source `web` and Watch kind `feed`. The Watch handle stores the feed URL, including its path and query. The main process checks the XML before it creates the Watch. Feed links use the normal enqueue rules, so each Save keeps the Source of its URL. Watch checks compare both Source and Source ID to find new Saves. Feed Watches use the existing schedule and incoming Save controls.
+
+Are.na Link blocks are saved as the page they link to. Harvest reads that page with the web extractor, moves the Save URL to it, and queues `archive_page` on the `web` budget. The Save keeps Source `arena` and the block's Source ID, so Watches and sync still recognize the block. `shared/web-page-save.ts` holds the rule that decides which Saves count as web pages for archiving. Link Saves harvested before this rule keep the block URL until they refresh. `core/refresh/arena-links.ts` converts them in batches through `refreshSave`, with a `linkedPage` harvest that reuses the stored block and charges only the linked page to the `web` budget.
+
+One-time first-open notices share `renderer/src/shared/state/notices.ts`. It records seen notices per Library in the `notices` prefs slice and lets one notice claim each launch, so two announcements never stack.
 
 The schema package owns Watch kinds, supported Sources, session requirements, labels, and feed URL rules in `watches.ts`. Main and renderer code use these shared rules. The Watch feed reader also reads Pinterest RSS feeds. The Pinterest adapter owns its feed address and request header. The response size limit helper belongs to `main/lib`; the feed reader and WARC recorder use it.
 
@@ -365,3 +371,15 @@ Library data and writes remain online-only. Fixture controls are opt-in; Setting
 owns ordinary browser disconnect. An explicit font activation on a Circé host
 uses the real OS user Fonts directory, while normal isolated tests keep their
 configured home and legacy installations remain removable.
+
+
+## Upstream feature parity
+
+The browser exposes carousel split operations and Are.na Link conversion through
+its explicit query allowlist and the same main-owned operations as preload.
+Batch split and Are.na conversion retain their own mutation lifetimes instead of
+holding the browser query mutation queue while background pipeline work settles.
+Are.na progress uses the authenticated status feed and the same progress IDs as
+native subscriptions. Manual sensitivity decisions are protected inside the
+host's serialized derived-write boundary, including late classifier writes from
+another window; the renderer rechecks after awaiting persistence.
