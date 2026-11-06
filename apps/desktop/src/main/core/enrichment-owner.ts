@@ -33,6 +33,7 @@ import { executeTransaction, withMutationScope } from "./executor";
 import { libraryAccess } from "./library-access";
 import { persistSave } from "./persist-save";
 import { getPrefs } from "./prefs";
+import { reconcileLibrary } from "./scan";
 import { recordForUndo } from "./undo";
 import { hasUserTitle } from "./user-metadata";
 
@@ -64,6 +65,7 @@ const pending = new Map<
   }
 >();
 const reads = {
+  "library.rescan": reconcileLibrary,
   "settings.getPrefs": settingsQueries["settings.getPrefs"],
   "saves.list": savesQueries["saves.list"],
   "saves.listPage": savesQueries["saves.listPage"],
@@ -105,6 +107,8 @@ function fail(error: Error): void {
     inflight: 0,
     activeKeys: [],
     failedKeys: state.failedKeys,
+    failures: state.failures,
+    missingOriginals: state.missingOriginals,
     error: error.message.slice(0, 1000),
   });
 }

@@ -34,7 +34,7 @@ async function fixture() {
     extension: {
       auth,
       libraryId: () => library,
-      libraryName: () => "Test Library",
+      libraryName: async () => "Test Library",
       dispatch: async (input) => {
         calls.push(input);
         return { ok: true, data: input.type };
@@ -156,6 +156,31 @@ describe("remote extension boundary", () => {
         .status,
     ).toBe(200);
     expect(test.auth.list("library-a")).toEqual([]);
+  });
+  it("forwards session rotation only for an authenticated, paired Library", async () => {
+    const test = await fixture();
+    const input = { type: "session.refresh", source: "youtube", cookies: [] };
+    const body = JSON.stringify(input);
+    const headers = await test.pair();
+    const accepted = await test.request("/extension/request", {
+      method: "POST",
+      headers,
+      body,
+    });
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toEqual({
+      ok: true,
+      data: "session.refresh",
+    });
+    expect(test.calls).toEqual([input]);
+    test.switchLibrary();
+    const stale = await test.request("/extension/request", {
+      method: "POST",
+      headers,
+      body,
+    });
+    expect(stale.status).toBe(409);
+    expect(test.calls).toHaveLength(1);
   });
   it("rejects unlisted operations, host file capture, oversized bodies and revoked credentials", async () => {
     const test = await fixture();

@@ -19,9 +19,15 @@ import { broadcastSyncAction, withMutationScope } from "./executor";
 import { runLibraryTransfer } from "./library-transfers";
 import { libraryMediaMetadata } from "./storage/library-media-storage";
 
+export interface MissingOriginal {
+  id: string;
+  title: string | null;
+}
+
 export async function reconcileLibrary(): Promise<{
   updated: number;
   total: number;
+  missingFiles: MissingOriginal[];
 }> {
   return runLibraryTransfer(async () =>
     reconcileLibraryIndex({
@@ -45,6 +51,7 @@ export async function reconcileLibraryIndex(
 ): Promise<{
   updated: number;
   total: number;
+  missingFiles: MissingOriginal[];
 }> {
   const { db, root } = runtime;
   let updated = 0;
@@ -61,7 +68,7 @@ export async function reconcileLibraryIndex(
       if (existing[0] && existing[0].mtimeMs === mtimeMs) return;
       const read = await readSaveMetadata(id, root);
       if (read.status !== "ok") {
-        await stampScan(db, id, mtimeMs);
+        if (await markMissingOriginalsFailed(runtime, id, mtimeMs)) updated++;
         return;
       }
       const { metadata } = read;
@@ -81,14 +88,13 @@ export async function reconcileLibraryIndex(
       const tags = metadata.tags ?? [];
 
       try {
-        const enrichment = readEnrichmentSidecar(id, root) ?? {};
+        const present = await originalsPresent(root, id, files);
+        const enrichment = (await readEnrichmentSidecar(id, root)) ?? {};
         const insertValues: typeof saves.$inferInsert = {
           ...enrichment,
           ...metadata.pond.userData,
           id,
-          status: (await originalsPresent(root, id, files))
-            ? "complete"
-            : "failed",
+          status: present ? "complete" : "failed",
           source: metadata.source,
           sourceId: metadata.sourceId,
           importedFrom: metadata.importedFrom,
@@ -115,6 +121,11 @@ export async function reconcileLibraryIndex(
               ? new Date(metadata.pond.publishedAt)
               : null,
         };
+        const prior = await db
+          .select({ id: saves.id, status: saves.status })
+          .from(saves)
+          .where(eq(saves.id, id));
+        const wasInsert = prior.length === 0;
         const updateSet = {
           ...enrichment,
           ...metadata.pond.userData,
@@ -131,17 +142,15 @@ export async function reconcileLibraryIndex(
           deletedAt:
             metadata.deletedAt != null ? new Date(metadata.deletedAt) : null,
         };
-
-        const prior = await db
-          .select({ id: saves.id })
-          .from(saves)
-          .where(eq(saves.id, id));
-        const wasInsert = prior.length === 0;
+        const scanned = restoreCompleteStatus(
+          updateSet,
+          prior[0]?.status === "failed" && present,
+        );
 
         const action = db.transaction((tx) => {
           tx.insert(saves)
             .values(withRawSlim(insertValues))
-            .onConflictDoUpdate({ target: saves.id, set: updateSet })
+            .onConflictDoUpdate({ target: saves.id, set: scanned })
             .run();
 
           tx.delete(saveFolders).where(eq(saveFolders.saveId, id)).run();
@@ -165,7 +174,7 @@ export async function reconcileLibraryIndex(
               modelName: "save",
               modelId: id,
               action: wasInsert ? "I" : "U",
-              data: wasInsert ? insertValues : updateSet,
+              data: wasInsert ? insertValues : scanned,
               actor: "system",
               actorReason: "library-scan",
             })
@@ -182,8 +191,81 @@ export async function reconcileLibraryIndex(
     });
   }
 
-  log.info(`[pond scan] updated=${updated} total=${total}`);
-  return { updated, total };
+  const retired = await markRowsWithMissingOriginals(runtime);
+  updated += retired.updated;
+  log.info(
+    `[pond scan] updated=${updated} total=${total} missing=${retired.missingFiles.length}`,
+  );
+  return { updated, total, missingFiles: retired.missingFiles };
+}
+
+/** Indexed saves whose directories left with a moved library are not visited by the disk walk. */
+async function markRowsWithMissingOriginals(
+  runtime: LibraryScanRuntime,
+): Promise<{ updated: number; missingFiles: MissingOriginal[] }> {
+  const rows = await runtime.db
+    .select({
+      id: saves.id,
+      title: saves.title,
+      status: saves.status,
+      deletedAt: saves.deletedAt,
+      files: saves.files,
+    })
+    .from(saves);
+  const missingFiles: MissingOriginal[] = [];
+  let updated = 0;
+  for (const row of rows) {
+    if (row.deletedAt != null) continue;
+    if (row.status !== "complete" && row.status !== "failed") continue;
+    if (await originalsPresent(runtime.root, row.id, row.files)) continue;
+    missingFiles.push({ id: row.id, title: row.title });
+    if (row.status !== "complete") continue;
+    await runtime.mutate(async () => {
+      if (await markMissingOriginalsFailed(runtime, row.id, 0)) updated++;
+    });
+  }
+  return { updated, missingFiles };
+}
+
+/** A record-less save with none of its originals on disk stops being `complete`, so enrichment stops scheduling work that always fails. */
+async function markMissingOriginalsFailed(
+  runtime: LibraryScanRuntime,
+  id: string,
+  mtimeMs: number,
+): Promise<boolean> {
+  const { db, root } = runtime;
+  const row = await db.select().from(saves).where(eq(saves.id, id)).get();
+  if (!row || row.deletedAt != null || row.status === "failed") return false;
+  if (await originalsPresent(root, id, row.files)) return false;
+
+  const updateSet = { status: "failed" as const };
+  const action = db.transaction((tx) => {
+    tx.update(saves).set(updateSet).where(eq(saves.id, id)).run();
+    const inserted = tx
+      .insert(syncActions)
+      .values({
+        modelName: "save",
+        modelId: id,
+        action: "U",
+        data: updateSet,
+        actor: "system",
+        actorReason: "library-scan",
+      })
+      .returning()
+      .all()[0];
+    stampScan(tx, id, mtimeMs);
+    return inserted;
+  });
+  if (action) runtime.changed(action);
+  return true;
+}
+
+function restoreCompleteStatus<T extends object>(
+  update: T,
+  restore: boolean,
+): T | (T & { status: "complete" }) {
+  if (!restore) return update;
+  return { ...update, status: "complete" };
 }
 
 function stampScan(

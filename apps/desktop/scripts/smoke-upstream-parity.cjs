@@ -11,8 +11,12 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const JSZip = require("jszip");
 const { verifyUpstreamParity } = require("./upstream-parity-cases.cjs");
+const {
+  transferFixtures,
+  verify231Parity,
+} = require("./upstream-231-parity-cases.cjs");
 const sandbox = mkdtempSync(join(tmpdir(), "pond-upstream-parity-"));
-const evidence = resolve("../../.artifacts/web-verification/upstream-222");
+const evidence = resolve("../../.artifacts/web-verification/upstream-231");
 mkdirSync(evidence, { recursive: true, mode: 0o700 });
 // This finite smoke test owns one temporary app and its HTTP transport, with no watch process.
 process.env.POND_SANDBOX = sandbox;
@@ -21,6 +25,10 @@ process.env.CIRCE_WEB_PORT = "4793";
 process.env.CIRCE_WEB_ORIGIN = "http://127.0.0.1:4793";
 process.env.CIRCE_LOCAL_API_PORT = "4794";
 const origin = "http://127.0.0.1:4793";
+const libraryRoot = join(sandbox, "home", "Pond", "My Pond.pond");
+const jobsFile = join(sandbox, "app-data", "transfer-jobs", "jobs.json");
+mkdirSync(join(sandbox, "app-data", "transfer-jobs"), { recursive: true });
+writeFileSync(jobsFile, JSON.stringify(transferFixtures(libraryRoot)));
 let running = false;
 const timer = setTimeout(() => {
   console.error("UPSTREAM_PARITY_TIMEOUT");
@@ -29,6 +37,7 @@ const timer = setTimeout(() => {
 process.once("exit", () => rmSync(sandbox, { recursive: true, force: true }));
 function driver(win) {
   const contents = win.webContents;
+  contents.setBackgroundThrottling(false);
   const run = (expression) => contents.executeJavaScript(expression, true);
   const waitFor = async (expression, timeout = 20000) => {
     const start = Date.now();
@@ -39,6 +48,10 @@ function driver(win) {
     }
   };
   const click = async (selector, clickCount = 1, button = "left") => {
+    win.show();
+    win.focus();
+    contents.focus();
+    await waitFor("document.hasFocus()");
     await waitFor(
       `Boolean(document.querySelector(${JSON.stringify(selector)}))`,
     );
@@ -51,14 +64,19 @@ function driver(win) {
     await run(
       "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
     );
-    const point = await run(
+    let point = await run(
       `(() => { const node=document.querySelector(${JSON.stringify(selector)});node.scrollIntoView({block:'center'});const r=node.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()`,
     );
-    win.show();
-    win.focus();
-    contents.focus();
-    await waitFor("document.hasFocus()");
     contents.sendInputEvent({ type: "mouseMove", ...point });
+    await run(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
+    point = await run(
+      `(() => {const node=document.querySelector(${JSON.stringify(selector)});const r=node.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()`,
+    );
+    await waitFor(
+      `document.querySelector(${JSON.stringify(selector)}).contains(document.elementFromPoint(${point.x},${point.y}))`,
+    );
     contents.sendInputEvent({
       type: "mouseDown",
       ...point,
@@ -73,6 +91,9 @@ function driver(win) {
     });
   };
   const snapshot = async (name) => {
+    await run(
+      "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+    );
     writeFileSync(
       join(evidence, `${name}.png`),
       (await contents.capturePage()).toPNG(),
@@ -192,7 +213,7 @@ async function verifyBrowser() {
     "browser",
   );
   try {
-    return await verifyUpstreamParity({
+    const previous = await verifyUpstreamParity({
       ...controls,
       directory: evidence,
       mode: "web",
@@ -220,6 +241,16 @@ async function verifyBrowser() {
         return imported.json();
       },
     });
+    return {
+      ...previous,
+      ...(await verify231Parity({
+        ...controls,
+        mode: "web",
+        root: libraryRoot,
+        jobsFile,
+        directory: evidence,
+      })),
+    };
   } catch (error) {
     await controls.snapshot("web-failed");
     throw error;
@@ -246,13 +277,23 @@ app.on("web-contents-created", (_, contents) => {
       await controls.waitFor(
         "Boolean(document.querySelector('[data-slot=window]')) && !document.querySelector('[role=dialog]')",
       );
-      const desktop = await verifyUpstreamParity({
+      const previous = await verifyUpstreamParity({
         ...controls,
         directory: evidence,
         mode: "desktop",
         importPackage: (path, fixture) =>
           seedNative(controls.run, path, fixture),
       });
+      const desktop = {
+        ...previous,
+        ...(await verify231Parity({
+          ...controls,
+          mode: "desktop",
+          root: libraryRoot,
+          jobsFile,
+          directory: evidence,
+        })),
+      };
       const web = await verifyBrowser();
       assert.deepEqual(web, desktop);
       console.log(

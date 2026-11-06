@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { afterEach, describe, expect, it } from "vitest";
+import { userError } from "../../shared/user-error";
 import {
   BrowserConnectionsSchema,
   PairingCodeSchema,
@@ -326,6 +327,38 @@ async function host(assets = "/nonexistent", overrides: Partial<WebHost> = {}) {
 }
 
 describe("browser host boundary", () => {
+  it("shows product errors for unavailable Libraries and redacts unexpected host failures", async () => {
+    const test = await host();
+    const cookie = await test.login();
+    const message = "This library folder is missing. Restore it before saving.";
+    for (const [error, status, expected] of [
+      [userError(message), 409, message],
+      [
+        new Error("private host file path"),
+        500,
+        "The host could not complete this action.",
+      ],
+    ] as const) {
+      test.config.query = async () => {
+        throw error;
+      };
+      const response = await test.request("/web/query", {
+        method: "POST",
+        headers: {
+          cookie,
+          origin: test.config.origin,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "saves.get",
+          params: { id: "save" },
+          libraryId: "test-library",
+        }),
+      });
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: expected });
+    }
+  });
   it("keeps the authenticated event stream through a temporary Library operation and delivers its mutations", async () => {
     const test = await host();
     const statuses = new Set<(event: { name: string; data: string }) => void>();

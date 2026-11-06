@@ -25,6 +25,9 @@ export function createTransferJobQueries(dependencies: {
     "transferJobs.cancel": query(z.object({ id: StringParam }), ({ id }) =>
       dependencies.store().cancel(id),
     ),
+    "transferJobs.dismiss": query(z.object({ id: StringParam }), ({ id }) =>
+      dependencies.store().dismiss(id),
+    ),
     "transferJobs.download": query(
       z.object({ id: StringParam }),
       async ({ id }) => {

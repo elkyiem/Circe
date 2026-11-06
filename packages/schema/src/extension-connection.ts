@@ -12,6 +12,7 @@ export const EXTENSION_REQUEST_ACCESS = {
   "extension.settings": true,
   "session.pending": true,
   "session.import": true,
+  "session.refresh": true,
   enqueue: false,
   "files.import": false,
   "fish.list": true,

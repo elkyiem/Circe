@@ -299,6 +299,7 @@ export const WEB_QUERY_ACCESS = {
   "tags.setForSave": "write",
   "tags.update": "write",
   "transferJobs.cancel": "write",
+  "transferJobs.dismiss": "write",
   "transferJobs.list": "browser",
   "transferJobs.download": "browser",
   "transferJobs.retry": "browser",

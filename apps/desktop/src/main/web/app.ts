@@ -14,6 +14,7 @@ import {
   type WebInference,
   WebInferenceSchema,
 } from "../../shared/enrichment-contracts";
+import { USER_ERROR_NAME } from "../../shared/user-error";
 import { WEB_QUERY_ACCESS } from "../../shared/web-capabilities";
 import {
   BrowserConnectionsRequestSchema,
@@ -658,7 +659,8 @@ export function createWebApp(host: WebHost) {
       {
         error:
           error instanceof WebRequestError ||
-          error instanceof LibraryTransitionError
+          error instanceof LibraryTransitionError ||
+          error.name === USER_ERROR_NAME
             ? error.message
             : error instanceof z.ZodError
               ? "Invalid browser request."
@@ -668,9 +670,11 @@ export function createWebApp(host: WebHost) {
         ? 503
         : error instanceof WebRequestError
           ? error.status
-          : error instanceof z.ZodError
-            ? 422
-            : 500,
+          : error.name === USER_ERROR_NAME
+            ? 409
+            : error instanceof z.ZodError
+              ? 422
+              : 500,
     ),
   );
   return app;

@@ -1,6 +1,9 @@
 import type { NewSave, Save } from "@pond/schema/db";
+import { userError } from "../../shared/user-error";
 import { writeSaveInfo } from "../lib/library";
 import { patchTouchesInfo } from "../lib/library-format";
+import { libraryWriteBlock } from "../lib/library-placement";
+import { libraryRoot } from "../paths";
 import {
   patchTouchesEnrichment,
   writeEnrichmentSidecar,
@@ -21,6 +24,8 @@ export async function persistSave(
   opts: PersistSaveOptions,
 ): Promise<Save | null> {
   return withMutationScope(async () => {
+    const blocked = libraryWriteBlock(libraryRoot());
+    if (blocked) throw userError(blocked);
     const updated = await applySavePatch(id, patch, {
       actorReason: opts.actorReason,
       newFiles: opts.newFiles,
@@ -34,7 +39,7 @@ export async function persistSave(
       await writeSaveInfo(updated);
     }
     if (patchTouchesEnrichment(patch)) {
-      writeEnrichmentSidecar(updated);
+      await writeEnrichmentSidecar(updated);
     }
 
     return updated;

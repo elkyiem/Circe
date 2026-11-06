@@ -1,7 +1,12 @@
 import { IconCircleCheck, IconCircleWarning, IconPowerOff } from "@pond/icons";
 import { Button, Loader, Settings, Tooltip } from "@pond/ui";
-import { useState } from "react";
-import { useEnrichmentStatus } from "@/features/enrichment/status";
+import { useEffect, useState } from "react";
+import {
+  type EnrichmentFailure,
+  type MissingOriginal,
+  useEnrichmentStatus,
+} from "@/features/enrichment/status";
+import { openLibraryRepair } from "@/features/library/repair";
 import { formatPlural } from "@/shared/lib/format";
 import { hostDeviceName } from "@/shared/lib/platform";
 import { usePrefs } from "@/shared/state/prefs";
@@ -25,23 +30,34 @@ interface TaskGroup {
   label: string;
   left: number;
   failed: number;
+  saves: string[];
 }
 
 function taskGroups(
   active: ReadonlySet<string>,
-  failed: ReadonlySet<string>,
+  failed: readonly EnrichmentFailure[],
 ): TaskGroup[] {
   const groups = new Map<string, TaskGroup>();
-  const group = (key: string) => {
-    const id = key.slice(0, key.indexOf(":"));
-    const existing = groups.get(id);
+  const group = (task: string) => {
+    const existing = groups.get(task);
     if (existing) return existing;
-    const next = { label: TASK_LABELS.get(id) ?? id, left: 0, failed: 0 };
-    groups.set(id, next);
+    const next = {
+      label: TASK_LABELS.get(task) ?? task,
+      left: 0,
+      failed: 0,
+      saves: [],
+    };
+    groups.set(task, next);
     return next;
   };
-  for (const key of active) group(key).left += 1;
-  for (const key of failed) group(key).failed += 1;
+  for (const key of active) {
+    group(key.slice(0, key.indexOf(":"))).left += 1;
+  }
+  for (const failure of failed) {
+    const entry = group(failure.task);
+    entry.failed += 1;
+    entry.saves.push(saveLabel({ id: failure.saveId, title: failure.title }));
+  }
   return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -49,7 +65,48 @@ function groupStatus(group: TaskGroup): string {
   const parts: string[] = [];
   if (group.left) parts.push(`${group.left.toLocaleString()} left`);
   if (group.failed) parts.push(`${group.failed.toLocaleString()} failed`);
+  if (group.saves.length > 0) parts.push(group.saves.join(", "));
   return parts.join(", ");
+}
+
+function saveLabel(save: { id: string; title: string | null }): string {
+  return save.title?.trim() || save.id;
+}
+
+function failureRows(
+  failedKeys: ReadonlySet<string>,
+  failures: readonly EnrichmentFailure[] | undefined,
+): EnrichmentFailure[] {
+  if (failures && failures.length > 0) return [...failures];
+  return [...failedKeys].map((key) => {
+    const index = key.indexOf(":");
+    const task = index === -1 ? key : key.slice(0, index);
+    const saveId = index === -1 ? key : key.slice(index + 1);
+    return {
+      key,
+      saveId,
+      title: null,
+      task,
+      reason: "Couldn't finish",
+    };
+  });
+}
+
+function missingDetail(missing: readonly MissingOriginal[]): string {
+  const names = missing.map(saveLabel).join(", ");
+  return missing.length === 1
+    ? `Files missing for ${names}.`
+    : `Files missing for ${missing.length} saves: ${names}.`;
+}
+
+function failureDetail(rows: readonly EnrichmentFailure[]): string {
+  const described = rows
+    .map((row) => {
+      const task = TASK_LABELS.get(row.task) ?? row.task;
+      return `${saveLabel({ id: row.saveId, title: row.title })}: ${task}. ${row.reason}`;
+    })
+    .join(". ");
+  return `${formatPlural(rows.length, TASKS)} couldn't finish. ${described}`;
 }
 
 async function checkLibrary(): Promise<void> {
@@ -68,12 +125,21 @@ export function ProcessingStatus() {
     ai.enableClip ||
     ai.enableSensitiveContent ||
     ai.enableAutoTitle;
+  useEffect(() => {
+    if (!loaded || !enabled) return;
+    void window.pond
+      .query("enrichment.run", { kind: "scan" })
+      .catch((error) => {
+        console.warn("[processing] host Library check failed", error);
+      });
+  }, [loaded, enabled]);
   return (
     <ProcessingStatusCard
       status={status}
       enabled={enabled}
       loaded={loaded}
       onCheck={checkLibrary}
+      onRepair={() => openLibraryRepair("invalid-content")}
     />
   );
 }
@@ -83,22 +149,37 @@ export function ProcessingStatusCard({
   enabled,
   loaded = true,
   onCheck,
+  onRepair = () => openLibraryRepair("invalid-content"),
 }: {
-  status: ReturnType<typeof useEnrichmentStatus>;
+  status: {
+    state?: "starting" | "ready" | "paused" | "failed";
+    error?: string;
+    inflight: number;
+    activeKeys: ReadonlySet<string>;
+    failedKeys: ReadonlySet<string>;
+    failures?: readonly EnrichmentFailure[];
+    missingOriginals?: readonly MissingOriginal[];
+  };
   enabled: boolean;
   loaded?: boolean;
   onCheck: () => Promise<void>;
+  onRepair?: () => void;
 }) {
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
+  const missing = status.missingOriginals ?? [];
+  const missingIds = new Set(missing.map((save) => save.id));
+  const rows = failureRows(status.failedKeys, status.failures).filter(
+    (row) => !missingIds.has(row.saveId),
+  );
   const busy = checking || status.inflight > 0 || status.state === "starting";
   const ownerFailed = status.state === "failed";
-  const failed = status.failedKeys.size;
-  const groups = taskGroups(status.activeKeys, status.failedKeys);
+  const attention = rows.length > 0 || missing.length > 0;
+  const groups = taskGroups(status.activeKeys, rows);
   const state =
     !loaded || busy
       ? "processing"
-      : checkFailed || ownerFailed || failed
+      : checkFailed || ownerFailed || attention
         ? "attention"
         : enabled
           ? "ready"
@@ -115,7 +196,7 @@ export function ProcessingStatusCard({
             ? "Processing your library"
             : checkFailed || ownerFailed
               ? "Couldn't check your library"
-              : failed
+              : attention
                 ? "Processing needs attention"
                 : enabled
                   ? "Ready for new items"
@@ -132,13 +213,22 @@ export function ProcessingStatusCard({
             ? `${formatPlural(status.inflight, TASKS)} left`
             : checkFailed || ownerFailed
               ? (status.error ?? "Try checking the library again.")
-              : failed
-                ? `${formatPlural(failed, TASKS)} couldn't finish`
+              : attention
+                ? [
+                    missing.length > 0 ? missingDetail(missing) : null,
+                    rows.length > 0 ? failureDetail(rows) : null,
+                  ]
+                    .filter((part) => part != null)
+                    .join(" ")
                 : enabled
                   ? `New saves are processed on ${hostDeviceName()}.`
                   : "Turn on a processing option below to get started.";
+  const repair = missing.length > 0 && !busy;
   const canRetry =
-    loaded && enabled && !busy && (failed > 0 || checkFailed || ownerFailed);
+    loaded &&
+    enabled &&
+    !busy &&
+    (rows.length > 0 || checkFailed || ownerFailed);
 
   async function handleCheck() {
     setChecking(true);
@@ -196,10 +286,19 @@ export function ProcessingStatusCard({
           className={styles.action}
           size="sm"
           variant="secondary"
-          disabled={!loaded || !enabled || busy}
-          onClick={() => void handleCheck()}
+          disabled={repair ? false : !loaded || !enabled || busy}
+          onClick={() => {
+            if (repair) onRepair();
+            else void handleCheck();
+          }}
         >
-          {checking ? "Checking Library" : canRetry ? "Retry" : "Check Library"}
+          {repair
+            ? "Repair Invalid Content"
+            : checking
+              ? "Checking Library"
+              : canRetry
+                ? "Retry"
+                : "Check Library"}
         </Button>
       </div>
     </Settings.List>

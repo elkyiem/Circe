@@ -32,7 +32,7 @@ export function createExtensionBridge(auth: ExtensionAuth) {
   const host: ExtensionHost = {
     auth,
     libraryId,
-    libraryName: () => readLibraryIdentity(libraryRoot()).name,
+    libraryName: async () => (await readLibraryIdentity(libraryRoot())).name,
     dispatch: (
       request: NativeRequest,
       expected: string,

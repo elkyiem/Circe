@@ -26,6 +26,7 @@ import { flushTagsDump, hydrateTagsFromBundle } from "../../core/tags-bundle";
 import { clearUndoHistory } from "../../core/undo";
 import { closeDb, drainDb } from "../../db";
 import { rotateBundleBackups } from "../../lib/library-config";
+import { appRelaunchOptions } from "../../lib/relaunch";
 import { invalidatePaths, resolvePaths } from "../../paths";
 
 const libraryWork = createLibraryWorkCoordinator({
@@ -129,12 +130,13 @@ export async function relaunchSoon(): Promise<void> {
   setTimeout(() => {
     log.info("[pond library-ops] relaunching into new library");
     if ((process.env.CIRCE_WEB ?? process.env.IRIS_WEB) === "1") {
-      // The launcher retains the address/proxy while replacing the complete host.
       app.quit();
       return;
     }
-    app.relaunch();
-    app.exit(0);
+    const options = appRelaunchOptions();
+    if (options) app.relaunch(options);
+    else app.relaunch();
+    app.quit();
   }, 150);
 }
 

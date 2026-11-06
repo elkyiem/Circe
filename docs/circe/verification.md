@@ -1,5 +1,62 @@
 # Circé verification record
 
+## Pond 2.3.1 — 2026-11-06
+
+The upstream base advances from `ab860ed9` to `604000a8`: 33 commits including
+merge commits (17 non-merge commits). `main` retains the upstream history;
+`web` and `dev` retain Circé's integration.
+
+New upstream behavior in this sync:
+
+- YouTube cookie rotation keeps an existing Account's session current. Signed-out
+  Watch Later requests report that sign-in is required instead of an empty list.
+- Instagram collections use the current web app GraphQL query. Non-English pages
+  resolve the signed-in username correctly.
+- Completed, failed, cancelled and interrupted Library Transfers can be dismissed.
+  Running transfers still offer Cancel. Circé retains Download for browser exports.
+- Missing originals mark Saves failed. Processing names affected Saves and task
+  failures, offers Repair Invalid Content, and stops scheduling impossible work.
+- Library identity and enrichment sidecars use asynchronous reads/writes, reducing
+  main-process blocking during opening, switching and grid updates.
+- Linux AppImage relaunch waits for the predecessor to stop gracefully; website
+  download links appear only when release assets exist. Release metadata advances
+  to 2.3.1. Carousel splitting and Are.na conversion were already in the prior sync.
+
+Circé adaptations expose transfer dismissal through the authenticated web query
+boundary, carry named failure/missing-original details from the resident owner to
+both clients, allow that owner to rescan the Library, await asynchronous identity
+reads during extension pairing, forward paired extension session refresh, and retry
+rotation after a remote host becomes reachable. Processing requests its scan from
+the resident owner. Browser responses retain marked product error messages, including
+the missing-Library explanation, while unexpected host failures stay redacted.
+Displacement watching rebinds when
+a host transition reopens a Library and ignores callbacks while access is sealed.
+
+Acceptance found that a late derived-field write could recreate an empty Library
+folder after it was moved. Persistence now checks the pinned Library before
+writing, and asynchronous sidecar writes require an existing parent directory.
+
+The finite parity runner compares 17 results through native preload and browser
+HTTP. Alongside the previous ten scenarios, it checks missing-original detection,
+owner status details, repair preview, recovery after restoring originals, durable
+transfer dismissal, blocked writes after moving the entire Library, and automatic
+recovery when that Library returns. It uses disposable Libraries; destructive test
+operations do not run against the personal Twitter Library. Evidence lives in
+`.artifacts/web-verification/upstream-231/`.
+
+`pnpm check` passes all 28 tasks: 762 desktop test files pass/five skip, with
+5,395 tests passing/47 skipped. The desktop and browser builds, Circé extension
+build and configured performance checks pass. The focused Electron ABI suites cover the real
+SQLite scan and the YouTube, Instagram, transfer, identity and relaunch paths.
+React Doctor reports 88/100 against the prior integration with no new errors.
+Its broader comparison against upstream includes pre-existing Circé diagnostics.
+
+The installed host was restarted from the rebuilt checkout. Desktop release notes
+show 2.3.1; the HTTPS browser app reports `2.3.1-web` and receives the resident
+Processing status. The temporary verification browser session was signed out.
+Live signed-in YouTube/Instagram accounts and an actual Linux AppImage launch
+were not exercised on this Mac; their offline contract/fixture tests pass.
+
 ## Pond 2.2.2 and subsequent upstream features — 2026-11-05
 
 The upstream base advances from `60b40a9a` to `ab860ed9`, including the

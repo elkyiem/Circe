@@ -16,6 +16,8 @@ export function EnrichmentSweep() {
         ...status,
         activeKeys: new Set(status.activeKeys),
         failedKeys: new Set(status.failedKeys),
+        failures: status.failures ?? [],
+        missingOriginals: status.missingOriginals ?? [],
       });
     };
     const detach = window.pond.onEnrichmentStatus(receive);

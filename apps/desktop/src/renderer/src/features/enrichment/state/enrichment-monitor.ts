@@ -1,5 +1,14 @@
+import type {
+  EnrichmentFailure,
+  MissingOriginal,
+} from "@shared/enrichment-contracts";
 import { useSelector } from "@tanstack/react-store";
 import { Store } from "@tanstack/store";
+
+export type {
+  EnrichmentFailure,
+  MissingOriginal,
+} from "@shared/enrichment-contracts";
 
 interface EnrichmentStatus {
   state?: "starting" | "ready" | "paused" | "failed";
@@ -7,12 +16,16 @@ interface EnrichmentStatus {
   inflight: number;
   activeKeys: ReadonlySet<string>;
   failedKeys: ReadonlySet<string>;
+  failures: readonly EnrichmentFailure[];
+  missingOriginals: readonly MissingOriginal[];
 }
 
 const store = new Store<EnrichmentStatus>({
   inflight: 0,
   activeKeys: new Set<string>(),
   failedKeys: new Set<string>(),
+  failures: [],
+  missingOriginals: [],
 });
 
 export const enrichmentMonitor = {

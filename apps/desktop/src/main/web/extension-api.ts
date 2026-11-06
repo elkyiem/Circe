@@ -17,7 +17,7 @@ import type { ExtensionAuth } from "./extension-auth";
 export interface ExtensionHost {
   auth: ExtensionAuth;
   libraryId(): string;
-  libraryName(): string;
+  libraryName(): string | Promise<string>;
   dispatch(request: NativeRequest, libraryId: string): Promise<NativeResponse>;
 }
 
@@ -70,7 +70,7 @@ export function createExtensionApi(
       return c.json({ ok: false, error: "pairing_rate_limited" }, 429);
     const input = ExtensionPairRequestSchema.parse(await c.req.json());
     const libraryId = host.libraryId();
-    const name = host.libraryName();
+    const name = await host.libraryName();
     const result = await host.auth.pair({
       ...input,
       extension: c.req.header("x-iris-extension") ?? "",

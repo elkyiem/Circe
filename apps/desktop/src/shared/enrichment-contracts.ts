@@ -23,12 +23,28 @@ export const EnrichmentTaskSchema = z
   })
   .strict();
 export type EnrichmentTask = z.infer<typeof EnrichmentTaskSchema>;
+export const EnrichmentFailureSchema = z
+  .object({
+    key: z.string(),
+    saveId: z.string(),
+    title: z.string().nullable(),
+    task: z.string(),
+    reason: z.string(),
+  })
+  .strict();
+export type EnrichmentFailure = z.infer<typeof EnrichmentFailureSchema>;
+export const MissingOriginalSchema = z
+  .object({ id: z.string(), title: z.string().nullable() })
+  .strict();
+export type MissingOriginal = z.infer<typeof MissingOriginalSchema>;
 export const EnrichmentStatusSchema = z
   .object({
     state: z.enum(["starting", "ready", "paused", "failed"]),
     inflight: z.number().int().nonnegative(),
     activeKeys: z.array(z.string().max(500)).max(100000),
     failedKeys: z.array(z.string().max(500)).max(100000),
+    failures: z.array(EnrichmentFailureSchema).max(100000).optional(),
+    missingOriginals: z.array(MissingOriginalSchema).max(100000).optional(),
     error: z.string().max(1000).optional(),
   })
   .strict();

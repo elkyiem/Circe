@@ -144,6 +144,8 @@ function publish() {
     inflight: value.inflight,
     activeKeys: [...value.activeKeys],
     failedKeys: [...value.failedKeys],
+    failures: [...value.failures],
+    missingOriginals: [...value.missingOriginals],
   });
 }
 void (async () => {

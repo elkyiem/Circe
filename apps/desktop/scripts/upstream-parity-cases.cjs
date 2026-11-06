@@ -248,7 +248,7 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
     );
     const waitSplit = async (name) => {
       await waitFor(
-        `window.pond.query('saves.list', {limit:10000}).then(rows => rows.filter(row => row.title===${JSON.stringify(name)}).length===3)`,
+        `window.pond.query('saves.list', {limit:10000}).then(rows => (() => { const slides=rows.filter(row => row.title===${JSON.stringify(name)}); return slides.length===3 && slides.every(row=>row.status==='complete' && row.files.filter(file=>file.kind==='image').length===1); })())`,
       );
       const slides = (await query("saves.list", { limit: 10000 })).filter(
         (row) => row.title === name,

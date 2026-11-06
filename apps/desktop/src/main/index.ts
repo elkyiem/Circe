@@ -70,6 +70,7 @@ import { rotateBundleBackups } from "./lib/library-config";
 import { LibraryMetadataError } from "./lib/library-id";
 import { disableMenuActionImages } from "./lib/menu-action-images";
 import { killTrackedProcessTrees } from "./lib/process-tree";
+import { RELAUNCH_ARG } from "./lib/relaunch";
 import { recoverUnreadableLibrary } from "./library-recovery";
 import {
   consoleLoggingEnabled,
@@ -174,6 +175,7 @@ let webServer: Awaited<ReturnType<typeof import("./web").startWebHost>> | null =
   null;
 let safariServer: NetServer | null = null;
 let stopMediaWarmer: (() => void) | null = null;
+let stopLibraryDisplacementWatch: (() => void) | null = null;
 
 let signalRendererReady: (() => void) | null = null;
 const rendererReady = new Promise<void>((resolve) => {
@@ -195,7 +197,8 @@ const singleInstanceLock = wantsMcp
   ? Promise.resolve(true)
   : acquireSingleInstanceLock({
       request: () => app.requestSingleInstanceLock(),
-      waitForPredecessor: !app.isPackaged,
+      waitForPredecessor:
+        !app.isPackaged || process.argv.includes(RELAUNCH_ARG),
       holder: () => singletonLockHolder(app.getPath("userData")),
       isAlive: isProcessAlive,
     });
@@ -379,6 +382,14 @@ async function postLaunchInit(): Promise<void> {
   if (!process.env.POND_SANDBOX) {
     await registerSummonHotkey();
   }
+
+  void import("./core/library-displacement")
+    .then((module) => {
+      stopLibraryDisplacementWatch = module.startLibraryDisplacementWatch();
+    })
+    .catch((err) =>
+      log.warn("[pond] library displacement watch failed to start", err),
+    );
 
   try {
     await syncLibraryRootMetadata();
@@ -636,6 +647,8 @@ async function shutdownForQuit(): Promise<void> {
   }
   try {
     await stopStorageWatcher(true);
+    stopLibraryDisplacementWatch?.();
+    stopLibraryDisplacementWatch = null;
   } catch (err) {
     log.warn("[pond] storage watcher stop failed", err);
   }

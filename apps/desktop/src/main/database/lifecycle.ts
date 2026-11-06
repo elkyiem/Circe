@@ -7,6 +7,7 @@ import { libraryAccess } from "../core/library-access";
 import { hydrateOrganizationBundle } from "../core/organization-bundle";
 import { backfillVecBatch } from "../core/vec-index";
 import { readOrCreateLibraryId } from "../lib/library-id";
+import { pinOpenLibrary } from "../lib/library-placement";
 import { resolvePaths } from "../paths";
 import { type Db, openSqlite, wrapSqlite } from "./client";
 import { migrateGlobal } from "./migrations";
@@ -68,6 +69,7 @@ async function openPondDb(): Promise<Db> {
   cachedPond = opened;
 
   ensureLibraryMetadata();
+  pinOpenLibrary(paths.libraryRoot, paths.libraryId);
 
   scheduleDataMigrations(sqlite, vectorEnabled);
 
