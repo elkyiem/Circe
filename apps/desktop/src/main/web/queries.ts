@@ -11,6 +11,7 @@ import { arenaLinkQueries } from "../ipc/queries/arena-links";
 import { bulkQueries } from "../ipc/queries/bulk";
 import { canvasesQueries } from "../ipc/queries/canvases";
 import { conversionQueries } from "../ipc/queries/conversion";
+import { downloaderQueries } from "../ipc/queries/downloader";
 import { downloadsQueries } from "../ipc/queries/downloads";
 import { enrichmentQueries } from "../ipc/queries/enrichment";
 import { fishQueries } from "../ipc/queries/fish";
@@ -53,6 +54,7 @@ const handlers = {
   "saves.mediaTiming": inspectQueries["saves.mediaTiming"],
   ...accountsQueries,
   ...canvasesQueries,
+  ...downloaderQueries,
   ...downloadsQueries,
   ...foldersQueries,
   ...libraryQueries,

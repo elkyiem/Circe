@@ -114,7 +114,9 @@ mac:
   # Signs the app extensions, which electron-builder skips, then the app as usual.
   sign: scripts/sign-mac.cjs
   extraResources:
-    - from: node_modules/ffmpeg-static/ffmpeg
+    # One runner packages both architectures, so ffmpeg comes per arch from
+    # scripts/fetch-mac-ffmpeg.mjs rather than the runner-only ffmpeg-static copy.
+    - from: vendor/ffmpeg/darwin-${arch}/ffmpeg
       to: bin/ffmpeg
     # Loaded by the main process to open Safari at Pond's extension; Safari answers
     # only the main process of the app that holds the extension.
@@ -133,26 +135,8 @@ mac:
       to: PlugIns/Pond Extension.appex
     - from: resources/ShareExtension/Pond Share.appex
       to: PlugIns/Pond Share.appex
-  # Register `.pond` as a macOS package so Finder shows a library as a
-  # single bundle instead of a folder full of items/, trash/, metadata.
-  # LaunchServices only honors this in packaged builds, not `dev`.
   extendInfo:
-    UTExportedTypeDeclarations:
-      - UTTypeIdentifier: so.pond.library
-        UTTypeDescription: Pond Library
-        UTTypeConformsTo:
-          - com.apple.package
-        UTTypeTagSpecification:
-          public.filename-extension:
-            - pond
     CFBundleDocumentTypes:
-      - CFBundleTypeName: Pond Library
-        CFBundleTypeRole: Editor
-        LSTypeIsPackage: true
-        LSItemContentTypes:
-          - so.pond.library
-        CFBundleTypeExtensions:
-          - pond
       # Lets the Dock icon accept any file or folder as an import. Alternate
       # rank keeps Pond from becoming the default app for those files.
       - CFBundleTypeName: Importable File
@@ -214,12 +198,12 @@ nsis:
   # Removes the HKCU registrations Pond writes at runtime; keeps the Library.
   include: packaging/installer.nsh
 
-# Linux ships x64 AppImage and deb packages. electron-builder writes
-# latest-linux.yml for the AppImage updater; the deb is installed and upgraded
-# by the system package manager. `pond.desktop` also registers the `pond://`
-# handler and the tray/window class used by the menu and the CLI.
+# Package through `scripts/dist-linux.mjs`, which passes the host arch and an
+# arch-named artifact. A per-target arch list here would override that flag and
+# cross-package host-arch native modules.
+# `pond.desktop` also registers the `pond://` handler and the tray/window class.
 linux:
-  artifactName: ${productName}-${version}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: Utility
   executableName: pond
   icon: icon.png
@@ -229,12 +213,8 @@ linux:
     Pond keeps everything you save across social sources and the web in one
     local-first library on your computer.
   target:
-    - target: AppImage
-      arch:
-        - x64
-    - target: deb
-      arch:
-        - x64
+    - AppImage
+    - deb
   extraResources:
     - from: node_modules/ffmpeg-static/ffmpeg
       to: bin/ffmpeg

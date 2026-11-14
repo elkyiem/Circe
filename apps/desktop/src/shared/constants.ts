@@ -175,6 +175,7 @@ export type MenuActionId =
   | "library.import-files"
   | "library.import-folders"
   | "library.import-links"
+  | "library.download"
   | "library.import-clipboard"
   | "library.import-bookmarks"
   | "library.import-mymind"
@@ -221,7 +222,8 @@ export type MenuActionId =
   | "view.subfolders.toggle"
   | "help.shortcuts"
   | "help.whats-new"
-  | "help.export-debug-report";
+  | "help.export-debug-report"
+  | "updates.check";
 
 export type MenuActionSource = "accelerator" | "menu" | "automation";
 

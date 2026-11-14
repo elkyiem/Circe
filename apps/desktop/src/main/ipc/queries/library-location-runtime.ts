@@ -26,7 +26,7 @@ import { flushTagsDump, hydrateTagsFromBundle } from "../../core/tags-bundle";
 import { clearUndoHistory } from "../../core/undo";
 import { closeDb, drainDb } from "../../db";
 import { rotateBundleBackups } from "../../lib/library-config";
-import { appRelaunchOptions } from "../../lib/relaunch";
+import { relaunchApp } from "../../lib/relaunch-app";
 import { invalidatePaths, resolvePaths } from "../../paths";
 
 const libraryWork = createLibraryWorkCoordinator({
@@ -133,9 +133,7 @@ export async function relaunchSoon(): Promise<void> {
       app.quit();
       return;
     }
-    const options = appRelaunchOptions();
-    if (options) app.relaunch(options);
-    else app.relaunch();
+    relaunchApp();
     app.quit();
   }, 150);
 }

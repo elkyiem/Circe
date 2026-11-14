@@ -9,7 +9,7 @@ import { SaveInfoSections } from "@/features/saves/components/detail/info-sectio
 import { KebabMenu } from "@/features/saves/components/detail/kebab";
 import { RatingStars } from "@/features/saves/components/detail/rating";
 import { RelatedSaves } from "@/features/saves/components/detail/related-saves";
-import { useSaves } from "@/features/saves/hooks/use-saves";
+import { useRetainedSaves, useSaves } from "@/features/saves/hooks/use-saves";
 import { ensureSaves, reloadSaves } from "@/features/saves/lib/ensure-saves";
 import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { sensitiveContentMenuItem } from "@/features/saves/lib/menu/sensitive";
@@ -85,6 +85,7 @@ export function SaveInspector({
 }: SaveInspectorProps) {
   const ids = useStableStrings(saveIds?.length ? saveIds : [saveId]);
   const targetKey = JSON.stringify(ids);
+  useRetainedSaves(ids);
   const available = useSaves();
   const [drafts] = useState<InspectorDrafts>(() => new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -95,6 +96,9 @@ export function SaveInspector({
     message: string;
     retry(): Promise<void>;
   } | null>(null);
+  const [stagedFolderIds, setStagedFolderIds] =
+    useState<ReadonlySet<string> | null>(null);
+  const [applyingFolderBatch, setApplyingFolderBatch] = useState(false);
   const fileIndex = useSaveViewerFileIndex();
   const [tab, setTab] = useState<InspectorTab>("details");
   const byId = new Map(available.map((save) => [save.id, save]));
@@ -228,14 +232,56 @@ export function SaveInspector({
     const name = rawName.trim();
     let createdId: string | null = null;
     void run(async () => {
-      if (!createdId)
-        createdId = (await window.pond.query("folders.create", { name })).id;
-      await assignFolder(createdId, true);
+      const folderId =
+        createdId ?? (await window.pond.query("folders.create", { name })).id;
+      createdId = folderId;
+      if (stagedFolderIds) {
+        await saveLibraryBridge.refreshFolders();
+        setStagedFolderIds(
+          (current) => current && new Set(current).add(folderId),
+        );
+      } else {
+        await assignFolder(folderId, true);
+      }
     });
   }
 
   function toggleFolder(option: InspectorFolder) {
     void run(() => assignFolder(option.id, option.count !== ids.length));
+  }
+
+  function toggleStagedFolder(option: AssignOption) {
+    if (option.state === "on") return;
+    setStagedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(option.key)) next.delete(option.key);
+      else next.add(option.key);
+      return next;
+    });
+  }
+
+  async function applyStagedFolders() {
+    if (!stagedFolderIds?.size || applyingFolderBatch) return;
+    setFailure(null);
+    setApplyingFolderBatch(true);
+    try {
+      const addIds = [...stagedFolderIds];
+      await window.pond.query("folders.assign", {
+        saveIds: [...ids],
+        addIds,
+        removeIds: [],
+      });
+      saveLibraryBridge.rememberFolderDestinations(addIds);
+      await saveLibraryBridge.refreshFolders();
+      setStagedFolderIds(null);
+    } catch (error) {
+      setFailure({
+        message: errorCopy(error, "Couldn't update the selection."),
+        retry: applyStagedFolders,
+      });
+    } finally {
+      setApplyingFolderBatch(false);
+    }
   }
 
   const details = (
@@ -355,6 +401,7 @@ export function SaveInspector({
                   total={ids.length}
                   removeLabel={`Remove tag ${tag.name}`}
                   onRemove={() => void run(() => changeTag(tag.name, true))}
+                  onOpen={() => saveLibraryBridge.openTaggedItems(tag.name)}
                 />
               ))}
             </AssignmentChip.List>
@@ -376,6 +423,18 @@ export function SaveInspector({
                   if (folder) toggleFolder(folder);
                 }}
                 onCreate={createFolder}
+                onStartBatch={() => setStagedFolderIds(new Set())}
+                batch={
+                  stagedFolderIds
+                    ? {
+                        staged: stagedFolderIds,
+                        onToggle: toggleStagedFolder,
+                        onApply: () => void applyStagedFolders(),
+                        onCancel: () => setStagedFolderIds(null),
+                        applying: applyingFolderBatch,
+                      }
+                    : undefined
+                }
               />
             }
           >

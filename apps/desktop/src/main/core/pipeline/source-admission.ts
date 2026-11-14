@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type {
   Source,
   SourceGateReason,
@@ -7,6 +8,7 @@ import { syncConfigFor } from "@pond/schema/sources";
 import type Database from "better-sqlite3";
 import { z } from "zod";
 import { getDb } from "../../db";
+import { SOURCE_TASK_OPS } from "./source-tasks";
 
 const GateRowSchema = z.object({
   state: z.enum(["closed", "open", "half_open", "paused"]),
@@ -24,17 +26,35 @@ const LedgerRowSchema = z.object({
 export interface SourceAdmission {
   admitted: boolean;
   nextRunAt: number;
-  reason: "source_budget" | "breaker_open" | "source_paused" | null;
+  reason:
+    | "source_budget"
+    | "breaker_open"
+    | "source_paused"
+    | "auth_required"
+    | null;
   needsProbe: boolean;
 }
 
 const HOUR_MS = 60 * 60_000;
 const DAY_MS = 24 * HOUR_MS;
+const AUTH_STOP_MS = DAY_MS;
+/** Automatic gate writes leave a sign-in stop alone until its backoff ends; a reconnect, a retry, or an explicit source action lifts it sooner. */
+const KEEPS_AUTH_STOP = `NOT (
+  source_gates.state = 'open'
+  AND source_gates.reason = 'auth_required'
+  AND COALESCE(source_gates.retry_at, 0) > excluded.updated_at
+)`;
+const taskLease = new AsyncLocalStorage<string>();
+
+export function withSourceTaskLease<T>(leaseToken: string, run: () => T): T {
+  return taskLease.run(leaseToken, run);
+}
 
 export function inspectSourceAdmission(
   sqlite: Database.Database,
   source: Source,
   at: number,
+  leaseToken?: string,
 ): SourceAdmission {
   const gate = GateRowSchema.nullable().parse(
     sqlite
@@ -62,11 +82,16 @@ export function inspectSourceAdmission(
     return {
       admitted: false,
       nextRunAt: gate.retryAt ?? at,
-      reason: "breaker_open",
+      reason:
+        gate.reason === "auth_required" ? "auth_required" : "breaker_open",
       needsProbe: false,
     };
   }
-  if (gate?.state === "half_open" && (gate.probeLeaseExpiresAt ?? 0) > at) {
+  if (
+    gate?.state === "half_open" &&
+    (gate.probeLeaseExpiresAt ?? 0) > at &&
+    gate.probeLeaseToken !== leaseToken
+  ) {
     return {
       admitted: false,
       nextRunAt: gate.probeLeaseExpiresAt ?? at,
@@ -156,7 +181,12 @@ export async function recordSourceRequest(
   const at = Date.now();
   return db.$raw
     .transaction(() => {
-      const admission = inspectSourceAdmission(db.$raw, source, at);
+      const admission = inspectSourceAdmission(
+        db.$raw,
+        source,
+        at,
+        taskLease.getStore(),
+      );
       if (!admission.admitted) return admission;
       db.$raw
         .prepare(
@@ -179,6 +209,7 @@ export async function transitionSourceGate(input: {
   reason: SourceGateReason | null;
   retryAt: number | null;
   resetFailures?: boolean;
+  overrideAuthStop?: boolean;
 }): Promise<void> {
   const db = await getDb();
   const at = Date.now();
@@ -200,7 +231,8 @@ export async function transitionSourceGate(input: {
           ELSE source_gates.failure_window_started_at
         END,
         version = source_gates.version + 1,
-        updated_at = excluded.updated_at`,
+        updated_at = excluded.updated_at
+      WHERE ? OR ${KEEPS_AUTH_STOP}`,
     )
     .run(
       input.source,
@@ -210,7 +242,122 @@ export async function transitionSourceGate(input: {
       at,
       input.resetFailures ? 1 : 0,
       input.resetFailures ? 1 : 0,
+      input.overrideAuthStop ? 1 : 0,
     );
+}
+
+/** False when the stop was already open, so only the first failure flags the Account. */
+function openAuthStopSync(
+  sqlite: Database.Database,
+  source: Source,
+  at: number,
+): boolean {
+  const retryAt = at + AUTH_STOP_MS;
+  const opened = sqlite
+    .prepare(
+      `INSERT INTO source_gates (
+        source, state, reason, retry_at, failure_count,
+        failure_window_started_at, version, updated_at
+      ) VALUES (?, 'open', 'auth_required', ?, 0, NULL, 1, ?)
+      ON CONFLICT(source) DO UPDATE SET
+        state = 'open',
+        reason = 'auth_required',
+        retry_at = excluded.retry_at,
+        probe_lease_token = NULL,
+        probe_lease_expires_at = NULL,
+        failure_count = 0,
+        failure_window_started_at = NULL,
+        version = source_gates.version + 1,
+        updated_at = excluded.updated_at
+      WHERE ${KEEPS_AUTH_STOP}`,
+    )
+    .run(source, retryAt, at);
+  sqlite
+    .prepare(
+      `UPDATE tasks
+      SET
+        status = 'deferred',
+        deferred_reason = 'auth_required',
+        next_run_at = ?,
+        updated_at = ?
+      WHERE
+        source = ?
+        AND op IN (SELECT value FROM json_each(?))
+        AND (
+          status = 'pending'
+          OR status = 'deferred'
+          AND COALESCE(deferred_reason, '') != 'queue_paused'
+        )`,
+    )
+    .run(retryAt, at, source, JSON.stringify(SOURCE_TASK_OPS));
+  return opened.changes === 1;
+}
+
+export function liftAuthStopSync(
+  sqlite: Database.Database,
+  source: Source,
+  at: number,
+): void {
+  sqlite
+    .prepare(
+      `UPDATE source_gates
+      SET
+        state = 'closed',
+        reason = NULL,
+        retry_at = NULL,
+        probe_lease_token = NULL,
+        probe_lease_expires_at = NULL,
+        failure_count = 0,
+        failure_window_started_at = NULL,
+        version = version + 1,
+        updated_at = ?
+      WHERE source = ? AND reason = 'auth_required'`,
+    )
+    .run(at, source);
+  sqlite
+    .prepare(
+      `UPDATE tasks
+      SET
+        status = 'pending',
+        deferred_reason = NULL,
+        next_run_at = ?,
+        updated_at = ?
+      WHERE
+        source = ?
+        AND status = 'deferred'
+        AND deferred_reason = 'auth_required'`,
+    )
+    .run(at, at, source);
+}
+
+export async function stopSourceForSignIn(source: Source): Promise<boolean> {
+  const db = await getDb();
+  return db.$raw
+    .transaction(() => openAuthStopSync(db.$raw, source, Date.now()))
+    .immediate();
+}
+
+export async function liftSourceAuthStop(source: Source): Promise<void> {
+  const db = await getDb();
+  db.$raw
+    .transaction(() => liftAuthStopSync(db.$raw, source, Date.now()))
+    .immediate();
+}
+
+export async function sourceNeedsSignIn(source: Source): Promise<boolean> {
+  const db = await getDb();
+  return (
+    db.$raw
+      .prepare(
+        `SELECT 1 FROM source_gates
+        WHERE
+          source = ?
+          AND state = 'open'
+          AND reason = 'auth_required'
+          AND COALESCE(retry_at, 0) > ?`,
+      )
+      .get(source, Date.now()) !== undefined
+  );
 }
 
 export async function noteDurableSourceFailure(
@@ -227,6 +374,9 @@ export async function noteDurableSourceFailure(
     .transaction(() => {
       const row = z
         .object({
+          state: z.string(),
+          reason: z.string().nullable(),
+          retryAt: z.number().nullable(),
           failureCount: z.number(),
           failureWindowStartedAt: z.number().nullable(),
         })
@@ -235,6 +385,9 @@ export async function noteDurableSourceFailure(
           db.$raw
             .prepare(
               `SELECT
+                state,
+                reason,
+                retry_at AS retryAt,
                 failure_count AS failureCount,
                 failure_window_started_at AS failureWindowStartedAt
               FROM source_gates
@@ -242,6 +395,13 @@ export async function noteDurableSourceFailure(
             )
             .get(source) ?? null,
         );
+      if (
+        row?.state === "open" &&
+        row.reason === "auth_required" &&
+        (row.retryAt ?? 0) > at
+      ) {
+        return;
+      }
       const inWindow =
         row?.failureWindowStartedAt != null &&
         at - row.failureWindowStartedAt <= input.windowMs;

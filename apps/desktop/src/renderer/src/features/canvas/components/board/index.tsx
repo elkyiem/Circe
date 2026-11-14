@@ -157,6 +157,7 @@ import {
   scaleBox,
 } from "../../lib/transform";
 import { canvases } from "../../state/canvases";
+import { minimap, useMinimapShown } from "../../state/minimap";
 import { Affordance } from "../affordance";
 import { CodeItem } from "../code-item";
 import { ConnectorEdge as ConnectorEdgeView } from "../connector-edge";
@@ -164,6 +165,7 @@ import { DrawLayer } from "../draw-layer";
 import { DrawingItem } from "../drawing-item";
 import { FigureItem } from "../figure-item";
 import { Guides } from "../guides";
+import { Minimap, type MinimapItem } from "../minimap";
 import { NoteItem } from "../note-item";
 import { Picker } from "../picker";
 import { PlaceLayer } from "../place-layer";
@@ -351,6 +353,26 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
   const [exporting, setExporting] = useState(false);
   const [history] = useState(() => createHistory());
   const snapshotStarted = useRef(false);
+  const minimapShown = useMinimapShown();
+  const minimapItems = useMemo(
+    () =>
+      nodes.flatMap((node): MinimapItem[] =>
+        node.hidden
+          ? []
+          : [
+              {
+                id: node.id,
+                kind: node.type === "section" ? "section" : "item",
+                selected: Boolean(node.selected),
+                x: node.position.x,
+                y: node.position.y,
+                width: node.width ?? node.measured?.width ?? 0,
+                height: node.height ?? node.measured?.height ?? 0,
+              },
+            ],
+      ),
+    [nodes],
+  );
 
   const latest = useRef({ nodes, edges });
   latest.current = { nodes, edges };
@@ -1283,6 +1305,9 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
           void flow.fitView({ duration: 200, padding: 0.2 });
         return;
       }
+      case "minimap":
+        minimap.toggle();
+        return;
       case "nudge":
         nudge(command.x, command.y);
         return;
@@ -1448,8 +1473,9 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
   };
 
   const menuItems = () => {
-    if (menuKind.current !== "nodes")
-      return boardItems({ kind: menuKind.current }, run);
+    if (menuKind.current === "pane")
+      return boardItems({ kind: "pane", minimap: minimap.shown() }, run);
+    if (menuKind.current === "edge") return boardItems({ kind: "edge" }, run);
     const picked = latest.current.nodes.filter((node) => node.selected);
     return boardItems(
       {
@@ -2071,7 +2097,8 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
                 onKeep={setKept}
                 onAddSaves={(saveIds) => addSaves(saveIds)}
               />
-              <Zoom />
+              <Zoom minimap={minimapShown} onMinimap={minimap.toggle} />
+              <Minimap items={minimapItems} shown={minimapShown} />
             </>
           )}
         </div>

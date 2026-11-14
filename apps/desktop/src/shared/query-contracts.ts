@@ -29,6 +29,10 @@ import type {
 } from "./conversion-contracts";
 import type { DownloadActivity } from "./download-activity";
 import type {
+  DownloaderQueryInputs,
+  DownloaderQueryResults,
+} from "./downloader-contracts";
+import type {
   EnrichmentQueryInputs,
   EnrichmentQueryResults,
 } from "./enrichment-contracts";
@@ -49,6 +53,7 @@ import type {
   LibraryRepairQueryInputs,
   LibraryRepairQueryResults,
 } from "./library-repair-contracts";
+import type { LogoCrop, LogoSource } from "./logo-crop";
 import type {
   MediaProcessingQueryInputs,
   MediaProcessingQueryResults,
@@ -158,6 +163,7 @@ export interface QueryInputs
     FishQueryInputs,
     FishMcpQueryInputs,
     ConversionQueryInputs,
+    DownloaderQueryInputs,
     SavesReadQueryInputs,
     SavesMutationQueryInputs,
     SavesImportQueryInputs,
@@ -261,6 +267,8 @@ export interface QueryInputs
     accent?: string | null;
   };
   "library.identity.pickIcon": EmptyInput;
+  "library.identity.pondLogo": { tint: string };
+  "library.identity.cropIcon": { src: string; crop: LogoCrop };
   "library.rename": {
     name: string;
     icon?: string | null;
@@ -379,6 +387,7 @@ export interface QueryResults
     FishQueryResults,
     FishMcpQueryResults,
     ConversionQueryResults,
+    DownloaderQueryResults,
     SavesReadQueryResults,
     SavesMutationQueryResults,
     SavesImportQueryResults,
@@ -410,7 +419,9 @@ export interface QueryResults
     mark?: LibraryMarkSource | null;
     accent?: string | null;
   }>;
-  "library.identity.pickIcon": LibraryLocationResult<{ icon: string }>;
+  "library.identity.pickIcon": LibraryLocationResult<{ image: LogoSource }>;
+  "library.identity.cropIcon": LibraryLocationResult<{ icon: string }>;
+  "library.identity.pondLogo": LibraryLocationResult<{ icon: string }>;
   "library.rename": OkResult<{ path: string }>;
   "library.recent.pickIcon": LibraryLocationResult<{ icon: string }>;
   "library.recent.removeIcon": OkResult;

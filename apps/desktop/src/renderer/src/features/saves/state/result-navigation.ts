@@ -5,6 +5,7 @@ import {
   type ResultRectangle,
   spatialNeighbor,
 } from "@/features/saves/lib/spatial-navigation";
+import { protectSaves } from "@/features/saves/state/pool";
 
 interface ResultSource {
   key?: string;
@@ -29,6 +30,9 @@ let pendingReveal: string | null = null;
 let focusOnReveal = false;
 let focusOwner: Element | null = null;
 let rectangles: readonly ResultRectangle[] = [];
+
+/** `loadedIds` reads the live query page, so results stay protected before the view republishes them. */
+protectSaves(() => [...source.ids, ...(source.loadedIds?.() ?? [])]);
 
 export const resultNavigation = {
   key(): string | undefined {
@@ -119,6 +123,33 @@ export const resultNavigation = {
       pendingReveal = null;
       focusOnReveal = false;
     }
+  },
+  /** Reports the nearest remaining neighbor, or null, once `id` drops out of results that held it. */
+  watchDeparture(
+    id: string,
+    onLeave: (next: string | null) => void,
+  ): () => void {
+    let held = source.ids.includes(id) ? source : null;
+    const check = () => {
+      if (source.ids.includes(id)) {
+        held = source;
+        return;
+      }
+      const before = held;
+      held = null;
+      if (!before || before.key !== source.key) return;
+      const remaining = new Set(source.ids);
+      const index = before.ids.indexOf(id);
+      onLeave(
+        before.ids.slice(index + 1).find((other) => remaining.has(other)) ??
+          before.ids
+            .slice(0, index)
+            .findLast((other) => remaining.has(other)) ??
+          source.ids[Math.min(index, source.ids.length - 1)] ??
+          null,
+      );
+    };
+    return subscribe(check);
   },
 };
 

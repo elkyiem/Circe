@@ -286,4 +286,71 @@ exports.organizationCases = [
       };
     },
   },
+  {
+    // Pond 2.7: a bare keyword OR must stay inside the folder or Trash scope.
+    id: "search.keyword-scope-folder-trash",
+    queries: [
+      "saves.createManual",
+      "saves.getMany",
+      "folders.create",
+      "folders.addSaves",
+      "saves.queryPage",
+      "saves.bulkEdit",
+      "folders.delete",
+    ],
+    async verify({ query, waitFor, nonce }) {
+      const keyword = `scope${nonce.replaceAll("-", "").slice(0, 12)}`;
+      const created = [];
+      for (const input of [
+        { title: `${keyword} kept`, note: `${keyword} in folder` },
+        { title: `${keyword} trashed`, note: `${keyword} in folder` },
+        { title: "Outside folder", note: `${keyword} only in notes` },
+      ]) {
+        const save = await query("saves.createManual", input);
+        assert.equal(save.ok, true);
+        created.push(save.id);
+      }
+      const [kept, trashed, outside] = created;
+      await waitFor(
+        `window.pond.query('saves.getMany',{ids:${JSON.stringify(created)}}).then(rows=>rows.length===3 && rows.every(row=>row.status==='complete'))`,
+      );
+      assert.equal((await query("saves.getMany", { ids: created })).length, 3);
+      const folder = await query("folders.create", { name: `Scope ${nonce}` });
+      try {
+        await query("folders.addSaves", {
+          folderId: folder.id,
+          saveIds: [kept, trashed],
+        });
+        await query("saves.bulkEdit", {
+          ids: [trashed],
+          operation: { kind: "trash" },
+        });
+        const inFolder = await query("saves.queryPage", {
+          keywords: keyword,
+          scope: { folderIds: [folder.id] },
+          limit: 50,
+        });
+        assert.deepEqual(inFolder.ids, [kept]);
+        assert.equal(inFolder.total, 1);
+        const inTrash = await query("saves.queryPage", {
+          keywords: keyword,
+          scope: { deletedOnly: true },
+          limit: 50,
+        });
+        assert.deepEqual(inTrash.ids, [trashed]);
+        const everywhere = await query("saves.queryPage", {
+          keywords: keyword,
+          limit: 50,
+        });
+        assert.deepEqual(everywhere.ids.toSorted(), [kept, outside].toSorted());
+        return { folderScoped: 1, trashScoped: 1, unscoped: 2 };
+      } finally {
+        await query("folders.delete", { id: folder.id });
+        await query("saves.bulkEdit", {
+          ids: created,
+          operation: { kind: "purge" },
+        });
+      }
+    },
+  },
 ];

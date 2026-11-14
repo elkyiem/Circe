@@ -34,14 +34,15 @@ export const libraryMaintenanceQueries = {
       mark: LibraryMarkSourceSchema.nullable().optional(),
       accent: z.string().nullable().optional(),
     }),
-    (params) => {
+    async (params) => {
       try {
         const identity = updateLibraryIdentity(libraryRoot(), params);
+        if (params.icon !== undefined || params.mark !== undefined) {
+          const { applyPreferredAppIcon } = await import("../../core/app-icon");
+          await applyPreferredAppIcon();
+        }
         broadcast(IPC.libraryIdentityChanged, libraryId());
-        return {
-          ok: true as const,
-          ...identity,
-        };
+        return { ok: true as const, ...identity };
       } catch (error) {
         return {
           ok: false as const,

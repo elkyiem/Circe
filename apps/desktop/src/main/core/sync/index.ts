@@ -5,9 +5,15 @@ import type {
   WatchedAccount,
 } from "@pond/schema/db";
 import type { SyncRunEvent } from "@pond/schema/events";
+import { sourceLabel } from "@pond/schema/sources";
 import log from "electron-log/main.js";
 import { isSourceFetchDue } from "../../../shared/sync-schedule";
 import { commitEvent, startSyncEvent, toErrorInfo } from "../../lib/wide-event";
+import { isMymindConnecting } from "../mymind/connect";
+import {
+  liftSourceAuthStop,
+  sourceNeedsSignIn,
+} from "../pipeline/source-admission";
 import { isAccountConnected } from "../refresh/harvest-window";
 import { isSyncBlockedByStorageGuard } from "../storage-watcher";
 import { watchNow } from "../watch/run";
@@ -37,7 +43,7 @@ export {
 const IMPORT_PENDING_MESSAGE = "Choose what to import to start syncing.";
 
 interface SyncOptions {
-  trigger?: "manual" | "cron";
+  trigger?: "manual" | "cron" | "launch";
   maxItems?: number;
   forceFull?: boolean;
   /** Set by the cron, which then runs only sources whose schedule is due. */
@@ -48,6 +54,7 @@ interface SyncOptions {
 const lastScheduledAt = new Map<string, number>();
 
 const SYNC_WATCHDOG_MS = {
+  mymind: 20 * 60_000,
   twitter: 30 * 60_000,
   youtube: 20 * 60_000,
   cosmos: 20 * 60_000,
@@ -72,6 +79,7 @@ const SYNC_WATCHDOG_MS = {
 } satisfies Record<Source, number>;
 
 const SYNCABLE_SOURCES: readonly Source[] = [
+  "mymind",
   "twitter",
   "youtube",
   "cosmos",
@@ -93,20 +101,39 @@ const SYNCABLE_SOURCES: readonly Source[] = [
   "marked",
 ];
 
+/** A global run is shared by menu, shortcut, IPC, and scheduled callers. */
+let allSourcesRun: Promise<void> | null = null;
+
 function isSyncableSource(source: Source): boolean {
   return SYNCABLE_SOURCES.includes(source);
 }
 
-export async function syncAllSources(opts: SyncOptions = {}): Promise<void> {
+export function isSyncAllSourcesRunning(): boolean {
+  return allSourcesRun !== null;
+}
+
+export function syncAllSources(opts: SyncOptions = {}): Promise<void> {
+  if (allSourcesRun) return allSourcesRun;
+  const run = syncAllSourcesImpl(opts);
+  const tracked = run.finally(() => {
+    if (allSourcesRun === tracked) allSourcesRun = null;
+  });
+  allSourcesRun = tracked;
+  return tracked;
+}
+
+async function syncAllSourcesImpl(opts: SyncOptions): Promise<void> {
   const now = Date.now();
   const wanted = (row: { id: string; sync: SourceSyncPrefs }) =>
-    opts.globalDue === undefined ||
-    isSourceFetchDue(
-      row.sync,
-      opts.globalDue,
-      now,
-      lastScheduledAt.get(row.id),
-    );
+    opts.trigger === "launch"
+      ? !row.sync.paused
+      : opts.globalDue === undefined ||
+        isSourceFetchDue(
+          row.sync,
+          opts.globalDue,
+          now,
+          lastScheduledAt.get(row.id),
+        );
   const accounts = (await listAccounts()).filter(
     (a) => isSyncableSource(a.source) && wanted(a),
   );
@@ -136,6 +163,11 @@ export async function syncAllSources(opts: SyncOptions = {}): Promise<void> {
           log.warn("[pond sync] syncAccount threw", account.id, err),
         );
       }
+      if (
+        (opts.trigger === "cron" || opts.trigger === "launch") &&
+        (await sourceNeedsSignIn(source))
+      )
+        return;
       await runWatches(
         watches.filter((watch) => watch.source === source),
         opts,
@@ -188,6 +220,7 @@ export async function syncAccount(
     return;
   }
   const { source } = account;
+  if (source === "mymind" && isMymindConnecting(accountId)) return;
   const existing = inFlight.get(accountId);
   if (existing) {
     const ageSec = Math.round((Date.now() - existing.startedAt) / 1000);
@@ -223,6 +256,21 @@ export async function syncAccount(
     });
     return;
   }
+  if (opts.trigger === "cron" || opts.trigger === "launch") {
+    if (await sourceNeedsSignIn(source)) {
+      log.info(`[pond sync] ${source} needs sign-in, skipping ${accountId}`);
+      emit({
+        accountId,
+        source,
+        state: "auth_required",
+        message: `Sign in to ${sourceLabel(source)} again to resume syncing.`,
+        lastError: "auth_required",
+      });
+      return;
+    }
+  } else {
+    await liftSourceAuthStop(source);
+  }
   const controller = new AbortController();
   let watchdogTripped = false;
   const watchdog = setTimeout(() => {
@@ -251,7 +299,10 @@ export async function syncAccount(
       runningSince: new Date(startedAt).toISOString(),
     });
     await ensureAccountHandle(account);
-    if (source === "twitter") {
+    if (source === "mymind") {
+      const { syncMymind } = await import("../mymind/sync");
+      await syncMymind(account, controller.signal, ev, opts.maxItems);
+    } else if (source === "twitter") {
       await syncTwitter(
         account,
         controller.signal,

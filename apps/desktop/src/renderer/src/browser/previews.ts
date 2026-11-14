@@ -28,6 +28,8 @@ export function createBrowserPreviews(dependencies: {
   exportFile(saveId: string, fileIndex: number): Promise<void>;
   isCurrent(): boolean;
   reduceMotion(): PreviewWindowState["reduceMotion"];
+  videoMuted(): boolean;
+  setVideoMuted(muted: boolean): void;
 }) {
   let nextId = 0;
   const entries = new Map<number, PreviewEntry>();
@@ -72,6 +74,7 @@ export function createBrowserPreviews(dependencies: {
       grayscale: false,
       size: "fit",
       zoom: null,
+      videoMuted: dependencies.videoMuted(),
       ...entry.state,
       ...input,
       ...profile,
@@ -86,7 +89,11 @@ export function createBrowserPreviews(dependencies: {
     const { windowId, ...patch } = PreviewWindowConfigureSchema.parse(raw);
     const entry = entries.get(windowId);
     if (!entry?.state || !dependencies.isCurrent()) return;
+    const previousMuted = entry.state.videoMuted;
     entry.state = { ...entry.state, ...patch, opacity: 1, alwaysOnTop: false };
+    // Mute follows the device's viewer preference, like native previews.
+    if (patch.videoMuted !== undefined && patch.videoMuted !== previousMuted)
+      dependencies.setVideoMuted(patch.videoMuted);
     publish(entry);
   }
 

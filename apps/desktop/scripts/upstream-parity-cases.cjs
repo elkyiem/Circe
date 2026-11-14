@@ -5,6 +5,7 @@ const { createServer } = require("node:http");
 const { join } = require("node:path");
 const JSZip = require("jszip");
 const sharp = require("sharp");
+const { parityScenario } = require("./e2e/parity-scenario.cjs");
 
 /** The same fixture package and renderer actions exercise native preload and HTTP. */
 exports.verifyUpstreamParity = async function verifyUpstreamParity({
@@ -17,10 +18,13 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
   directory,
   mode,
 }) {
-  const query = (name, params = {}) =>
-    run(
+  const observed = new Set();
+  const query = (name, params = {}) => {
+    observed.add(name);
+    return run(
       `window.pond.query(${JSON.stringify(name)}, ${JSON.stringify(params)})`,
     );
+  };
   const waitFor = async (expression, timeout = 20000) => {
     const start = Date.now();
     while (!(await run(expression))) {
@@ -231,6 +235,22 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
     const batch = rows.find((row) => row.sourceId === saves[1].sourceId);
     const arena = rows.find((row) => row.sourceId === arenaSourceId);
     assert.ok(original && batch && arena);
+    // Pond 2.6: the carousel image on screen becomes the Save's thumbnail.
+    const slide = batch.files.filter((file) => file.kind === "image")[1];
+    const slidePath = slide.path.split("/").map(encodeURIComponent).join("/");
+    const slideSrc =
+      mode === "web"
+        ? `/web/media/${encodeURIComponent(batch.id)}/${slidePath}`
+        : `pond://${batch.id}/${slidePath}`;
+    assert.deepEqual(
+      await query("saves.setImageThumbnail", { id: batch.id, src: slideSrc }),
+      { ok: true },
+    );
+    assert.ok(
+      (await query("saves.get", { id: batch.id })).files.some(
+        (file) => file.kind === "thumbnail" && file.custom === true,
+      ),
+    );
     assert.equal((await query("saves.splittableCount")).count, 2);
     await click("[data-library-search]");
     await run("document.querySelector('[data-library-search]').focus()");
@@ -352,6 +372,21 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
       ),
     );
     await snapshot(`${mode}-video-seeking`);
+    // Pond 2.6: Up and Down change the preview volume in five percent steps.
+    const volume = () =>
+      run("document.querySelector('[data-save-details] video').volume");
+    const startVolume = await volume();
+    await press("Down");
+    await waitFor(
+      `Math.abs(document.querySelector('[data-save-details] video').volume - ${Math.max(0, startVolume - 0.05)}) < 0.001`,
+    );
+    await press("Up");
+    await waitFor(
+      `Math.abs(document.querySelector('[data-save-details] video').volume - ${startVolume}) < 0.001`,
+    );
+    // Pond 2.6: clicking the video surface toggles playback.
+    await click("[data-save-details] video");
+    await waitFor("document.querySelector('[data-save-details] video').paused");
     await click('[aria-label="Back"]');
     await click('[aria-label="Library Menu"]');
     await click(await textControl('[role="menuitem"]', "Settings"));
@@ -440,7 +475,12 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
       conversionProgress: true,
       manualSensitiveDecision: true,
       videoSeekAndSpace: true,
+      imageThumbnail: true,
+      videoVolumeKeys: true,
+      videoClickToggle: true,
     };
+    for (const name of parityScenario.queries)
+      assert.ok(observed.has(name), `parity did not exercise ${name}`);
     writeFileSync(
       join(directory, `${mode}-upstream-parity.json`),
       JSON.stringify(result, null, 2),

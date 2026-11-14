@@ -1,13 +1,27 @@
 import "@/app/effects/save-library-bridge";
+import { EMPTY_QUERY } from "@pond/schema/filters/types";
 import { mediaEmbeddingVersion } from "@shared/embeddings";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { libraryChrome } from "@/features/library";
+import {
+  getViewState,
+  resetFilters,
+  setQuery,
+} from "@/features/library/state/view-store";
 import { normalise, SavePatchSchema } from "@/features/saves/lib/reconcile";
 import { pool } from "@/features/saves/state/pool";
 import { setSaveViewerFileIndex } from "@/features/saves/state/save-viewer";
 import { primarySelection } from "@/features/saves/state/selection";
+import { setAppRouter } from "@/shared/lib/app-router";
 import { SaveInspector } from ".";
 
 let host: HTMLDivElement;
@@ -81,6 +95,8 @@ afterEach(async () => {
   host.remove();
   pool.clear();
   setSaveViewerFileIndex(null);
+  libraryChrome.setNav({ kind: "all" });
+  resetFilters();
   vi.unstubAllGlobals();
 });
 
@@ -454,6 +470,161 @@ it("assigns a mixed folder immediately from the inspector menu", async () => {
   });
 });
 
+it("stages multiple folders and assigns them together from the inspector menu", async () => {
+  await act(async () =>
+    root.render(
+      <SaveInspector
+        saveId="a"
+        folders={[
+          { id: "inspiration", name: "Inspiration", count: 0 },
+          { id: "reference", name: "Reference", count: 0 },
+        ]}
+      />,
+    ),
+  );
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Add Folder"]',
+  );
+  if (!trigger) throw new Error("Missing Add Folder");
+  await act(async () => trigger.click());
+  const multiple = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Select Multiple");
+  if (!multiple) throw new Error("Missing Select Multiple action");
+  await act(async () => multiple.click());
+
+  const folderRow = (name: string) =>
+    [
+      ...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]'),
+    ].find((item) => item.textContent?.includes(name));
+  const inspiration = folderRow("Inspiration");
+  const reference = folderRow("Reference");
+  if (!inspiration || !reference) throw new Error("Missing folder rows");
+  await act(async () => inspiration.click());
+  await act(async () => reference.click());
+
+  expect(requests.some((request) => request.name === "folders.assign")).toBe(
+    false,
+  );
+  const apply = document.querySelector<HTMLButtonElement>(
+    '[aria-label="Add to 2 Folders"]',
+  );
+  if (!apply) throw new Error("Missing Add to Folders action");
+  expect(apply.disabled).toBe(false);
+  await act(async () => apply.click());
+  expect(requests).toContainEqual({
+    name: "folders.assign",
+    input: {
+      saveIds: ["a"],
+      addIds: ["inspiration", "reference"],
+      removeIds: [],
+    },
+  });
+});
+
+it("cancels staged folder assignment without mutating the Save", async () => {
+  await act(async () =>
+    root.render(
+      <SaveInspector
+        saveId="a"
+        folders={[{ id: "inspiration", name: "Inspiration", count: 0 }]}
+      />,
+    ),
+  );
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Add Folder"]',
+  );
+  if (!trigger) throw new Error("Missing Add Folder");
+  await act(async () => trigger.click());
+  const multiple = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Select Multiple");
+  if (!multiple) throw new Error("Missing Select Multiple action");
+  await act(async () => multiple.click());
+  const inspiration = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]'),
+  ].find((item) => item.textContent?.includes("Inspiration"));
+  if (!inspiration) throw new Error("Missing Inspiration folder");
+  await act(async () => inspiration.click());
+  const cancel = [
+    ...document.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((button) => button.textContent === "Cancel");
+  if (!cancel) throw new Error("Missing Cancel action");
+  await act(async () => cancel.click());
+
+  expect(requests.some((request) => request.name === "folders.assign")).toBe(
+    false,
+  );
+  expect(document.querySelector('[aria-label="Add to 1 Folder"]')).toBeNull();
+});
+
+it("stages a folder created while selecting multiple folders", async () => {
+  await act(async () => root.render(<SaveInspector saveId="a" folders={[]} />));
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Add Folder"]',
+  );
+  if (!trigger) throw new Error("Missing Add Folder");
+  await act(async () => trigger.click());
+  const multiple = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Select Multiple");
+  if (!multiple) throw new Error("Missing Select Multiple action");
+  await act(async () => multiple.click());
+  const search = document.querySelector<HTMLInputElement>(
+    '[aria-label="Search Folders"]',
+  );
+  if (!search) throw new Error("Missing folder search");
+  await act(async () => setInput(search, "Moodboard"));
+  const create = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Create “Moodboard”");
+  if (!create) throw new Error("Missing create row");
+  await act(async () => create.click());
+
+  expect(requests).toContainEqual({
+    name: "folders.create",
+    input: { name: "Moodboard" },
+  });
+  const apply = await vi.waitFor(() => {
+    const button = document.querySelector<HTMLButtonElement>(
+      '[aria-label="Add to 1 Folder"]',
+    );
+    if (!button) throw new Error("Missing Add to Folder action");
+    return button;
+  });
+  expect(requests.some((request) => request.name === "folders.assign")).toBe(
+    false,
+  );
+  await act(async () => apply.click());
+  expect(requests).toContainEqual({
+    name: "folders.assign",
+    input: { saveIds: ["a"], addIds: ["created"], removeIds: [] },
+  });
+});
+
+it("shows an assigned nested folder as one breadcrumb with its full path", async () => {
+  await act(async () =>
+    root.render(
+      <SaveInspector
+        saveId="a"
+        folders={[
+          { id: "parent", name: "Knowledge Base", count: 0 },
+          { id: "child", name: "Design", parentId: "parent", count: 1 },
+        ]}
+      />,
+    ),
+  );
+  const chip = host.querySelector<HTMLElement>(
+    '[title="Knowledge Base / Design"]',
+  );
+  expect(chip?.textContent).toContain("Knowledge Base");
+  expect(chip?.textContent).toContain("›");
+  expect(chip?.textContent).toContain("Design");
+  expect(
+    host.querySelector('[aria-label="Remove folder Knowledge Base / Design"]'),
+  ).not.toBeNull();
+});
+
 it("lists folders with their parent as a breadcrumb and filters by search", async () => {
   await act(async () =>
     root.render(
@@ -606,6 +777,58 @@ it("loads Related Saves only when its tab opens and opens a selected Save", asyn
   expect(related).not.toBeNull();
   await act(async () => related?.click());
   expect(primarySelection.get()).toBe("related");
+});
+
+it("opens tagged saves from a tag chip without removing the tag", async () => {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => null,
+  });
+  const saveRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/save/$id",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, saveRoute]),
+    history: createMemoryHistory({ initialEntries: ["/save/a"] }),
+  });
+  await router.load();
+  setAppRouter(router);
+  libraryChrome.setNav({ kind: "all" });
+  setQuery({
+    combinator: "and",
+    rules: [{ field: "tags", operator: "some", value: ["Other"] }],
+  });
+
+  await act(async () => root.render(<SaveInspector saveId="a" />));
+  const remove = host.querySelector<HTMLButtonElement>(
+    '[aria-label="Remove tag One"]',
+  );
+  const tag = [...host.querySelectorAll("span")].find(
+    (node) => node.textContent === "One" && node.children.length === 0,
+  );
+  if (!remove || !tag) throw new Error("Missing tag One");
+
+  await act(async () => remove.click());
+  expect(requests).toContainEqual({
+    name: "saves.bulkEdit",
+    input: {
+      ids: ["a"],
+      operation: { kind: "tags", tags: ["One"], mode: "remove" },
+    },
+  });
+  expect(libraryChrome.getState().nav).toEqual({ kind: "all" });
+  expect(router.state.location.pathname).toBe("/save/a");
+
+  const callsBeforeOpen = requests.length;
+  await act(async () => tag.click());
+  expect(requests).toHaveLength(callsBeforeOpen);
+  expect(libraryChrome.getState().nav).toEqual({ kind: "tag", name: "One" });
+  expect(router.history.location.pathname).toBe("/");
+  expect(getViewState().query).toEqual(EMPTY_QUERY);
 });
 
 it("clamps a long source description behind Read More and sizes the source icon", async () => {

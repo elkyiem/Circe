@@ -7,22 +7,22 @@ import log from "electron-log/main.js";
 import { getDb } from "../../db";
 import { commitEvent, startSyncEvent, toErrorInfo } from "../../lib/wide-event";
 import { enqueue } from "../pipeline/enqueue";
-import { enqueueCandidateKey } from "../pipeline/enqueue-input";
 import { isSyncBlockedByStorageGuard } from "../storage-watcher";
 import { listAccountsForSource, partitionForAccount } from "../sync/accounts";
-import { organizeIncoming } from "../sync/incoming";
+import { fileIncomingSaves } from "../sync/incoming";
 import { emit, inFlight } from "../sync/sync-status";
 import { getWatch, getWatchSync, patchWatchSync } from "../sync/watches";
 import { listArenaWatch } from "./arena";
 import { listCosmosWatch } from "./cosmos-scrape";
 import { readFeed } from "./feed";
+import { freshWatchEntries } from "./known";
 import { listPinterestWatch } from "./pinterest-rss";
 import { listProfileWatch } from "./profile-scrape";
 import type { WatchEntry, WatchHarvestResult } from "./types";
 import { listYtdlpWatch } from "./ytdlp-list";
 
 interface WatchOptions {
-  trigger?: "manual" | "cron";
+  trigger?: "manual" | "cron" | "launch";
 }
 
 const WATCH_WATCHDOG_MS = 10 * 60_000;
@@ -191,7 +191,6 @@ async function runWatch(
         ? feedEntriesFilter(harvest.entries, source)
         : sourceFilter,
     );
-  const knownIds = new Set(knownRows.map(enqueueCandidateKey));
   const totalRow = await db
     .select({ c: count() })
     .from(saves)
@@ -199,15 +198,11 @@ async function runWatch(
     .get();
   const ownedTotal = totalRow?.c ?? 0;
 
-  const allFresh = harvest.entries.filter(
-    (entry) =>
-      !knownIds.has(
-        enqueueCandidateKey({
-          source: entry.source ?? source,
-          sourceId: entry.sourceId,
-        }),
-      ),
-  );
+  const allFresh = await freshWatchEntries({
+    entries: harvest.entries,
+    fallback: source,
+    present: knownRows,
+  });
   const fresh = firstCheck ? allFresh.slice(0, FIRST_CHECK_CAP) : allFresh;
   if (firstCheck && allFresh.length > fresh.length) {
     log.info(
@@ -255,11 +250,7 @@ async function runWatch(
     ev.outcome = "aborted";
     return;
   }
-  await organizeIncoming(
-    bulk.createdIds,
-    watch.sync.incoming,
-    `watch:${source}`,
-  );
+  await fileIncomingSaves(bulk.createdIds, watchId, source, `watch:${source}`);
 
   const lastSyncedAt = await persistWatchWatermark(watchId, {
     firstCheck,

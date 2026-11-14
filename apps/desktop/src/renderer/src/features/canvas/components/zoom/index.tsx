@@ -1,15 +1,21 @@
-import { IconMinus, IconPlus } from "@pond/icons";
+import { IconCompass, IconMinus, IconPlus } from "@pond/icons";
 import { Button, Keyboard, Tooltip } from "@pond/ui";
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { platformGlyphs } from "@/shared/lib/shortcuts";
 import { useCanvasInterfaceScale } from "../../lib/interface-scale";
 import styles from "./styles.module.css";
 
-export function Zoom() {
+interface ZoomProps {
+  minimap: boolean;
+  onMinimap(): void;
+}
+
+export function Zoom({ minimap, onMinimap }: ZoomProps) {
   const flow = useReactFlow();
   const interfaceScale = useCanvasInterfaceScale();
   const viewport = useViewport();
   const zoom = viewport.zoom / interfaceScale;
+  const minimapLabel = minimap ? "Hide Minimap" : "Show Minimap";
   return (
     <Tooltip.Group>
       <fieldset className={styles.zoom} aria-label="Zoom">
@@ -51,6 +57,21 @@ export function Zoom() {
             onClick={() => void flow.zoomIn({ duration: 150 })}
           >
             <IconPlus size={12} />
+          </Button>
+        </Tooltip>
+        <span className={styles.divider} aria-hidden="true" />
+        <Tooltip label={minimapLabel} side="bottom">
+          <Button
+            rounding="full"
+            icon
+            size="xs"
+            variant="text"
+            aria-label={minimapLabel}
+            aria-pressed={minimap}
+            data-pressed={minimap || undefined}
+            onClick={onMinimap}
+          >
+            <IconCompass size={12} />
           </Button>
         </Tooltip>
       </fieldset>

@@ -46,6 +46,7 @@ const SAVED_AND_LIKED: readonly ListKind[] = ["saved", "liked"];
 const ALL_MEDIA: readonly ImportMediaKind[] = ["image", "video", "text"];
 
 const IMPORT_SCOPE_OPTIONS = {
+  mymind: EVERYTHING_ONLY,
   twitter: {
     listKinds: SAVED_AND_LIKED,
     collections: "folder",
@@ -95,7 +96,13 @@ const IMPORT_SCOPE_OPTIONS = {
     mediaKinds: ALL_MEDIA,
     since: true,
   },
-  threads: { ...EVERYTHING_ONLY, mediaKinds: ALL_MEDIA, since: true },
+  threads: {
+    listKinds: SAVED_AND_LIKED,
+    collections: null,
+    fileEveryCollection: false,
+    mediaKinds: ALL_MEDIA,
+    since: true,
+  },
   github: {
     ...EVERYTHING_ONLY,
     since: true,

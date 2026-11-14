@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { createNavigation } = require("./navigation.cjs");
 
 exports.canvasFishCases = [
   {
@@ -195,6 +196,57 @@ exports.canvasFishCases = [
       } finally {
         await query("settings.setPrefs", { storage: prefs.storage });
         await query("settings.setImageDownload", settings.imageDownload);
+      }
+    },
+  },
+  {
+    // Pond 2.6 Canvas minimap: the toggle shows a live overview of the board.
+    id: "canvases.minimap-toggle",
+    queries: ["canvases.create", "canvases.update", "canvases.delete"],
+    async verify(controls) {
+      const { query, run, waitFor, click, nonce } = controls;
+      const { navigate } = createNavigation(controls);
+      const canvas = await query("canvases.create", { name: `Map ${nonce}` });
+      await query("canvases.update", {
+        id: canvas.id,
+        content: {
+          viewport: { x: 0, y: 0, zoom: 1 },
+          items: [0, 1].map((index) => ({
+            id: `note-${index}`,
+            kind: "note",
+            x: index * 600,
+            y: index * 300,
+            width: 200,
+            height: 120,
+            text: `Minimap ${index}`,
+            color: "yellow",
+          })),
+          connectors: [],
+        },
+        expectedContent: canvas.contentVersion,
+      });
+      const shown =
+        "document.querySelector('[aria-label=Minimap]')?.parentElement.hasAttribute('data-shown')";
+      try {
+        await navigate(
+          `/canvas/${canvas.id}`,
+          'document.querySelector(\'[aria-label="Show Minimap"], [aria-label="Hide Minimap"]\')',
+        );
+        if (await run(`Boolean(${shown})`))
+          await click('[aria-label="Hide Minimap"]');
+        await waitFor(`!${shown}`);
+        await click('[aria-label="Show Minimap"]');
+        await waitFor(`Boolean(${shown})`);
+        await waitFor(
+          "document.querySelectorAll('[aria-label=Minimap] rect[data-kind=item]').length === 2",
+        );
+        await controls.snapshot(`${controls.mode}-canvas-minimap`);
+        await click('[aria-label="Hide Minimap"]');
+        await waitFor(`!${shown}`);
+        return { minimapShown: true, minimapHidden: true };
+      } finally {
+        await navigate("/", "document.querySelector('[data-library-search]')");
+        await query("canvases.delete", { id: canvas.id });
       }
     },
   },

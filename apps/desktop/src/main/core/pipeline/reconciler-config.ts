@@ -1,7 +1,9 @@
 import type { Op, Source, Task } from "@pond/schema/db";
 import type { JsonValue } from "@pond/schema/json";
 import type { ReportDownloadActivity } from "@shared/download-activity";
+import { DownloadRequestSchema } from "@shared/downloader-contracts";
 import { z } from "zod";
+import { TaskPayloadSchema } from "./priority";
 
 export const POLL_INTERVAL_MS = 5_000;
 export const MAX_GLOBAL_INFLIGHT = 4;
@@ -35,6 +37,9 @@ interface WorkerContext {
   reportActivity: ReportDownloadActivity;
   leaseToken: string;
   cancellationFence: number;
+  /** This run's 1-based attempt, and the task's limit. */
+  attempt: number;
+  maxAttempts: number;
 }
 
 type Worker = (
@@ -55,7 +60,10 @@ const ArchivePayloadSchema = z
   .catch({});
 
 const FetchVideoPayloadSchema = z
-  .object({ requested: z.boolean().optional().catch(undefined) })
+  .object({
+    requested: z.boolean().optional().catch(undefined),
+    download: DownloadRequestSchema.optional().catch(undefined),
+  })
   .catch({});
 
 export const WORKERS = {
@@ -63,9 +71,11 @@ export const WORKERS = {
     const { runHarvestMetadata } = await import("./workers/harvest-metadata");
     await runHarvestMetadata(saveId, HarvestPayloadSchema.parse(payload), ctx);
   },
-  capture_tweet: async (saveId, _payload, ctx) => {
+  capture_tweet: async (saveId, payload, ctx) => {
     const { runCaptureTweetTask } = await import("./workers/capture-tweet");
-    await runCaptureTweetTask(saveId, ctx.signal);
+    await runCaptureTweetTask(saveId, ctx.signal, {
+      force: TaskPayloadSchema.parse(payload).force === true,
+    });
   },
   render_text_cover: async (saveId) => {
     const { runRenderTextCover } = await import("./workers/render-text-cover");
@@ -121,10 +131,4 @@ export const metrics = {
 
 export interface DueTask extends Task {
   source: Source;
-}
-
-export function isSourceTask(op: Op): boolean {
-  return (
-    op === "harvest_metadata" || op === "capture_tweet" || op === "archive_page"
-  );
 }

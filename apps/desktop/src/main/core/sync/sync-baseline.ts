@@ -1,10 +1,12 @@
 import {
   type ConnectedAccount,
+  deletedSourceIds,
   type SourceSyncPrefs,
   saves,
 } from "@pond/schema/db";
-import { and, count, desc, eq, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "../../db";
+import { knownIdsForFetch, trashedBaselineWhere } from "../deleted-sources";
 import { getAccountSync, patchAccountSync } from "./accounts";
 
 export { patchAccountSync } from "./accounts";
@@ -17,9 +19,30 @@ export interface SyncBaseline {
   full: boolean;
 }
 
+/** A split slide keeps its post's Source ID here, so the post stays known after the original save is purged. */
+const knownIdColumns = {
+  sourceId: saves.sourceId,
+  postSourceId: sql<
+    string | null
+  >`json_extract(${saves.rawJson}, '$.split.sourceId')`,
+};
+
+export function knownIdsFromRows(
+  rows: ReadonlyArray<{ sourceId: string; postSourceId: string | null }>,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    ids.add(row.sourceId);
+    if (row.postSourceId) ids.add(row.postSourceId);
+  }
+  return ids;
+}
+
 export function syncBaselineWhere(
   account: Pick<ConnectedAccount, "id" | "source">,
 ) {
+  if (account.source === "mymind")
+    return and(eq(saves.accountId, account.id), isNull(saves.deletedAt));
   return and(
     eq(saves.source, account.source),
     or(eq(saves.accountId, account.id), isNull(saves.accountId)),
@@ -32,10 +55,10 @@ export async function loadAllKnownIds(
 ): Promise<Set<string>> {
   const db = await getDb();
   const rows = await db
-    .select({ sourceId: saves.sourceId })
+    .select(knownIdColumns)
     .from(saves)
     .where(syncBaselineWhere(account));
-  return new Set<string>(rows.map((r) => r.sourceId));
+  return knownIdsFromRows(rows);
 }
 
 export async function loadSyncBaseline(
@@ -45,23 +68,52 @@ export async function loadSyncBaseline(
   const db = await getDb();
   const cfg = await getAccountSync(account.id);
   const full = forceFull || cfg.lastFullSyncAt === null;
+  let liveIds: Set<string>;
+  let total: number;
   if (full) {
-    const knownIds = await loadAllKnownIds(account);
-    return { knownIds, total: knownIds.size, full: true };
+    liveIds = await loadAllKnownIds(account);
+    total = liveIds.size;
+  } else {
+    const rows = await db
+      .select(knownIdColumns)
+      .from(saves)
+      .where(syncBaselineWhere(account))
+      .orderBy(desc(saves.savedAt))
+      .limit(RECENT_KNOWN_WINDOW);
+    liveIds = knownIdsFromRows(rows);
+    const totalRow = await db
+      .select({ c: count() })
+      .from(saves)
+      .where(syncBaselineWhere(account))
+      .get();
+    total = totalRow?.c ?? liveIds.size;
   }
-  const rows = await db
-    .select({ sourceId: saves.sourceId })
+  /** Fetch Older Saves keeps the live set, so an explicit full walk can import a deleted source again. */
+  const dismissedIds = forceFull
+    ? new Set<string>()
+    : await loadDismissedSourceIds(account);
+  return {
+    knownIds: knownIdsForFetch({ forceFull, liveIds, dismissedIds }),
+    total,
+    full,
+  };
+}
+
+async function loadDismissedSourceIds(
+  account: Pick<ConnectedAccount, "id" | "source">,
+): Promise<Set<string>> {
+  const db = await getDb();
+  const trashed = await db
+    .select(knownIdColumns)
     .from(saves)
-    .where(syncBaselineWhere(account))
-    .orderBy(desc(saves.savedAt))
-    .limit(RECENT_KNOWN_WINDOW);
-  const knownIds = new Set<string>(rows.map((r) => r.sourceId));
-  const totalRow = await db
-    .select({ c: count() })
-    .from(saves)
-    .where(syncBaselineWhere(account))
-    .get();
-  return { knownIds, total: totalRow?.c ?? knownIds.size, full: false };
+    .where(trashedBaselineWhere(account));
+  const removed = await db
+    .select({ sourceId: deletedSourceIds.sourceId })
+    .from(deletedSourceIds)
+    .where(eq(deletedSourceIds.source, account.source));
+  const ids = knownIdsFromRows(trashed);
+  for (const row of removed) ids.add(row.sourceId);
+  return ids;
 }
 
 export async function countSavesForAccount(

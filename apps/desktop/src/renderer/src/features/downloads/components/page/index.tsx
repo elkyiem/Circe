@@ -1,4 +1,5 @@
 import {
+  IconArchiveDownload,
   IconBroom,
   IconCircleCheck,
   IconLink2,
@@ -6,7 +7,8 @@ import {
   IconMediaPlayFill,
 } from "@pond/icons";
 import { sourceLabel } from "@pond/schema/sources";
-import { Button, Tooltip } from "@pond/ui";
+import { Button, Keyboard, Tooltip } from "@pond/ui";
+import type { QueueSourceGate } from "@shared/queue-contracts";
 import {
   useInfiniteQuery,
   useMutation,
@@ -38,6 +40,7 @@ import {
   showsCompletedDownloads,
   statusFeed,
 } from "@/features/downloads/lib/status-feed";
+import { downloadDialog } from "@/features/downloads/state/download-dialog";
 import {
   downloadsFilters,
   useDownloadsFilters,
@@ -52,7 +55,9 @@ import {
   TableFilterToggle,
 } from "@/shared/components/table-filters";
 import { uniqueFilterOptions } from "@/shared/components/table-filters/chip-label";
+import { shortcutGlyphs } from "@/shared/lib/shortcuts";
 import { useDownloadActivity } from "../../hooks/use-download-activity";
+import { useSourceGates } from "../../hooks/use-source-gates";
 import { TransferJobsPanel } from "../transfers";
 import { DownloadOptionsMenu } from "./options";
 import { DownloadSelectionBar } from "./selection-bar";
@@ -60,6 +65,7 @@ import styles from "./styles.module.css";
 import { DownloadsView } from "./view";
 
 const initialHistoryCursor: HistoryCursor = null;
+const NO_GATES: readonly QueueSourceGate[] = [];
 type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 
 function DownloadsMatchesEmpty({ onReset }: { onReset: () => void }) {
@@ -74,6 +80,7 @@ export function DownloadsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activity = useDownloadActivity();
   const live = useMemo(() => projectLiveDownloads(saves), [saves]);
+  const gates = useSourceGates(live.some((row) => row.status === "parked"));
   const history = useInfiniteQuery({
     queryKey: ["downloads.history", filters.q],
     initialPageParam: initialHistoryCursor,
@@ -183,6 +190,23 @@ export function DownloadsPage() {
     <SearchChrome.Root
       actions={
         <>
+          <Tooltip
+            label="Download Video or Audio"
+            shortcut={
+              <Keyboard.Cluster keys={shortcutGlyphs("library.download")} />
+            }
+            side="bottom"
+          >
+            <Button
+              icon
+              size="sm"
+              variant="ghost"
+              aria-label="Download Video or Audio"
+              onClick={() => downloadDialog.open()}
+            >
+              <IconArchiveDownload />
+            </Button>
+          </Tooltip>
           <DownloadOptionsMenu />
           <TableFilterToggle
             open={filtersOpen}
@@ -290,6 +314,7 @@ export function DownloadsPage() {
         rows={rows}
         completed={visibleCompleted}
         activities={activity.data ?? []}
+        gates={gates.data ?? NO_GATES}
         paused={paused}
         historyLoading={showCompleted && history.isPending}
         historyError={showCompleted && history.isError}

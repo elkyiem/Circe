@@ -18,6 +18,7 @@ import { CombineImagesOptionsSchema } from "../../shared/combine-images-contract
 import { IPC } from "../../shared/constants";
 import { conversationMarkdown } from "../../shared/conversation-markdown";
 import { ConversionRequestSchema } from "../../shared/conversion-contracts";
+import { DownloadExportInputSchema } from "../../shared/downloader-contracts";
 import type { QueryName, QueryResult } from "../../shared/query-contracts";
 import { WebCanvasRenderSchema } from "../../shared/web-canvas-contracts";
 import {
@@ -55,6 +56,10 @@ import { isPathInside } from "../lib/path-identity";
 import { libraryId, libraryRoot } from "../paths";
 import { unzipWebDirectory, zipWebDirectory } from "./archives";
 import { renderWebCanvas } from "./canvas-render";
+import {
+  exportDownloadForBrowser,
+  type WebDownloadExport,
+} from "./downloader-export";
 import { createWebEagleImport } from "./eagle-import";
 import { WebRequestError } from "./errors";
 import { importUploadedFiles } from "./import-files";
@@ -169,7 +174,8 @@ export function createWebFiles(root: string) {
         | QueryResult<
             Extract<z.infer<typeof WebFileQuerySchema>["name"], QueryName>
           >
-        | Awaited<ReturnType<typeof finish>>;
+        | Awaited<ReturnType<typeof finish>>
+        | WebDownloadExport;
       const uploadedAction = WebSaveFileInputNameSchema.safeParse(name);
       if (uploadedAction.success) {
         const { applyWebSaveFileInput } = await import("./save-file-input");
@@ -255,6 +261,28 @@ export function createWebFiles(root: string) {
           1,
           expected,
         );
+      } else if (name === "downloader.export") {
+        const directory = await workDirectory();
+        const input = DownloadExportInputSchema.parse(params);
+        let exported: WebDownloadExport;
+        try {
+          exported = await exportDownloadForBrowser(input, directory.path);
+        } catch (error) {
+          await rm(directory.path, { recursive: true, force: true });
+          throw error;
+        }
+        if (!exported.ok || "text" in exported) {
+          await rm(directory.path, { recursive: true, force: true });
+          result = exported;
+        } else {
+          result = await finish(
+            directory,
+            exported.file,
+            exported.file,
+            1,
+            expected,
+          );
+        }
       } else if (name === "saves.exportWebp") {
         const { ids } = Selection.parse(params);
         if (!ids.length)

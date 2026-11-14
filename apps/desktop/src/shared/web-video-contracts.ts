@@ -26,4 +26,11 @@ export const WebVideoRequestSchema = z.union([
       frameIndex: z.number().int().nonnegative(),
     }),
   }),
+  z.strictObject({
+    name: z.literal("saves.setImageThumbnail"),
+    params: z.strictObject({
+      id: z.string().min(1).max(200),
+      src: z.string().max(20000),
+    }),
+  }),
 ]);

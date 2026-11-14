@@ -218,6 +218,7 @@ export const WindowPrefsSchema = z.object({
     .enum(["continue", "library", "sources", "trash", "settings"])
     .catch("continue"),
   appIcon: z.string().min(1).catch(DEFAULT_APP_ICON),
+  appIconMatchesLibrary: z.boolean().catch(false),
   interfaceZoom: z.number().int().min(50).max(200).catch(100),
 });
 
@@ -330,6 +331,7 @@ const sync = z.object({
       return known;
     }),
   watches: z.custom<SyncWatches>().default({}),
+  launch: z.boolean().catch(false),
   cron: z
     .object({
       enabled: z.boolean().catch(true),

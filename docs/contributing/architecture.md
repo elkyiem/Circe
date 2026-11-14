@@ -50,6 +50,8 @@ Provider model discovery is main-owned. Cloud metadata comes from the public Ver
 
 Use [CONTEXT.md](../../CONTEXT.md) for domain terminology and [code standards](code-standards.md) for naming, imports, types, and tests.
 
+mymind connects through a read-only API key. `main/core/mymind` owns the client, credentials, import state, and new-save import. Credentials stay in the local secret store. Each Account keeps its first connection time, completed date range, and mymind-to-Save IDs in `mymind/<account-id>.json` inside the Library. Reconnect retains this state. Scheduled and manual fetches only import items created after the first connection; older items use the existing export import. Imported Saves retain their content Source and use the mymind Account as their import owner. Capture selects a browser session for the content Source. The renderer uses the existing Sources controls with a key form and an export action.
+
 ## Changes by example
 
 Subscription providers (`codex`, `claude-code`) use `cli-language-model` as an AI SDK V4 adapter. `cli-runtime` owns executable discovery, inherited provider credential and routing removal, subscription sign-in and required-capability checks, bounded process output, timeouts, and cancellation of the process group. Each step runs in a temporary directory with CLI tools, MCP, and user or project customizations disabled. Codex receives an isolated home with a narrow link to its existing file-backed subscription credential and a generated model catalog whose effective metadata is checked for an empty native-tool surface. Keyring-backed Codex sign-ins are rejected during connection because their credential identity is bound to the canonical Codex home, which cannot also provide the isolated customization boundary. Codex can still describe its bundled system skills, but the isolated home and empty tool surface prevent those descriptions from reading files or executing capabilities. Claude Code still applies organization-managed policy hooks in safe mode; bare mode cannot replace it because bare mode does not read subscription OAuth or keychain credentials. Structured CLI output becomes ordinary SDK tool calls; the existing Pond tool loop owns execution and review. Settings stores connection flags, never CLI tokens. The default CLI model is offered without invented pricing or model metadata. Text and Library tools are supported; binary attachments require another provider.
@@ -98,9 +100,9 @@ Settings pages share the default `Settings.Page` width and spacing; individual s
 
 Run `pnpm architecture:check` for runtime dependency cycles, process/shared-code boundaries, and feature entries. Type-only imports are excluded from the runtime graph. Run `pnpm check` for the required local code checks and offline tests, then `pnpm build` for bundles and performance budgets. Use `pnpm knip` separately when pruning; check non-TypeScript and dynamic entrypoints before accepting a deletion.
 
-Save previews can open in app-owned presentation and detached always-on-top windows. A dedicated sandboxed preload exposes only typed preview state, configuration, neighbor navigation, and close capabilities. Main validates the Save and image before creating a window, closes auxiliary windows during Library transitions and shutdown. The older `preview.pin`, `preview.configure`, and `preview.neighbor` command names remain removed rather than becoming an undocumented compatibility surface.
+Save previews can open in app-owned presentation and detached always-on-top windows. A dedicated sandboxed preload exposes only typed preview state, configuration, neighbor navigation, and close capabilities. In-app players and these windows share the viewer `videoMuted` preference: muting one updates that preference, and the next video or reopened window applies it without changing the element's volume. Main validates the Save and image before creating a window, closes auxiliary windows during Library transitions and shutdown. The older `preview.pin`, `preview.configure`, and `preview.neighbor` command names remain removed rather than becoming an undocumented compatibility surface.
 
-The renderer save pool lives under `features/saves/state/`. Library state owns navigation, folders, and saved views. Library may compose Saves, but Save modules cannot import Library modules. App-level bridges expose the narrow Library actions needed by Save menus and viewers. Tag operations live under `features/tags/operations/`; both the library Tags page and settings consume that feature. Shared UI primitives remain in `packages/ui`, independent of desktop stores.
+The renderer save pool lives under `features/saves/state/`. It is bounded: once a write takes it past 5,000 rows, a deferred trim evicts the least recently touched rows down to 4,000, skipping rows that are selected, in the current results, recent, or held by a mounted reader through `useSave`, `useRetainedSaves`, or `protectSaves`. Readers re-hydrate an evicted row through `ensureSaves`. Library state owns navigation, folders, and saved views. Library may compose Saves, but Save modules cannot import Library modules. App-level bridges expose the narrow Library actions needed by Save menus and viewers. Tag operations live under `features/tags/operations/`; both the library Tags page and settings consume that feature. Shared UI primitives remain in `packages/ui`, independent of desktop stores.
 
 Agent chrome lives in `@pond/ui` as Pond-owned compounds (`Thread`, `Composer`, `Message`, Markdown, ToolCall, Prompt, Reasoning). They take props from `useChat` and do not wrap Assistant UI primitives. Feature-specific widgets (consulted saves, review, model picker) stay in the desktop pane. Renderer vendor chunks assign modules to their own packages without recursively absorbing dependencies.
 
@@ -127,12 +129,29 @@ the lease token plus cancellation fence as a compare-and-set guard. Source
 budgets, breaker state, generation state, and attempt history are durable.
 Downloads, the sidebar, and the tray project that shared state through typed
 queries. They never infer queue truth from renderer activity.
+`queue.sourceGates` lists every source that holds work back, including a
+closed gate whose hourly or daily request budget is spent, with that source's
+caps. Downloads combines it with each Save's task state, deferral reason, and
+recorded error class to explain a status in plain language.
+
+Retry batches can contain failed Saves and Saves that are still ingesting.
+A failed Save stays failed until a worker claims its next task. The orphan
+sweep preserves tasks in active and paused retry batches.
+
+The extension refreshes existing GitHub, Twitter, and YouTube Account sessions
+when it starts and when the browser changes their session cookies. Main matches
+the session to an existing Account before it copies cookies. A matching session
+can retry that Account's downloads that need authentication. Automatic recovery
+preserves paused and cancelled work. During an app session, it retries each Save
+once for each set of session cookies. An explicit connection or Retry action can
+retry again.
 
 The main process remains the sole database settlement authority. A small
 `utilityProcess` pool runs validated Node-compatible image processing, image
 probing, and poster extraction jobs. Each request and response carries its task
 lease token and cancellation fence. Worker timeout, exit, or malformed output
-fails the attempt in main, where the normal retry policy applies. Browser
+fails the attempt in main, where the normal retry policy applies. A worker
+with no job for thirty seconds exits, and the next job starts a new one. Browser
 session harvesting, page archives, tweet capture, text-card rendering, Library
 file writes, and every task-state transition remain main-owned. Library
 switches pause claims and drain accepted work before paths or database
@@ -166,7 +185,7 @@ Bulk selection mutations cross IPC as explicit IDs through `saves.bulkEdit`. Mai
 
 ## On-device processing resources
 
-Enrichment revalidates the current Save and enabled preference when a queued job starts. Processing preference changes rescan eligibility. The inference worker serializes requests, reuses one multimodal embedding bundle with shared text weights, and releases the worker after fifteen seconds without pending requests. Main reports macOS kernel memory pressure, or available-memory pressure on other platforms, through the existing machine-pacing bridge; inference yields under pressure and resumes automatically.
+Enrichment revalidates the current Save and enabled preference when a queued job starts. Processing preference changes rescan eligibility. The inference worker serializes requests, reuses one multimodal embedding bundle with shared text weights, and releases the worker after fifteen seconds without pending requests. Main loads its own text embedding model for search queries and classification labels, and disposes it after a minute without a request. Main reports macOS kernel memory pressure, or available-memory pressure on other platforms, through the existing machine-pacing bridge; inference yields under pressure and resumes automatically.
 
 `media.decodeAudio` is an internal, validated IPC operation for files in the active Library. Main runs bounded FFmpeg extraction and returns at most thirty seconds of mono 16 kHz PCM. It never reads a complete video into the renderer to obtain that segment. Full transcription retains its existing complete-recording behaviour and byte limit, enforced during the response stream. Video sampling uses one decoder for the first thirty-two seconds. Video inference retains every sampled frame and aggregates frame-count-weighted batches of at most sixteen; the media preprocessing version distinguishes these derived vectors from earlier whole-video embeddings.
 
@@ -175,6 +194,8 @@ Enrichment revalidates the current Save and enabled preference when a queued job
 ## Auxiliary window composition
 
 Settings has a dedicated renderer and scoped preload. Its singleton native window reuses the section registry, search and provider UI without booting Library selection, ingestion or enrichment effects. Main broadcasts committed preferences to every renderer; Settings delegates Processing rescans to the resident enrichment owner rather than starting a second loop. Settings deep links and native commands select the same window, while app activation explicitly creates or focuses the Library.
+
+With Keep Running When Closed on and a tray icon present, closing the Library hides it. After 60 seconds hidden, main destroys the window so its renderer exits, while fetching and sync continue in main. The release waits while a preview window is open, and never runs during quit or when Pond would quit without the window. Every reopen path rebuilds the window through `openLibraryWindow` with the persisted bounds and last route. Preload buffers navigation, menu commands and dropped files until the new renderer subscribes.
 
 The app composition layer passes the Library's full selection and folder membership to the Save inspector; a full viewer continues to inspect one Save. Immediate folder assignments use deltas and notes/tag removal use main-owned bulk transactions with Undo. Inspector text drafts are keyed by target IDs and retain failures for retry.
 
@@ -383,3 +404,13 @@ Are.na progress uses the authenticated status feed and the same progress IDs as
 native subscriptions. Manual sensitivity decisions are protected inside the
 host's serialized derived-write boundary, including late classifier writes from
 another window; the renderer rechecks after awaiting persistence.
+
+The Download dialog probes links and starts Library downloads through the
+generic allowlist. A browser export runs on the host into a private request
+directory and arrives as a browser download; a transcript copied to the
+clipboard returns as text for the visiting device's own clipboard. Clipboard
+links, the export folder name and Reveal resolve locally in the browser.
+Carousel-image and GIF-frame thumbnails share the authenticated video endpoint,
+which maps `/web/media` addresses back to the indexed original. Library logos
+use the same crop source on both transports, and preview mute persists in the
+visiting device's viewer preferences.

@@ -4,13 +4,13 @@ import { packJustified } from "@/features/library/components/layouts/packing";
 import { useLibrarySaveGap } from "@/features/library/components/layouts/save-gap";
 import { useGridMin } from "@/features/library/hooks/use-grid-min";
 import { chromeHeightFor } from "@/features/library/lib/library-chrome";
-import { useGridWidth } from "@/features/library/state/shell-state";
+import { useDeferredGridWidth } from "@/features/library/state/shell-state";
 import {
   useDisplayPrefs,
   useItemInfo,
   useMediaPickOptions,
 } from "@/features/saves";
-import { aspectFor, useAspectVersion } from "@/features/saves/media";
+import { layoutAspectFor, useAspectVersion } from "@/features/saves/media";
 import type { Save } from "@/features/saves/types";
 
 interface JustifiedViewProps {
@@ -19,7 +19,7 @@ interface JustifiedViewProps {
 }
 
 export function JustifiedView({ saves, onEndReached }: JustifiedViewProps) {
-  const width = useGridWidth();
+  const width = useDeferredGridWidth();
   const targetHeight = useGridMin();
   const gap = useLibrarySaveGap();
   const prefs = useDisplayPrefs();
@@ -33,7 +33,7 @@ export function JustifiedView({ saves, onEndReached }: JustifiedViewProps) {
     return packJustified(
       saves.map((save) => ({
         id: save.id,
-        aspect: aspectFor(save, pickOpts),
+        aspect: layoutAspectFor(save, pickOpts),
       })),
       width,
       targetHeight,

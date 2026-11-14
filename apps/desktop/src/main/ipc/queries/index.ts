@@ -21,6 +21,7 @@ import { arenaLinkQueries } from "./arena-links";
 import { bulkQueries } from "./bulk";
 import { canvasesQueries } from "./canvases";
 import { conversionQueries } from "./conversion";
+import { downloaderQueries } from "./downloader";
 import { downloadsQueries } from "./downloads";
 import { enrichmentQueries } from "./enrichment";
 import { fishQueries } from "./fish";
@@ -62,6 +63,7 @@ const queryRegistry = {
   ...fishMcpQueries,
   ...conversionQueries,
   ...savesQueries,
+  ...downloaderQueries,
   ...downloadsQueries,
   ...queueQueries,
   ...arenaLinkQueries,

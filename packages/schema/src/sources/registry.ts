@@ -75,7 +75,7 @@ export const SOURCE_DESCRIPTORS = [
       /^https?:\/\/(?:www\.)?are\.na\/block\/(\d+)/i,
       /^https?:\/\/(?:www\.)?are\.na\/[^/]+\/[^/]+-(\d+)/i,
     ],
-    sync: { strategy: "scroll" },
+    sync: { strategy: "cursor" },
   },
   {
     id: "cosmos",
@@ -230,6 +230,16 @@ export const SOURCE_DESCRIPTORS = [
       /^https?:\/\/(?:www\.)?marked\.dev\/ref\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?=[/?#]|$)/i,
     ],
     /** One `listLibraryRefs` call returns the whole library, so there is no page order to stop early on. */
+    sync: { strategy: "full" },
+  },
+  {
+    id: "mymind",
+    label: "mymind",
+    hosts: ["mymind.com"],
+    /** Imported cards keep their original content source. */
+    urlPatterns: [],
+    connect: "api-key",
+    /** Read the complete date window. The stream has no order or cursor guarantee. */
     sync: { strategy: "full" },
   },
 ] as const satisfies readonly SourceDescriptor[];

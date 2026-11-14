@@ -41,8 +41,11 @@ export function createWebVideo() {
       expected: string,
     ) {
       const request = WebVideoRequestSchema.parse(raw);
-      if (request.name === "saves.setGifThumbnail") {
-        const { id, src, frameIndex } = request.params;
+      if (
+        request.name === "saves.setGifThumbnail" ||
+        request.name === "saves.setImageThumbnail"
+      ) {
+        const { id, src } = request.params;
         const media = await indexedSource(src);
         if (media.saveId !== id)
           throw new WebRequestError("This frame belongs to another Save.", 422);
@@ -54,11 +57,16 @@ export function createWebVideo() {
             throw new WebRequestError(
               "The active Library changed. Reload before continuing.",
             );
-          return savesImportPersistenceQueries[request.name]({
-            id,
-            src: media.pondUrl,
-            frameIndex,
-          });
+          return request.name === "saves.setGifThumbnail"
+            ? savesImportPersistenceQueries[request.name]({
+                id,
+                src: media.pondUrl,
+                frameIndex: request.params.frameIndex,
+              })
+            : savesImportPersistenceQueries[request.name]({
+                id,
+                src: media.pondUrl,
+              });
         });
         return new Response(stringifyWebValue(result));
       }

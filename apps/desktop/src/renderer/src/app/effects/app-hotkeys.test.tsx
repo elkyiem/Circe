@@ -158,27 +158,40 @@ describe("app hotkeys in text fields", () => {
     expect(attr("popover")).toBe("closed");
   });
 
-  it("stops typing keys before window bubble listeners", async () => {
+  it("lets the field handle typing keys before stopping window listeners", async () => {
     const input = document.createElement("input");
+    const field: string[] = [];
+    input.addEventListener("keydown", (event) => field.push(event.key));
     await mount(input);
     const seen: string[] = [];
     const onBubble = (event: KeyboardEvent) => {
       seen.push(event.key);
     };
     window.addEventListener("keydown", onBubble);
-    await act(async () => press("[", input));
+    await act(async () => {
+      press("[", input);
+      press("Enter", input);
+    });
     window.removeEventListener("keydown", onBubble);
+    expect(field).toEqual(["[", "Enter"]);
     expect(seen).toEqual([]);
   });
 
-  it("preserves field and document widget handlers while blocking app hotkeys", async () => {
+  it("lets Escape from a field inside an open popup reach its dismiss listener", async () => {
+    const popup = document.createElement("div");
+    popup.dataset.open = "";
+    popup.tabIndex = -1;
     const input = document.createElement("input");
-    await mount(input);
+    popup.append(input);
+    await mount(popup);
+    input.focus();
     const fieldKeys: string[] = [];
-    const widgetKeys: string[] = [];
+    const documentKeys: string[] = [];
     input.addEventListener("keydown", (event) => fieldKeys.push(event.key));
-    const onWidgetKey = (event: KeyboardEvent) => widgetKeys.push(event.key);
-    document.addEventListener("keydown", onWidgetKey);
+    const onDocumentKey = (event: KeyboardEvent) =>
+      documentKeys.push(event.key);
+    document.addEventListener("keydown", onDocumentKey);
+    const open = libraryChrome.getState().sidebarOpen;
     try {
       await act(async () => {
         press("Enter", input);
@@ -186,9 +199,10 @@ describe("app hotkeys in text fields", () => {
         press("[", input);
       });
       expect(fieldKeys).toEqual(["Enter", "Escape", "["]);
-      expect(widgetKeys).toEqual(["Enter", "Escape", "["]);
+      expect(documentKeys).toEqual(["Escape"]);
+      expect(libraryChrome.getState().sidebarOpen).toBe(open);
     } finally {
-      document.removeEventListener("keydown", onWidgetKey);
+      document.removeEventListener("keydown", onDocumentKey);
     }
   });
 

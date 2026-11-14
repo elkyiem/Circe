@@ -40,6 +40,17 @@ Incremental runs load only a bounded **recent window** of known ids
 (`RECENT_KNOWN_WINDOW`) instead of the whole library, and the harvesters
 **early-stop** once they hit a streak of already-known ids — so a no-op sync is
 cheap and a sync with N new items walks roughly N items, not the entire backlog.
+A split slide adds its post's Source ID (`rawJson.split.sourceId`) to the known
+ids, so the post isn't fetched again while any slide survives.
+
+Deleting a Save keeps that Source ID known to automatic fetching. Trash still
+holds the row, and permanently removing it records the Source ID in
+`deleted_source_ids`. Scheduled fetches, Fetch New Saves, and Watches skip
+those ids, so a bookmark, collection item, or watched post you deleted is not
+downloaded again. Fetch Older Saves (`forceFull`) leaves them out of the known
+set, and that explicit walk can import them again. A purge that releases an import-filtered Save, rolls
+back a split, or rolls back an Eagle import does not record the id, because
+those deletes exist so a later fetch can import the source again.
 
 **Full re-sync escape hatch:** pass `forceFull: true` (exposed over IPC via
 `syncRunNow` / `syncRunAll`) to ignore the watermark and walk the whole remote
@@ -53,7 +64,9 @@ behavior. `listHarvestPlan` (`import-scope.ts`) turns the scope into the walks
 a run makes: excluded lists are never requested, rather than harvested and
 filtered afterward.
 
-- Instagram, X, and YouTube: Saved and Liked, each on its own walk. X Likes
+- Instagram, Threads, X, and YouTube: Saved and Liked, each on its own walk.
+  Threads reads each list by replaying the feed query its page fires
+  (`THREADS_LIST_PAGES` in `harvest/threads/list.ts`). X Likes
   used to be the `syncLikes` switch; `accountImportScope` (`shared/import-scope.ts`)
   reads an old `syncLikes: false` as Bookmarks only.
 - Reddit and TikTok: Saved and Liked come from one walk, which reads
@@ -64,7 +77,10 @@ filtered afterward.
   walk; Liked Videos still comes from that walk.
   `listSourceCollections` and `harvestSourceCollections`
   (`harvest-window/harvest-list.ts`) load and walk them.
-- Cosmos, Are.na, and Threads import every list.
+- Cosmos and Are.na import every list. Are.na pages the v3 contents
+  API (`per=100`, newest first) and resumes from the next page when a run
+  stops before `has_more_pages` is false, so the first page is not recorded
+  as a finished all-time sync.
 - GitHub walks your Stars tab in the signed-in window, 30 repos a page
   (`harvest/github/list.ts`). Stars show no date, but each page's Next cursor
   holds its last star's time, so the `since` limit (`sinceDate: "saved"`) ends

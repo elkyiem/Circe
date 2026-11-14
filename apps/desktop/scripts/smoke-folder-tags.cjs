@@ -130,17 +130,23 @@ app.on("web-contents-created", (_, contents) => {
         const before = await q("transferJobs.list");
         await q("transferJobs.retry",{id:${JSON.stringify(jobId)}});
         const cancelled = await q("transferJobs.cancel",{id:${JSON.stringify(jobId)}});
-        async function settled() {
+        // Retry starts the job asynchronously; wait for a state written after the request.
+        async function settled(after = 0) {
           for(let i=0;i<100;i++) {
             const job=(await q("transferJobs.list"))[0];
-            if(job && !["running","cancelling"].includes(job.status)) return job;
+            if(job && job.updatedAt > after && !["running","cancelling"].includes(job.status)) return job;
             await new Promise((resolve) => setTimeout(resolve,25));
           }
-          throw new Error("Transfer did not settle");
+          throw new Error("Transfer did not settle: " + JSON.stringify((await q("transferJobs.list"))[0]));
         }
         const stopped = await settled();
-        await q("transferJobs.retry",{id:${JSON.stringify(jobId)}});
-        const finished = await settled();
+        // A small export can finish before the cancel lands; only a cancelled job is retried.
+        let finished = stopped;
+        if (stopped.status === "cancelled") {
+          const retried = await q("transferJobs.retry",{id:${JSON.stringify(jobId)}});
+          if (!retried.ok) throw new Error("Retry refused: " + JSON.stringify(retried));
+          finished = await settled(stopped.updatedAt);
+        }
         const downloads = [...document.querySelectorAll("button")].find((button)=>button.textContent?.trim().startsWith("Downloads"));
         downloads?.click();
         for(let i=0;i<60 && !document.querySelector('[aria-label="Library transfers"]');i++) await new Promise((resolve)=>setTimeout(resolve,50));
@@ -157,11 +163,12 @@ app.on("web-contents-created", (_, contents) => {
         }),
       );
       assert.equal(transfer.before[0].status, "interrupted");
-      if (transfer.cancelled.ok) {
-        assert.equal(transfer.stopped.status, "cancelled");
-      } else {
+      assert.ok(
+        ["cancelled", "completed"].includes(transfer.stopped.status),
+        transfer.stopped.status,
+      );
+      if (!transfer.cancelled.ok)
         assert.equal(transfer.stopped.status, "completed");
-      }
       assert.equal(transfer.finished.status, "completed");
       assert.ok(
         readdirSync(exportDirectory).some((name) => name.endsWith(".txt")),

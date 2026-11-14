@@ -45,8 +45,16 @@ starting another host. No dev or watch command belongs in E2E verification.
   Pipeline and per-Source pause/resume, plus persisted bulk-edit Undo/Redo, are also
   shared scenarios. Normalized outcomes must
   match across both surfaces, in addition to each scenario's expected assertions.
+- Pond 2.4–2.7 additions run as shared scenarios too: keyword search staying
+  inside folder and Trash scope, Fetch All and Fetch on Launch, new Source saves
+  filed into the Source's folder, purged items not fetched again, source-gate
+  hourly/daily limits, Library logo cropping and Pond tints, the Check for
+  Updates dialog, the Canvas minimap, and offline Download dialog validation.
+  UI scenarios navigate with `e2e/navigation.cjs` and save a screenshot per
+  surface.
 - Existing upstream parity scenarios cover carousel and batch splitting, media
-  filename encoding, sensitivity overrides, video seeking and keyboard playback,
+  filename encoding, sensitivity overrides, video seeking, keyboard playback,
+  arrow-key volume, click-to-pause, setting a carousel image as the thumbnail,
   Are.na conversion and progress, missing originals, repair previews, displaced
   Library recovery, and durable transfer dismissal on both surfaces.
 - The browser CI suite retains its HTTP, session, stale history, upload/download,
@@ -67,6 +75,9 @@ the web app under test is Circé's browser renderer in `apps/desktop`.
 its shared scenarios (or `pending`), and the renderer route files. An offline
 test in `pnpm check` fails when an upstream sync adds, removes, reclassifies, or
 renames a query/route, or changes a scenario's declared query coverage.
+
+The parity suite declares the queries it asserts in `e2e/parity-scenario.cjs`;
+the inventory counts them and the suite fails if one is not exercised.
 
 `pending` means a shared behavior assertion is still needed. Existing browser or
 unit tests may cover that operation, but it is not counted as shared parity.
@@ -90,6 +101,12 @@ After **each upstream sync**:
    to silence a failure. Remove entries only when the product operation was removed.
 5. Run `pnpm check`, rebuild both bundles, and run `pnpm e2e`. The Circé CI workflow
    runs the extended browser suite on PRs and pushes to `web` and `dev`.
+
+Known gaps from the Pond 2.7 sync: `downloader.start`, `downloader.frames` and
+`downloader.export` need the yt-dlp binary, which Pond downloads from GitHub on
+first use, so they belong to live tests. `downloader.pickExportFolder` and
+`downloader.reveal` are native dialogs and Finder on desktop and fixed local
+answers in the browser. `accounts.connectMymind` needs mymind's live API.
 
 Prioritize remaining shared coverage for full Canvas editing/export, keyboard
 selection and Undo/Redo, signed-in Source Sync and Downloads recovery, imports and exports,

@@ -237,6 +237,9 @@ export async function installBrowserAdapter(libraryId: string) {
     },
     isCurrent: () => boundLibraryId === libraryId,
     reduceMotion: () => preferences.read().preferences.reduceMotion,
+    videoMuted: () => preferences.read().viewer.videoMuted,
+    setVideoMuted: (videoMuted) =>
+      void preferences.write({ viewer: { videoMuted } }).catch(() => {}),
   });
   window.addEventListener("pagehide", () => previews.dispose(), { once: true });
   const api: PondApi = {

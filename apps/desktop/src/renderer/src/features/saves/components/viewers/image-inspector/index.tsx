@@ -1,4 +1,6 @@
 import type { ImageCrop } from "@pond/schema/db";
+import { isStaticThumbnailFile } from "@shared/media-index";
+import { pickCardFile } from "@shared/save-file-names";
 import {
   type CSSProperties,
   type ReactNode,
@@ -21,6 +23,8 @@ import {
   flipPatch,
   rotatePatch,
 } from "@/features/saves/lib/inspect-actions";
+import { buildOriginalMediaUnits } from "@/features/saves/lib/media/units";
+import { pondFileUrl } from "@/features/saves/lib/media/url";
 import { mediaTransformStyle } from "@/features/saves/lib/media-transform";
 import { beginSaveDrag } from "@/features/saves/lib/start-drag";
 import { FIT_POSE, zoomImageAt } from "@/features/saves/lib/viewer-memory";
@@ -76,6 +80,13 @@ export function ImageInspector({
   const isGif =
     file?.mimeType === "image/gif" ||
     /\.gif(?:$|[?#])/i.test(file?.path ?? src);
+  const carouselImages = buildOriginalMediaUnits(save).filter(
+    (unit) => !unit.isVideo,
+  );
+  const canSetImageThumbnail =
+    !isGif &&
+    carouselImages.length > 1 &&
+    carouselImages.some((unit) => unit.key === file?.path);
   const [mode, setMode] = useState<InspectorMode>("view");
   const [gifFramesOpen, setGifFramesOpen] = useState(false);
   const [draft, setDraft] = useState<ImageCrop | null>(null);
@@ -122,6 +133,12 @@ export function ImageInspector({
   });
   const decoded = useImageDecoded(viewport.image, src);
   const thumbnail = cardThumbnailFor(src);
+  const cardFile = pickCardFile(save.files);
+  /** `save.blurhash` encodes the card's still, so it only stands in for that same file. */
+  const blurhash =
+    cardFile && cardFile.path === file?.path && isStaticThumbnailFile(cardFile)
+      ? save.blurhash
+      : null;
   const shown = useMediaReveal(decoded || gif.ready, src);
 
   const run = async (action: () => Promise<void>) => {
@@ -191,6 +208,21 @@ export function ImageInspector({
           notify({
             id: "gif-thumb",
             title: "Couldn't set this GIF frame as the thumbnail.",
+          });
+      });
+  };
+  const setImageThumbnail = () => {
+    if (!file) return;
+    void window.pond
+      .query("saves.setImageThumbnail", {
+        id: save.id,
+        src: pondFileUrl(save.id, file.path),
+      })
+      .then((result) => {
+        if (!result.ok)
+          notify({
+            id: "image-thumb",
+            title: "Couldn't set this image as the thumbnail.",
           });
       });
   };
@@ -347,7 +379,7 @@ export function ImageInspector({
                 : undefined
             }
           >
-            {thumbnail || save.blurhash ? (
+            {thumbnail || blurhash ? (
               <div
                 className={styles.placeholder}
                 data-covered={shown || undefined}
@@ -361,8 +393,8 @@ export function ImageInspector({
                     draggable={false}
                     style={imageStyle}
                   />
-                ) : save.blurhash ? (
-                  <BlurHash hash={save.blurhash} />
+                ) : blurhash ? (
+                  <BlurHash hash={blurhash} />
                 ) : null}
               </div>
             ) : null}
@@ -438,6 +470,9 @@ export function ImageInspector({
         edits={edits}
         endActions={endActions}
         slideNavigation={slideNavigation}
+        onSetImageThumbnail={
+          canSetImageThumbnail ? setImageThumbnail : undefined
+        }
         saveId={save.id}
         isGif={isGif}
         gifFramesOpen={gifFramesOpen}

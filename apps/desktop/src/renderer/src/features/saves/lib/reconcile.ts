@@ -3,6 +3,7 @@ import {
   OPS,
   SAVE_STATUSES,
   SOURCES,
+  TASK_DEFERRED_REASONS,
   TASK_STATUSES,
 } from "@pond/schema/db";
 import { IMPORT_ORIGINS } from "@pond/schema/import-origin";
@@ -36,7 +37,11 @@ const SaveTaskSchema = z.object({
   status: z.enum(TASK_STATUSES),
   attempts: z.number(),
   maxAttempts: z.number(),
-  deferredReason: z.string().nullable().optional(),
+  deferredReason: z
+    .enum(TASK_DEFERRED_REASONS)
+    .nullable()
+    .optional()
+    .catch(null),
   lastError: z.string().nullable(),
   nextRunAt: z.number(),
   updatedAt: z.number(),

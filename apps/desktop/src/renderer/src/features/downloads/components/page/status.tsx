@@ -1,6 +1,5 @@
 import { sourceLabel } from "@pond/schema/sources";
 import type { DownloadRow } from "@/features/downloads/lib/status-feed";
-import { formatPlural } from "@/shared/lib/format";
 
 export type DownloadTableStatus =
   | "progress"
@@ -60,28 +59,17 @@ export function downloadTableStatus(
 export function downloadStatusLabel(row: DownloadRow, paused: boolean): string {
   if (isDownloadStopped(row, paused)) return "Paused";
   if (row.status === "waiting") return "Waiting";
-  if (row.status === "parked") {
-    const source = sourceLabel(row.source);
-    if (row.deferredReason === "source_budget") {
-      if (row.nextRunAt == null || row.nextRunAt <= Date.now())
-        return `Checking ${source} limit`;
-      return `${source} limit · ${waitDuration(row.nextRunAt)}`;
-    }
-    return `Waiting for ${source}`;
-  }
+  if (row.status === "parked") return `Waiting for ${sourceLabel(row.source)}`;
   if (row.status === "retrying") {
     if (row.nextRunAt == null) return "Retrying";
-    return `Retrying in ${waitDuration(row.nextRunAt)}`;
+    const seconds = Math.max(
+      0,
+      Math.ceil((row.nextRunAt - Date.now()) / 1_000),
+    );
+    if (seconds < 60) return `Retrying in ${seconds}s`;
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60) return `Retrying in ${minutes}m`;
+    return `Retrying in ${Math.ceil(minutes / 60)}h`;
   }
-  if (row.status === "dead")
-    return `Stopped after ${formatPlural(row.attempts, { one: "attempt", other: "attempts" })}`;
   return STATUS_LABELS[downloadTableStatus(row, paused)];
-}
-
-function waitDuration(nextRunAt: number): string {
-  const seconds = Math.max(0, Math.ceil((nextRunAt - Date.now()) / 1_000));
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.ceil(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  return `${Math.ceil(minutes / 60)}h`;
 }

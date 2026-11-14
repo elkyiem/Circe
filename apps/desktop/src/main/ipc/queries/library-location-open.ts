@@ -1,12 +1,27 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { app, BrowserWindow, dialog, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  type NativeImage,
+  nativeImage,
+  shell,
+} from "electron";
 import { z } from "zod";
+import { PondTintSchema } from "../../../shared/library-mark";
+import {
+  centeredFrame,
+  cropRect,
+  LOGO_SIZE,
+  type LogoCrop,
+  pixelCrop,
+} from "../../../shared/logo-crop";
 import type { QueryResult } from "../../../shared/query-contracts";
 import { createPondBundle } from "../../core/ensure-default-library";
 import { hasLibraryBackupManifest } from "../../core/library-backup";
 import { updateLibraryIdentity } from "../../core/library-identity";
-import { readLibraryLogo } from "../../core/library-logo";
+import { logoCropSource } from "../../core/library-logo";
 import { relocateLibrary } from "../../core/library-ops";
 import {
   listRecentLibraries,
@@ -28,7 +43,27 @@ import { type QueryHandlerMap, query, StringParam } from "./params";
 
 const PathParams = z.object({ path: StringParam });
 
-async function pickLibraryIcon() {
+const CropIconParams = z.object({
+  src: z
+    .string()
+    .max(32_000_000)
+    .refine((value) => /^data:image\/[a-z0-9.+-]+;base64,/i.test(value)),
+  crop: z.object({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    size: z.number().finite().positive(),
+  }),
+});
+
+function cropLogo(image: NativeImage, crop: LogoCrop): string {
+  const rect = pixelCrop(image.getSize(), crop);
+  return image
+    .crop({ x: rect.x, y: rect.y, width: rect.size, height: rect.size })
+    .resize({ width: LOGO_SIZE, height: LOGO_SIZE, quality: "best" })
+    .toDataURL();
+}
+
+async function pickLibraryImage() {
   const win = BrowserWindow.getFocusedWindow() ?? undefined;
   const options = {
     title: "Choose Library Logo",
@@ -48,7 +83,11 @@ async function pickLibraryIcon() {
   if (result.canceled || !path) {
     return { ok: false as const, reason: "cancelled" as const };
   }
-  return readLibraryLogo(path);
+  const image = nativeImage.createFromPath(path);
+  if (image.isEmpty()) {
+    return { ok: false as const, reason: "invalid_image" as const };
+  }
+  return { ok: true as const, image };
 }
 
 export const libraryLocationOpenQueries = {
@@ -59,15 +98,48 @@ export const libraryLocationOpenQueries = {
   async "library.identity.pickIcon"(): Promise<
     QueryResult<"library.identity.pickIcon">
   > {
-    return pickLibraryIcon();
+    const result = await pickLibraryImage();
+    if (!result.ok) return result;
+    return { ok: true as const, image: logoCropSource(result.image) };
   },
+
+  "library.identity.cropIcon": query(
+    CropIconParams,
+    (params): QueryResult<"library.identity.cropIcon"> => {
+      const image = nativeImage.createFromDataURL(params.src);
+      if (image.isEmpty()) {
+        return { ok: false as const, reason: "invalid_image" as const };
+      }
+      return { ok: true as const, icon: cropLogo(image, params.crop) };
+    },
+  ),
+
+  "library.identity.pondLogo": query(
+    z.object({ tint: PondTintSchema }),
+    async (params): Promise<QueryResult<"library.identity.pondLogo">> => {
+      const { appIconFile } = await import("../../core/app-icon");
+      const file = appIconFile(params.tint);
+      if (!file) return { ok: false as const, reason: "missing" as const };
+      const image = nativeImage.createFromPath(file);
+      if (image.isEmpty()) {
+        return { ok: false as const, reason: "invalid_image" as const };
+      }
+      return {
+        ok: true as const,
+        icon: image
+          .resize({ width: LOGO_SIZE, height: LOGO_SIZE, quality: "best" })
+          .toDataURL(),
+      };
+    },
+  ),
 
   "library.recent.pickIcon": query(
     PathParams,
     async (params): Promise<QueryResult<"library.recent.pickIcon">> => {
-      const result = await pickLibraryIcon();
+      const result = await pickLibraryImage();
       if (!result.ok) return result;
-      const { icon } = result;
+      const size = result.image.getSize();
+      const icon = cropLogo(result.image, cropRect(size, centeredFrame(size)));
       updateLibraryIdentity(params.path, { icon });
       setRecentLibraryIcon(recentLibrariesFile(), params.path, icon);
       return { ok: true as const, icon };

@@ -366,8 +366,57 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @pond/desktop dist:linux:publish
 
+  # Builds the arm64 packages on an arm64 runner: the native dependencies
+  # rebuild for the build host, so this cannot be cross-built from `linux`.
+  linux-arm64:
+    needs: draft
+    runs-on: ubuntu-24.04-arm
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Turborepo Remote Cache
+        if: ${{ vars.TURBO_TEAM != '' }}
+        uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential fakeroot xvfb
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Desktop end-to-end smoke
+        run: |
+          SANDBOX="$(dirname "$(cd apps/desktop && node -p "require('electron')")")/chrome-sandbox"
+          sudo chown root:root "$SANDBOX"
+          sudo chmod 4755 "$SANDBOX"
+          xvfb-run -a pnpm --filter @pond/desktop smoke:desktop
+
+      - name: Package Linux app and upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @pond/desktop dist:linux:publish
+
   publish:
-    needs: [linux, macos, windows]
+    needs: [linux, linux-arm64, macos, windows]
     runs-on: ubuntu-latest
 
     permissions:
@@ -391,9 +440,12 @@ jobs:
             "Pond-${VERSION}-x64.exe" \
             "Pond-${VERSION}-x64.exe.blockmap" \
             "latest.yml" \
-            "Pond-${VERSION}.AppImage" \
-            "Pond-${VERSION}.deb" \
+            "Pond-${VERSION}-x64.AppImage" \
+            "Pond-${VERSION}-arm64.AppImage" \
+            "Pond-${VERSION}-x64.deb" \
+            "Pond-${VERSION}-arm64.deb" \
             "latest-linux.yml" \
+            "latest-linux-arm64.yml" \
             "pond-extension-${VERSION}-chrome.zip" \
             "pond-extension-${VERSION}-firefox.zip" \
             "pond-extension-${VERSION}-sources.zip"; do

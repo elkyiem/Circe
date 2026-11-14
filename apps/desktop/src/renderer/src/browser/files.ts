@@ -1,3 +1,4 @@
+import { extractLinks } from "@shared/downloader-contracts";
 import type { QueryName } from "@shared/query-contracts";
 import { isThumbnailKind } from "@shared/save-file-names";
 import type { EagleImportProgress } from "@shared/saves-import-contracts";
@@ -17,7 +18,15 @@ interface FileTransport {
   headers(): Record<string, string>;
   eagleProgress?(value: EagleImportProgress): void;
 }
+/** Download dialog exports arrive in this device's browser downloads. */
+const DEVICE_EXPORT_FOLDER = { path: "", name: "this device's Downloads" };
 const DEVICE_QUERIES = new Set<string>([
+  "downloader.clipboardLinks",
+  "downloader.export",
+  "downloader.exportFolder",
+  "downloader.pickExportFolder",
+  "downloader.reveal",
+  "saves.setImageThumbnail",
   "library.identity.pickIcon",
   "library.exportDebugReport",
   "saves.setCustomThumbnail",
@@ -342,8 +351,37 @@ export function createBrowserFiles(transport: FileTransport) {
         }
         return { ok: false, error: "clipboard_empty" };
       }
-      if (name === "saves.setGifThumbnail")
+      if (
+        name === "saves.setGifThumbnail" ||
+        name === "saves.setImageThumbnail"
+      )
         return transport.request("video", JSON.stringify({ name, params }));
+      if (name === "downloader.clipboardLinks") {
+        const text = await navigator.clipboard.readText().catch(() => "");
+        return { urls: extractLinks(text) };
+      }
+      if (
+        name === "downloader.exportFolder" ||
+        name === "downloader.pickExportFolder"
+      )
+        return DEVICE_EXPORT_FOLDER;
+      // Browser downloads are revealed by the browser itself.
+      if (name === "downloader.reveal") return { ok: false };
+      if (name === "downloader.export") {
+        const result = z
+          .union([
+            z.object({ ok: z.literal(false), message: z.string() }),
+            z.object({ ok: z.literal(true), text: z.string() }),
+            z.object({ ok: z.literal(true), download: z.string() }),
+          ])
+          .parse(await importSelected(name, params));
+        if (!result.ok) return result;
+        if ("text" in result) {
+          await navigator.clipboard.writeText(result.text);
+          return { ok: true, destination: "clipboard", path: null };
+        }
+        return { ok: true, destination: "file", path: null };
+      }
       if (name === "library.identity.pickIcon") {
         const [file] = await pickDeviceFiles(
           false,

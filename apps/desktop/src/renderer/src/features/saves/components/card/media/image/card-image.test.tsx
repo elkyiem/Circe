@@ -1,9 +1,10 @@
 import { PrefsSchema } from "@pond/schema";
+import { THUMBNAIL_CACHE_VERSION } from "@shared/media-index";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cardThumbnailFor } from "@/features/saves/state/card-thumbnails";
 import type { Save } from "@/features/saves/types";
+import { loadPrefs } from "@/shared/state/prefs";
 import { CardImage } from ".";
 
 let host: HTMLDivElement;
@@ -32,13 +33,13 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it("lends its thumbnail to the media the viewer opens first", async () => {
+it("keeps a Balanced card on the thumbnail that covers it", async () => {
   const save: Save = {
-    id: "thumbnailed",
+    id: "balanced",
     source: "local",
-    sourceId: "thumbnailed",
-    url: "https://example.test/thumbnailed",
-    title: "Thumbnailed",
+    sourceId: "balanced",
+    url: "https://example.test/balanced",
+    title: "Balanced",
     description: null,
     author: null,
     notes: null,
@@ -50,28 +51,63 @@ it("lends its thumbnail to the media the viewer opens first", async () => {
     createdAt: 0,
     deletedAt: null,
   };
-  const thumbnail = "pond://thumbnailed/photo.png_thumbnail.webp";
-  const original = "pond://thumbnailed/photo.png";
+  const original = "pond://balanced/photo.png";
+
+  await loadPrefs();
+  await act(async () =>
+    root.render(
+      <CardImage
+        save={save}
+        unit={{ key: "photo.png", url: original, isVideo: false }}
+        pickOptions={{}}
+        width={400}
+        onBroken={() => {}}
+      />,
+    ),
+  );
+
+  expect(host.querySelector("img")?.getAttribute("src")).toBe(
+    `${original}?tw=512&tv=${THUMBNAIL_CACHE_VERSION}`,
+  );
+});
+
+it("delegates an image error to its existing broken-image handler", async () => {
+  const onBroken = vi.fn();
+  const save: Save = {
+    id: "broken",
+    source: "twitter",
+    sourceId: "broken",
+    url: "https://x.com/example/status/1",
+    title: null,
+    description: null,
+    author: null,
+    notes: null,
+    mediaUrl: null,
+    mediaType: "image",
+    files: [],
+    tags: [],
+    savedAt: 0,
+    createdAt: 0,
+    deletedAt: null,
+  };
 
   await act(async () =>
     root.render(
       <CardImage
         save={save}
         unit={{
-          key: "photo.png_thumbnail.webp",
-          url: thumbnail,
+          key: "tweet-light.png",
+          url: "pond://broken/tweet-light.png",
           isVideo: false,
         }}
         pickOptions={{}}
-        opens={original}
-        onBroken={() => {}}
+        onBroken={onBroken}
       />,
     ),
   );
   await act(async () =>
-    host.querySelector("img")?.dispatchEvent(new Event("load")),
+    host.querySelector("img")?.dispatchEvent(new Event("error")),
   );
 
-  expect(cardThumbnailFor(original)).toBe(host.querySelector("img")?.src);
-  expect(cardThumbnailFor(thumbnail)).toBe(host.querySelector("img")?.src);
+  expect(onBroken).toHaveBeenCalledOnce();
 });

@@ -1,49 +1,12 @@
 import { Button, Settings } from "@pond/ui";
-import { useState } from "react";
-import { z } from "zod";
-import { loadAppInfo } from "@/shared/lib/app-info";
+import { requestUpdateCheck } from "@/features/settings/components/update-dialog/session";
+import { useUpdateDialog } from "@/features/settings/components/update-dialog/use-update-dialog";
 import { isBrowserRuntime } from "@/shared/lib/platform";
 import { whatsNewDialog } from "@/shared/state/whats-new";
 
-const UpdateCheckSchema = z.object({
-  ok: z.boolean(),
-  version: z.string().optional(),
-  reason: z.string().optional(),
-  error: z.string().optional(),
-});
-
 export function CheckNowRow() {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function checkNow() {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const [info, raw] = await Promise.all([
-        loadAppInfo(),
-        window.pond.query("updates.checkNow", {}),
-      ]);
-      const result = UpdateCheckSchema.parse(raw);
-      if (!result.ok) {
-        setMessage(
-          result.reason === "dev_build"
-            ? isBrowserRuntime()
-              ? "This host runs from source. Updates are applied when the Circé host is rebuilt."
-              : "Updates are only available in packaged builds."
-            : (result.error ?? "Could not check for updates."),
-        );
-        return;
-      }
-      if (!result.version || result.version === info.version) {
-        setMessage(`You're on the latest version (${info.version}).`);
-        return;
-      }
-      setMessage(`Pond ${result.version} is available.`);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const dialog = useUpdateDialog();
+  const checking = dialog.open && dialog.view?.kind === "checking";
 
   return (
     <>
@@ -53,21 +16,15 @@ export function CheckNowRow() {
           {isBrowserRuntime()
             ? "Look for a newer build for your host computer."
             : "Look for a newer build."}
-          {message ? (
-            <>
-              <br />
-              <span>{message}</span>
-            </>
-          ) : null}
         </Settings.ItemDescription>
       </Settings.ItemDetails>
       <Settings.ItemControl>
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => void checkNow()}
-          disabled={busy}
-          loading={busy}
+          onClick={() => requestUpdateCheck()}
+          disabled={checking}
+          loading={checking}
         >
           Check Now
         </Button>

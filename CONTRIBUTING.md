@@ -5,7 +5,7 @@
 - **Node** 24 and **pnpm** 11.27.0 (see `.nvmrc` and `package.json`).
 - **Style**: [Biome](https://biomejs.dev/) handles formatting; `pnpm lint` and `pnpm oxlint` check the repository standards.
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint + husky.
-- **Checks**: run `pnpm check` and `pnpm build` before opening a PR. CI also verifies generated source documentation, and it runs the build, tests, and desktop smoke test on Ubuntu, Windows, and macOS.
+- **Checks**: run `pnpm check` and `pnpm build` before opening a PR. CI also verifies generated source documentation, and it runs the build, tests, and desktop smoke test on Ubuntu x64 and ARM, Windows, and macOS.
 - **PRs**: Keep scope focused; link issues when relevant. Generated source documentation must stay in sync: run `pnpm generate` after descriptor changes.
 
 ## Engineering standards
@@ -22,9 +22,9 @@ CI can share task artifacts through Vercel Remote Cache. Configure a Turborepo C
 
 Use `pnpm knip` when removing unused code or dependencies. Check worker, HTML, generated, and dynamic entrypoints before accepting a deletion.
 
-`ELECTRON_RUN_AS_NODE=1 pnpm --filter @pond/desktop exec electron node_modules/vitest/vitest.mjs run src/main/db.test.ts src/main/core/vec-index.test.ts` runs the native database checks with Electron’s ABI. CI runs this separately from the Node test suite.
+`ELECTRON_RUN_AS_NODE=1 pnpm --filter @pond/desktop exec electron node_modules/vitest/vitest.mjs run src/main/db.test.ts src/main/core/vec-index.test.ts src/main/core/pipeline/task-recovery.test.ts src/main/core/pipeline/enqueue-scheduling.test.ts src/main/core/refresh/archive-backfill.test.ts src/main/core/session-downloads.test.ts` runs the native database and download recovery checks with Electron’s ABI. CI runs this separately from the Node test suite.
 
-After building the desktop, `pnpm --filter @pond/desktop exec electron scripts/smoke-desktop.cjs` verifies visible startup and preload queries using a temporary isolated library. It requires a desktop session. `pnpm --filter @pond/desktop exec electron scripts/smoke-agent-stream.cjs` verifies reply streaming, completion, and cancellation through the real isolated preload bridge with offline fixtures and no provider credentials. `pnpm --filter @pond/desktop exec electron scripts/smoke-agent-operations.cjs` checks capability registration, persisted review, replay prevention, and Undo using a temporary isolated Library.
+After building the desktop, `pnpm --filter @pond/desktop exec electron scripts/smoke-desktop.cjs` verifies visible startup and preload queries using a temporary isolated library. It requires a desktop session. `pnpm --filter @pond/desktop smoke:memory` launches the same way, records per-process memory with the window open, after seeding synthetic Saves, and after closing the window, then fails when a ceiling in `apps/desktop/scripts/memory-budgets.json` is exceeded ([details](docs/contributing/performance.md#whole-app-memory-budgets)). `pnpm --filter @pond/desktop exec electron scripts/smoke-agent-stream.cjs` verifies reply streaming, completion, and cancellation through the real isolated preload bridge with offline fixtures and no provider credentials. `pnpm --filter @pond/desktop exec electron scripts/smoke-agent-operations.cjs` checks capability registration, persisted review, replay prevention, and Undo using a temporary isolated Library.
 
 The desktop package also retains focused manual checks outside `pnpm check`. Run `pnpm --filter @pond/desktop smoke:folder-tags` for folder rules, Undo, import recovery, and transfers. Run `pnpm --filter @pond/desktop smoke:library-trust` for backup manifests and detection of password-protected folders in imported Eagle metadata. These checks require a built desktop and a desktop session. Run `pnpm --filter @pond/desktop smoke:sensitive-content` to download the pinned on-device model, verify its checksum, and exercise one inference without Electron. Run `pnpm --filter @pond/desktop smoke:source-drift` to check, without signing in, that Cosmos, Instagram, Threads, Pinterest, TikTok, and YouTube still serve the fields Pond's harvesters read. It needs network access.
 
@@ -39,6 +39,16 @@ coverage and outstanding query gaps. The query/route inventory guard runs in
 `pnpm e2e:ci` and retains JSON/JUnit reports, logs, and screenshots. See the
 [E2E guide](docs/circe/e2e.md) for focused runs and the regression checklist to
 follow after every upstream sync.
+### PR proof
+
+`scripts/capture-proof.cjs` records framed screenshots and clips for a PR. It runs the built app offscreen against a temporary Library seeded with image Saves and folders, then writes 2240×1400 PNGs, 1120×700 60 fps MP4s and a `manifest.json` to `--out`. Build once, then run a scenario from the repository root:
+
+```bash
+pnpm --filter @pond/desktop build
+pnpm --filter @pond/desktop exec electron scripts/capture-proof.cjs --scenario=$PWD/apps/desktop/scripts/proof-scenarios/library.cjs --out=$PWD/.artifacts/proof
+```
+
+A scenario exports `async function run(ctx)`; `proof-scenarios/library.cjs` shows `ctx.shot`, `ctx.record`, `ctx.key` and `ctx.waitFor`, and `capture-proof.cjs` defines the rest. Options are `--theme=light|dark`, `--size=1440x1000`, `--crop=x,y,width`, `--wallpaper=<path>` and `--radius=22`. Wrap the build and capture in `until mkdir /tmp/pond-capture.lock 2>/dev/null; do sleep 15; done` and `rmdir /tmp/pond-capture.lock` (also on failure) so only one capture runs per machine. Upload the files with `gh image <files>` from [gh-image](https://github.com/drogers0/gh-image) and paste the printed markdown into the PR body. Don't commit them; `.artifacts/` is ignored.
 
 ## Windows development
 
@@ -63,13 +73,13 @@ After `pnpm build`, run the end-to-end smoke test from a normal desktop session 
 pnpm --filter @pond/desktop smoke:desktop
 ```
 
-Pull requests that touch the desktop app, extension, or packages also run [`package.yml`](.github/workflows/package.yml), which builds unsigned test installers. Reviewers can download `Pond-windows-x64` (the installer and `latest.yml`), `Pond-linux-x64` (the AppImage, deb, and `latest-linux.yml`), and `Pond-macos` (Apple Silicon and Intel disk images) from the workflow run's artifacts; they are kept for 7 days and cannot auto-update. The same workflow can be started manually with `workflow_dispatch`.
+Pull requests that touch the desktop app, extension, or packages also run [`package.yml`](.github/workflows/package.yml), which builds unsigned test installers. Reviewers can download `Pond-windows-x64` (the installer and `latest.yml`), `Pond-linux-x64` (the x64 AppImage, deb, and `latest-linux.yml`), `Pond-linux-arm64` (the arm64 AppImage, deb, and `latest-linux-arm64.yml`), and `Pond-macos` (Apple Silicon and Intel disk images) from the workflow run's artifacts; they are kept for 7 days and cannot auto-update. The same workflow can be started manually with `workflow_dispatch`.
 
 Keep platform-specific code behind `process.platform` checks and add tests that pass the platform in as a parameter, so every platform's behavior is covered on every CI runner.
 
 ## Linux development
 
-Pond builds and runs on Linux x64 with a desktop session. In addition to Node 24 and pnpm 11.27.0:
+Pond builds and runs on 64-bit Linux (x64 and ARM, such as Asahi Linux on Apple Silicon) with a desktop session. In addition to Node 24 and pnpm 11.27.0:
 
 - Install a C compiler and `make` (`build-essential` on Debian and Ubuntu, `base-devel` on Arch). `pnpm dist:linux` compiles the native messaging host, `pond-native-host`, with `cc`; set `CC` to use a different compiler. Without a compiler, install still succeeds but the browser extension cannot reach Pond.
 - Install [`fc-cache`](https://wiki.archlinux.org/title/font_configuration) (part of `fontconfig`) so activated fonts appear in other apps without a sign-out.
@@ -82,7 +92,7 @@ Pond builds and runs on Linux x64 with a desktop session. In addition to Node 24
 pnpm dist:linux
 ```
 
-This builds the desktop app and extension, compiles the native host, and writes `Pond-X.Y.Z.AppImage`, `Pond-X.Y.Z.deb`, and `latest-linux.yml` to `apps/desktop/dist/`. Linux on Arm is not supported yet; the native dependencies install for the host architecture.
+This builds the desktop app and extension, compiles the native host, and writes `Pond-X.Y.Z-<arch>.AppImage`, `Pond-X.Y.Z-<arch>.deb`, and `latest-linux.yml` (`latest-linux-arm64.yml` on arm64) to `apps/desktop/dist/`, where `<arch>` is the host architecture. The native dependencies (better-sqlite3, sqlite-vec, sharp, onnxruntime, ffmpeg-static) all ship linux-arm64 builds, so the same steps work on 64-bit ARM. Cross-arch packaging isn't supported. Build on the architecture you're packaging for.
 
 Pond keeps per-user files in the XDG directories: configuration in `$XDG_CONFIG_HOME/pond`, the native-host socket in `$XDG_RUNTIME_DIR/pond` when the session sets it (otherwise `$XDG_CONFIG_HOME/pond`), the copied native host in `$XDG_DATA_HOME/Pond/bin`, logs in Electron's logs directory, and the autostart entry at `$XDG_CONFIG_HOME/autostart/pond.desktop`.
 

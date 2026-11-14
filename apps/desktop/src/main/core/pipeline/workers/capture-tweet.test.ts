@@ -1,5 +1,6 @@
 import type { Capture, RawJson } from "@pond/schema/raw";
 import { describe, expect, it, vi } from "vitest";
+import { CaptureIncompleteError } from "../extractors/errors";
 import {
   type CaptureTweetPorts,
   type CaptureTweetSave,
@@ -116,7 +117,20 @@ describe("isCaptureTweetStale", () => {
     expect(isCaptureTweetStale({ ...reply, captureTweetVersion: 14 })).toBe(
       false,
     );
-    expect(isCaptureTweetStale({ ...reply, capture: post })).toBe(false);
+    expect(
+      isCaptureTweetStale({ ...reply, capture: post, captureTweetVersion: 13 }),
+    ).toBe(false);
+  });
+
+  it("renders a post card again when a pre-2.6.0 batch may have shared it", () => {
+    const { replyTo: _, ...post } = replyRaw().capture;
+    expect(
+      isCaptureTweetStale({
+        ...replyRaw(),
+        capture: post,
+        captureTweetVersion: 12,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -207,7 +221,9 @@ describe("runCaptureTweet reply parent enrichment", () => {
 
     const runTask = createCaptureTweetTask(harness.runCaptureTweet);
 
-    await expect(runTask("save-1")).rejects.toThrow(
+    const first = runTask("save-1");
+    await expect(first).rejects.toBeInstanceOf(CaptureIncompleteError);
+    await expect(first).rejects.toThrow(
       "capture_tweet: reply parent still pending",
     );
     await expect(runTask("save-1")).rejects.toThrow(
@@ -247,6 +263,31 @@ describe("runCaptureTweet reply parent enrichment", () => {
     expect(
       harness.getStored().rawJson?.capture?.extras?.replyParentUnavailable,
     ).toBeUndefined();
+  });
+
+  it("renders a current card again when refresh asks for its own media", async () => {
+    const current: RawJson = {
+      extractorId: "test",
+      extractedAt: "2026-10-16T00:00:00.000Z",
+      captureTweetVersion: 13,
+      capture: {
+        id: "9",
+        source: "twitter",
+        url: "https://x.com/a/status/9",
+        description: "A photo",
+        media: [{ type: "image", url: "https://pbs.twimg.com/media/a.jpg" }],
+      },
+    };
+    const harness = makePorts(save(current), {
+      light: { ok: true, png: rendered },
+      dark: { ok: true, png: rendered },
+    });
+
+    await harness.runCaptureTweet("save-1");
+    expect(harness.renderTweetCardPng).not.toHaveBeenCalled();
+
+    await harness.runCaptureTweet("save-1", { force: true });
+    expect(harness.renderTweetCardPng).toHaveBeenCalled();
   });
 
   it("stops before a screenshot when capture is already cancelled", async () => {

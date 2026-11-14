@@ -9,6 +9,7 @@ import type { JsonValue } from "@pond/schema/json";
 import { ulid } from "ulid";
 import { z } from "zod";
 import { getDb } from "../../db";
+import { liftAuthStopSync } from "./source-admission";
 
 const RetryCandidateSchema = z.object({
   id: z.string(),
@@ -64,6 +65,7 @@ export interface RetryGenerationResult {
 
 export async function createRetryGeneration(
   ids?: readonly string[],
+  { liftAuthStop = true }: { liftAuthStop?: boolean } = {},
 ): Promise<RetryGenerationResult> {
   const db = await getDb();
   const at = Date.now();
@@ -77,7 +79,7 @@ export async function createRetryGeneration(
             `SELECT DISTINCT saves.id, saves.source
             FROM saves
             WHERE
-              saves.status = 'failed'
+              saves.status IN ('failed', 'ingesting')
               AND saves.deleted_at IS NULL
               AND (? = 0 OR saves.id IN (SELECT value FROM json_each(?)))
               AND EXISTS (
@@ -131,10 +133,18 @@ export async function createRetryGeneration(
           last_error = NULL,
           next_run_at = ?,
           updated_at = ?
-        WHERE save_id = ? AND status IN ('dead', 'blocked')`,
+        WHERE
+          save_id = ?
+          AND status IN ('dead', 'blocked', 'pending', 'deferred')
+          AND COALESCE(last_error, '') != ?`,
       );
       for (const row of rows) {
-        retry.run(generationId, at, at, row.id);
+        retry.run(generationId, at, at, row.id, CANCEL_REASON);
+      }
+      if (liftAuthStop) {
+        for (const source of new Set(rows.map((row) => row.source))) {
+          liftAuthStopSync(db.$raw, source, at);
+        }
       }
       return { generationId, queued: rows.length, sources };
     })

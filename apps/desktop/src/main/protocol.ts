@@ -11,11 +11,7 @@ import {
   libraryMediaMetadata,
   readLibraryMediaRange,
 } from "./core/storage/library-media-storage";
-import {
-  ensureThumbnailInBackground,
-  getOrCreateThumbnail,
-  lookupCachedThumbnail,
-} from "./core/thumbnail";
+import { getOrCreateThumbnail, resolveCardThumbnail } from "./core/thumbnail";
 import { VIDEO_CACHE_HOST } from "./core/video-preview-proxy";
 import { byteRange } from "./lib/byte-range";
 import { isPathInside } from "./lib/path-identity";
@@ -100,21 +96,19 @@ export async function servePondMedia(request: Request): Promise<Response> {
           width,
           version,
         };
-        const thumb = previewParam
-          ? await getOrCreateThumbnail({ ...request, priority: "foreground" })
-          : lookupCachedThumbnail(request);
-        if (thumb) {
-          target = thumb.path;
-          immutable = true;
-        } else if (!previewParam) {
-          ensureThumbnailInBackground({
-            saveId: host,
-            sourcePath: resolved,
-            width,
-            version,
-            priority: "background",
+        if (previewParam) {
+          const thumb = await getOrCreateThumbnail({
+            ...request,
+            priority: "foreground",
           });
-          immutable = false;
+          if (thumb) {
+            target = thumb.path;
+            immutable = true;
+          }
+        } else {
+          const card = await resolveCardThumbnail(request);
+          target = card.path;
+          immutable = card.immutable;
         }
       }
     }

@@ -2,6 +2,7 @@ import { IconPlus } from "@pond/icons";
 import { Button, Chip, Menu } from "@pond/ui";
 import type { ReactNode } from "react";
 import { useMenuFilterQuery } from "@/shared/hooks/use-menu-filter-query";
+import { placeCreateOptionLast } from "@/shared/lib/picker-order";
 import styles from "./styles.module.css";
 
 export interface AssignOption {
@@ -18,6 +19,14 @@ interface AssignMenuProps {
   suggested?: ReadonlySet<string>;
   onToggle(option: AssignOption): void;
   onCreate?(name: string): void;
+  onStartBatch?(): void;
+  batch?: {
+    staged: ReadonlySet<string>;
+    onToggle(option: AssignOption): void;
+    onApply(): void;
+    onCancel(): void;
+    applying?: boolean;
+  };
 }
 
 function sortKey(option: AssignOption): string {
@@ -30,6 +39,8 @@ export function AssignMenu({
   suggested,
   onToggle,
   onCreate,
+  onStartBatch,
+  batch,
 }: AssignMenuProps) {
   const { query, onValueChange, reset } = useMenuFilterQuery();
   const plural = `${noun}s`;
@@ -48,43 +59,66 @@ export function AssignMenu({
   const rest = picks.length
     ? matches.filter((option) => !suggested?.has(option.key))
     : matches;
-  const creatable =
+  const creatable = Boolean(
     onCreate &&
-    needle &&
-    !options.some((option) => option.label.toLowerCase() === needle);
-  const row = (option: AssignOption) => (
-    <Menu.CheckboxItem
-      key={option.key}
-      closeOnClick={false}
-      checked={option.state === "on"}
-      data-selection={option.state}
-      aria-description={option.state === "mixed" ? "Some selected" : undefined}
-      onCheckedChange={() => onToggle(option)}
-    >
-      <Menu.CheckboxItemIndicator
-        reveal="active"
-        indeterminate={option.state === "mixed"}
-      />
-      <Menu.ItemIcon>{option.icon}</Menu.ItemIcon>
-      <Menu.ItemLabel
-        title={
-          option.crumb ? `${option.crumb} › ${option.label}` : option.label
+      needle &&
+      !options.some((option) => option.label.toLowerCase() === needle),
+  );
+  const entries = placeCreateOptionLast(
+    rest.map((option) => ({ kind: "option" as const, option })),
+    creatable ? { kind: "create" as const, name: query.trim() } : null,
+  );
+  const row = (option: AssignOption) => {
+    const staged = batch?.staged.has(option.key) ?? false;
+    const assigned = option.state === "on";
+    const mixed = option.state === "mixed";
+    return (
+      <Menu.CheckboxItem
+        key={option.key}
+        closeOnClick={false}
+        checked={batch ? assigned || staged : assigned}
+        disabled={Boolean(batch && assigned)}
+        data-selection={option.state}
+        aria-description={
+          assigned
+            ? batch
+              ? "Already assigned"
+              : undefined
+            : mixed
+              ? "Some selected"
+              : undefined
+        }
+        onCheckedChange={() =>
+          batch ? batch.onToggle(option) : onToggle(option)
         }
       >
-        {option.crumb ? (
-          <>
-            <span data-menu-breadcrumb="">{option.crumb}</span>
-            <span aria-hidden data-menu-breadcrumb-separator="">
-              ›
-            </span>
-            <span data-menu-breadcrumb-current="">{option.label}</span>
-          </>
-        ) : (
-          option.label
-        )}
-      </Menu.ItemLabel>
-    </Menu.CheckboxItem>
-  );
+        <Menu.CheckboxItemIndicator
+          reveal="active"
+          indeterminate={mixed && !staged}
+        />
+        <Menu.ItemIcon>{option.icon}</Menu.ItemIcon>
+        <Menu.ItemLabel
+          title={
+            option.crumb ? `${option.crumb} › ${option.label}` : option.label
+          }
+        >
+          {option.crumb ? (
+            <>
+              <span data-menu-breadcrumb="">{option.crumb}</span>
+              <span aria-hidden data-menu-breadcrumb-separator="">
+                ›
+              </span>
+              <span data-menu-breadcrumb-current="">{option.label}</span>
+            </>
+          ) : (
+            option.label
+          )}
+        </Menu.ItemLabel>
+      </Menu.CheckboxItem>
+    );
+  };
+  const stagedCount = batch?.staged.size ?? 0;
+  const addLabel = `Add to ${stagedCount} ${stagedCount === 1 ? noun : plural}`;
   return (
     <Menu.FilterProvider
       filter={null}
@@ -95,6 +129,7 @@ export function AssignMenu({
       <Menu.Root
         onOpenChange={(open) => {
           if (open) reset();
+          else batch?.onCancel();
         }}
       >
         <Menu.Trigger
@@ -117,6 +152,14 @@ export function AssignMenu({
                 aria-label={`Search ${plural}`}
                 placeholder={`Search ${plural.toLowerCase()}…`}
               />
+              {onStartBatch && !batch ? (
+                <>
+                  <Menu.Item closeOnClick={false} onClick={onStartBatch}>
+                    <Menu.ItemLabel>Select Multiple</Menu.ItemLabel>
+                  </Menu.Item>
+                  <Menu.Separator />
+                </>
+              ) : null}
               <Menu.FilterList className={styles.list}>
                 {picks.length ? (
                   <>
@@ -125,21 +168,24 @@ export function AssignMenu({
                     {rest.length ? <Menu.Separator /> : null}
                   </>
                 ) : null}
-                {rest.map(row)}
-                {creatable ? (
-                  <Menu.Item
-                    closeOnClick={false}
-                    onClick={() => {
-                      onCreate(query.trim());
-                      reset();
-                    }}
-                  >
-                    <Menu.ItemIcon>
-                      <IconPlus />
-                    </Menu.ItemIcon>
-                    <Menu.ItemLabel>{`Create “${query.trim()}”`}</Menu.ItemLabel>
-                  </Menu.Item>
-                ) : null}
+                {entries.map((entry) => {
+                  if (entry.kind === "option") return row(entry.option);
+                  return (
+                    <Menu.Item
+                      key="create"
+                      closeOnClick={false}
+                      onClick={() => {
+                        onCreate?.(entry.name);
+                        reset();
+                      }}
+                    >
+                      <Menu.ItemIcon>
+                        <IconPlus />
+                      </Menu.ItemIcon>
+                      <Menu.ItemLabel>{`Create “${entry.name}”`}</Menu.ItemLabel>
+                    </Menu.Item>
+                  );
+                })}
                 {!matches.length && !creatable ? (
                   <Menu.Item disabled>
                     <Menu.ItemLabel>
@@ -148,6 +194,23 @@ export function AssignMenu({
                   </Menu.Item>
                 ) : null}
               </Menu.FilterList>
+              {batch ? (
+                <div className={styles.actions}>
+                  <Button size="xs" variant="ghost" onClick={batch.onCancel}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    disabled={!stagedCount}
+                    loading={batch.applying}
+                    aria-label={addLabel}
+                    onClick={batch.onApply}
+                  >
+                    {addLabel}
+                  </Button>
+                </div>
+              ) : null}
             </Chip.Popup>
           </Menu.Positioner>
         </Menu.Portal>

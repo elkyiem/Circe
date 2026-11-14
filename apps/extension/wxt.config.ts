@@ -71,7 +71,7 @@ export default defineConfig({
   },
   manifest: ({ browser }) => ({
     name: CIRCE_BUILD ? "Circé" : "Pond",
-    version: "2.3.1",
+    version: "2.7.0",
     ...(browser === "firefox"
       ? {
           browser_specific_settings: {

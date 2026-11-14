@@ -8,6 +8,7 @@ import type {
 } from "@/features/saves/lib/media/units";
 import {
   previewThumbUrlFor,
+  sharperThumbUrlFor,
   thumbUrlFor,
 } from "@/features/saves/lib/media/url";
 import {
@@ -26,7 +27,6 @@ export function CardImage({
   unit,
   pickOptions,
   width,
-  opens,
   onBroken,
   onReady,
 }: {
@@ -34,8 +34,6 @@ export function CardImage({
   unit: MediaUnit;
   pickOptions: MediaPickOptions;
   width?: number;
-  /** URL of the media the viewer opens first, when the card shows a stand-in such as a generated thumbnail. */
-  opens?: string;
   onBroken: () => void;
   onReady?: () => void;
 }) {
@@ -47,7 +45,7 @@ export function CardImage({
     : thumbUrlFor(unit.url, width);
   const qualitySrc = useQualityImage(
     thumbnail,
-    unit.url,
+    sharperThumbUrlFor(unit.url, width),
     viewer.thumbnailQuality === "quality" &&
       (width ?? 0) >= 384 &&
       !unit.requiresGeneratedPreview,
@@ -60,14 +58,12 @@ export function CardImage({
       recordAspect(save.id, image.naturalWidth, image.naturalHeight, {
         coverKey: aspectCoverKey(unit),
       });
-      const shown = image.currentSrc || image.src;
-      rememberCardThumbnail(unit.url, shown);
-      if (opens && opens !== unit.url) rememberCardThumbnail(opens, shown);
+      rememberCardThumbnail(unit.url, image.currentSrc || image.src);
       onReady?.();
     },
-    [onReady, opens, save.id, unit],
+    [onReady, save.id, unit],
   );
-  const ready = useImageReady(src, reportReady);
+  const ready = useImageReady(src, reportReady, onBroken);
   useEffect(() => {
     const image = ready.ref.current;
     if (!animated || !image) return;
@@ -109,7 +105,7 @@ export function CardImage({
         data-fit={viewer.galleryFit}
         data-loaded={!save.blurhash || ready.loaded ? "true" : "false"}
         onLoad={ready.onLoad}
-        onError={onBroken}
+        onError={ready.onError}
       />
     </>
   );

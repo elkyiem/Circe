@@ -19,7 +19,6 @@ import {
 import { noteSuccess } from "./rate-governor";
 import {
   type DueTask,
-  isSourceTask,
   MAX_BACKGROUND_INFLIGHT,
   MAX_GLOBAL_INFLIGHT,
   MAX_INTERACTIVE_INFLIGHT,
@@ -36,6 +35,8 @@ import {
   trackRunningIngest,
   untrackRunningIngest,
 } from "./running-ingest";
+import { withSourceTaskLease } from "./source-admission";
+import { isSourceTask } from "./source-tasks";
 import {
   claimDueTasks,
   extendOwnedLeasesSync,
@@ -424,7 +425,8 @@ async function claimAndDispatch(): Promise<void> {
 }
 
 async function dispatchTask(task: DueTask): Promise<void> {
-  if (!task.leaseToken) return;
+  const leaseToken = task.leaseToken;
+  if (!leaseToken) return;
   const interactive = isInteractiveTask(task);
   runningTaskIds.add(task.id);
   inflightByOp[task.op]++;
@@ -498,12 +500,16 @@ async function dispatchTask(task: DueTask): Promise<void> {
     try {
       await Promise.race([
         track(
-          WORKERS[task.op](task.saveId, payload, {
-            signal: controller.signal,
-            reportActivity: activity.report,
-            leaseToken: task.leaseToken,
-            cancellationFence: task.cancellationFence,
-          }),
+          withSourceTaskLease(leaseToken, () =>
+            WORKERS[task.op](task.saveId, payload, {
+              signal: controller.signal,
+              reportActivity: activity.report,
+              leaseToken,
+              cancellationFence: task.cancellationFence,
+              attempt: task.attempts + 1,
+              maxAttempts: task.maxAttempts,
+            }),
+          ),
         ),
         watchdog,
       ]);

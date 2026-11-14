@@ -10,7 +10,6 @@ import type { ImportCollectionOption } from "@shared/import-scope";
 import log from "electron-log/main.js";
 import { z } from "zod";
 import { markAtRisk, report } from "../../pipeline/rate-governor";
-import { arenaProfileUrl, buildArenaListExpression } from "../harvest/arena";
 import { addCollectionEntry } from "../harvest/collection-entries";
 import { buildCosmosListExpression, COSMOS_LIST_URL } from "../harvest/cosmos";
 import {
@@ -227,6 +226,10 @@ export async function harvestSourceList(
     const { harvestBlueskyLists } = await import("../harvest/bluesky/api");
     return harvestBlueskyLists(args, args.accountKey, opts.partition);
   }
+  if (source === "arena") {
+    const { harvestArenaBlocks } = await import("../harvest/arena/list");
+    return harvestArenaBlocks(args, opts.partition);
+  }
   const target = listUrlForSource(source, args);
   if (!target) {
     return { ok: false, reason: "no_match" };
@@ -422,7 +425,7 @@ function listUrlForSource(
     case "cosmos":
       return COSMOS_LIST_URL;
     case "arena":
-      return accountKey ? arenaProfileUrl(accountKey) : null;
+      return null;
     case "pinterest":
       return accountKey ? pinterestProfileUrl(accountKey) : null;
     case "instagram":
@@ -461,6 +464,8 @@ function listUrlForSource(
       return null;
     case "marked":
       return MARKED_LIST_URL;
+    case "mymind":
+      return null;
     case "web":
       return null;
     case "local":
@@ -478,7 +483,7 @@ function buildListExpressionFor(
     case "cosmos":
       return buildCosmosListExpression(args);
     case "arena":
-      return buildArenaListExpression(args);
+      return null;
     case "pinterest":
       return buildPinterestListExpression(args);
     case "instagram":
@@ -511,6 +516,8 @@ function buildListExpressionFor(
       return null;
     case "marked":
       return buildMarkedListExpression(args);
+    case "mymind":
+      return null;
     case "web":
       return null;
     case "local":
