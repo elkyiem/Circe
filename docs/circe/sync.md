@@ -32,7 +32,8 @@ pnpm check
 pnpm build
 pnpm --filter @pond/desktop build:web
 pnpm --filter @pond/extension build:circe
-pnpm --filter @pond/desktop smoke:upstream-parity
+pnpm e2e:coverage
+pnpm e2e
 git diff --check
 git commit -m "chore(circe): merge main into web"
 git push origin web
@@ -43,6 +44,11 @@ Use the shared host for finite HTTP/browser smoke checks from the
 it to load the rebuilt bundles. Keep the existing sandbox, origin configuration
 and Tailscale gateway; a source update does not require certificate or DNS setup
 again.
+
+For every new feature or bug fix in the upstream diff, add a regression scenario
+and review the query/route inventory as described in the [E2E guide](e2e.md).
+The inventory test flags new capabilities; behavior changes to an existing
+capability still require review. Keep untested parity gaps explicit.
 
 ## Keep dev in sync
 

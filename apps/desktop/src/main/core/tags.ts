@@ -18,22 +18,26 @@ interface CreateTagInput {
 }
 
 async function tagByLowerName(db: Db, lowered: string) {
-  const rows = await db
-    .select()
-    .from(tagsTable)
-    .where(sql`lower(${tagsTable.name}) = ${lowered}`);
-  return rows[0];
+  // SQLite lower() only folds ASCII; use the same Unicode identity as tag writes.
+  const rows = await db.select().from(tagsTable);
+  return rows.find((row) => labelKey(row.name) === lowered);
 }
 
 async function savesWithTag(
   db: Db,
   lowerKey: string,
 ): Promise<Array<{ id: string; tags: string[] | null }>> {
-  const needle = `%"${lowerKey}"%`;
-  return db
+  // Keep ASCII filtering in SQLite; Unicode casing must use the label normalizer.
+  const nativeFilter = /[^\p{ASCII}]/u.test(lowerKey)
+    ? undefined
+    : sql`lower(${savesTable.tags}) LIKE ${`%"${lowerKey}"%`}`;
+  const rows = await db
     .select({ id: savesTable.id, tags: savesTable.tags })
     .from(savesTable)
-    .where(sql`lower(${savesTable.tags}) LIKE ${needle}`);
+    .where(nativeFilter);
+  return rows.filter((row) =>
+    row.tags?.some((tag) => labelKey(tag) === lowerKey),
+  );
 }
 
 export async function listTags() {

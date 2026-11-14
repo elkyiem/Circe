@@ -4,6 +4,10 @@ Before changing code, read [CONTRIBUTING.md](CONTRIBUTING.md) and [code standard
 
 For module moves, state ownership, or main/preload/renderer interfaces, read [desktop architecture](docs/contributing/architecture.md). For domain naming, read [CONTEXT.md](CONTEXT.md). For UI behavior, read [design principles](apps/desktop/src/renderer/src/PRINCIPLES.md).
 
+For every upstream sync, follow the [E2E regression checklist](docs/circe/e2e.md).
+Add scenarios for new features and bug fixes on desktop and web, review the
+query/route coverage inventory, and keep untested parity gaps explicit.
+
 ## Shared development runtime
 
 Long-running development and watch processes are shared, user-owned infrastructure.

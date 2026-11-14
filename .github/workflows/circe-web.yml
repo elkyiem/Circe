@@ -29,32 +29,20 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @pond/desktop build:web
       - run: pnpm --filter @pond/extension build:circe
-      - name: Isolated host and browser workflows
+      - name: Desktop, browser, and shared feature E2E
         run: |
           SANDBOX="$(dirname "$(cd apps/desktop && node -p "require('electron')")")/chrome-sandbox"
           sudo chown root:root "$SANDBOX"
           sudo chmod 4755 "$SANDBOX"
-          xvfb-run -a node apps/desktop/scripts/smoke-web-ci.mjs
-      - name: Compare native and browser upstream features
-        run: xvfb-run -a pnpm --filter @pond/desktop smoke:upstream-parity
-      - name: Preserve failed fixture screenshots
-        if: failure()
+          xvfb-run -a pnpm e2e:ci
+      - name: Preserve E2E reports, logs, and fixture screenshots
+        if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: circe-browser-failure
+          name: circe-e2e
           if-no-files-found: ignore
           include-hidden-files: true
+          retention-days: 7
           path: |
-            .artifacts/web-verification/upstream-*/*-failed.*
-            .artifacts/web-verification/failed.png
-            .artifacts/web-verification/failed.txt
-            .artifacts/web-verification/library-identity-failed.png
-            .artifacts/web-verification/library-identity-failed.txt
-            .artifacts/web-verification/upgrade220-fish-failure.png
-            .artifacts/web-verification/upgrade220-fish-failure.txt
-            .artifacts/web-verification/upgrade220-sources-failure.png
-            .artifacts/web-verification/upgrade220-sources-failure.txt
-            .artifacts/web-verification/pairing-browser-failed.png
-            .artifacts/web-verification/pairing-browser-failed.txt
-            .artifacts/web-verification/pairing-owner-failed.png
-            .artifacts/web-verification/pairing-owner-failed.txt
+            .artifacts/e2e/
+            .artifacts/web-verification/

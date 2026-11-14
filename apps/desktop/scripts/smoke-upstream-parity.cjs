@@ -11,6 +11,7 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const JSZip = require("jszip");
 const { verifyUpstreamParity } = require("./upstream-parity-cases.cjs");
+const { verifySharedFeatures } = require("./e2e/shared-cases.cjs");
 const {
   transferFixtures,
   verify231Parity,
@@ -27,13 +28,19 @@ process.env.CIRCE_LOCAL_API_PORT = "4794";
 const origin = "http://127.0.0.1:4793";
 const libraryRoot = join(sandbox, "home", "Pond", "My Pond.pond");
 const jobsFile = join(sandbox, "app-data", "transfer-jobs", "jobs.json");
+// The fixture uses bundled media and must not download a tool in a background cron.
+mkdirSync(join(sandbox, "app-data", "bin"), { recursive: true });
+writeFileSync(
+  join(sandbox, "app-data", "bin", ".yt-dlp-last-check"),
+  new Date().toISOString(),
+);
 mkdirSync(join(sandbox, "app-data", "transfer-jobs"), { recursive: true });
 writeFileSync(jobsFile, JSON.stringify(transferFixtures(libraryRoot)));
 let running = false;
 const timer = setTimeout(() => {
   console.error("UPSTREAM_PARITY_TIMEOUT");
   app.exit(1);
-}, 240000);
+}, 360000);
 process.once("exit", () => rmSync(sandbox, { recursive: true, force: true }));
 function driver(win) {
   const contents = win.webContents;
@@ -213,6 +220,11 @@ async function verifyBrowser() {
     "browser",
   );
   try {
+    const features = await verifySharedFeatures({
+      ...controls,
+      directory: evidence,
+      mode: "web",
+    });
     const previous = await verifyUpstreamParity({
       ...controls,
       directory: evidence,
@@ -242,6 +254,7 @@ async function verifyBrowser() {
       },
     });
     return {
+      features,
       ...previous,
       ...(await verify231Parity({
         ...controls,
@@ -277,6 +290,11 @@ app.on("web-contents-created", (_, contents) => {
       await controls.waitFor(
         "Boolean(document.querySelector('[data-slot=window]')) && !document.querySelector('[role=dialog]')",
       );
+      const features = await verifySharedFeatures({
+        ...controls,
+        directory: evidence,
+        mode: "desktop",
+      });
       const previous = await verifyUpstreamParity({
         ...controls,
         directory: evidence,
@@ -285,6 +303,7 @@ app.on("web-contents-created", (_, contents) => {
           seedNative(controls.run, path, fixture),
       });
       const desktop = {
+        features,
         ...previous,
         ...(await verify231Parity({
           ...controls,

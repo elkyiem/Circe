@@ -32,6 +32,14 @@ After syncing upstream changes into Circé, build both apps with `pnpm build` an
 
 Use temporary libraries and fixtures in tests. Never require a contributor's personal library, source accounts, or API keys for a PR check. Keep live source tests separate.
 
+`pnpm e2e` runs the finite desktop and shared desktop/browser regression suite
+after both bundles have been built. `pnpm e2e:coverage` lists shared scenario
+coverage and outstanding query gaps. The query/route inventory guard runs in
+`pnpm check`; Circé CI additionally runs the isolated browser suite with
+`pnpm e2e:ci` and retains JSON/JUnit reports, logs, and screenshots. See the
+[E2E guide](docs/circe/e2e.md) for focused runs and the regression checklist to
+follow after every upstream sync.
+
 ## Windows development
 
 Pond builds and runs on Windows 10 and 11 (x64). In addition to Node 24 and pnpm 11.27.0:

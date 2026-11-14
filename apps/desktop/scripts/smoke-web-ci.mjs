@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as pause } from "node:timers/promises";
@@ -14,6 +14,12 @@ if (!process.env.CI)
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const directory = await mkdtemp(
   join(tmpdir(), "iris-web-ci-upgrade-220-pairing-"),
+);
+// Suppress the background binary update: all media in this suite is bundled.
+await mkdir(join(directory, "app-data", "bin"), { recursive: true });
+await writeFile(
+  join(directory, "app-data", "bin", ".yt-dlp-last-check"),
+  new Date().toISOString(),
 );
 const env = {
   ...process.env,
@@ -33,6 +39,31 @@ const hostGroup = spawnProcessGroup(
   },
 );
 const host = hostGroup.child;
+let cleaningUp;
+const cleanup = () => {
+  cleaningUp ??= (async () => {
+    await hostGroup.stop(1000);
+    await rm(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+  })();
+  return cleaningUp;
+};
+// The outer E2E runner owns this process; its signals must also stop our detached host.
+const cancelled = () => {
+  void cleanup().then(
+    () => process.exit(1),
+    (error) => {
+      console.error(error);
+      process.exit(1);
+    },
+  );
+};
+process.once("SIGINT", cancelled);
+process.once("SIGTERM", cancelled);
 const run = (executable, args, extraEnv = {}) =>
   new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
@@ -86,11 +117,7 @@ try {
   await run(electron, ["scripts/smoke-web-browser.cjs", "--pairing"]);
 } finally {
   clearTimeout(deadline);
-  await hostGroup.stop();
-  await rm(directory, {
-    recursive: true,
-    force: true,
-    maxRetries: 5,
-    retryDelay: 100,
-  });
+  process.removeListener("SIGINT", cancelled);
+  process.removeListener("SIGTERM", cancelled);
+  await cleanup();
 }
