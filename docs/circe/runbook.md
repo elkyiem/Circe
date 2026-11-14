@@ -147,7 +147,16 @@ the isolated host. It records the visible disconnection banner. Restart the same
 host and run the persistence check. Live account/source checks remain separate
 and require an explicitly connected test session.
 
-## Current shared host (2026-10-28)
+## Current shared host (2026-11-14)
+
+The Dock app (`~/Applications/Circé.app`) is the running host, serving the rebuilt
+Pond 2.7.0 bundles from this checkout on loopback port 4789 and
+`https://circe.elkyiem`. The Pond 2.7 sync chat was designated runtime owner and
+restarted it. A host that stops answering and ignores Quit can be force-stopped;
+the Library's SQLite write-ahead log survives that. Pond logo tints load from
+`packages/icons/brand/tints` because the launcher bundle does not ship them.
+
+## Previous shared host (2026-10-28)
 
 This chat was explicitly designated runtime owner. The rebuilt host is running
 independently of T3 through `scripts/start-web-address.mjs host`, with the existing

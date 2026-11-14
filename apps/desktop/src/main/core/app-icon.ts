@@ -32,7 +32,9 @@ let bundleIconQueue: Promise<void> = Promise.resolve();
 let bundleIconChecked = false;
 
 function tintsRoot(): string {
-  if (app.isPackaged) return join(process.resourcesPath, "app-icons");
+  const packaged = join(process.resourcesPath, "app-icons");
+  // The Circé Dock launcher is packaged but serves the checkout's bundles and tints.
+  if (app.isPackaged && existsSync(packaged)) return packaged;
   const packagedDev = join(
     app.getAppPath(),
     "../../packages/icons/brand/tints",
