@@ -37,6 +37,14 @@ export const suites = [
     timeoutMs: 420000,
   },
   {
+    id: "live",
+    runtime: "electron",
+    script: "smoke-upstream-parity.cjs",
+    timeoutMs: 420000,
+    env: { CIRCE_E2E_LIVE: "1" },
+    live: true,
+  },
+  {
     id: "browser",
     runtime: "node",
     script: "smoke-web-ci.mjs",

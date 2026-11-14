@@ -102,11 +102,29 @@ After **each upstream sync**:
 5. Run `pnpm check`, rebuild both bundles, and run `pnpm e2e`. The Circé CI workflow
    runs the extended browser suite on PRs and pushes to `web` and `dev`.
 
-Known gaps from the Pond 2.7 sync: `downloader.start`, `downloader.frames` and
-`downloader.export` need the yt-dlp binary, which Pond downloads from GitHub on
-first use, so they belong to live tests. `downloader.pickExportFolder` and
-`downloader.reveal` are native dialogs and Finder on desktop and fixed local
-answers in the browser. `accounts.connectMymind` needs mymind's live API.
+## Live suite
+
+`pnpm e2e:live` runs scenarios that need real binaries or provider APIs, on the
+desktop preload and the authenticated browser, in a disposable Library. It is
+never part of `pnpm e2e`. It reuses a yt-dlp Pond already installed (the Circé
+sandbox or `~/Library/Application Support/Pond/bin`) and otherwise downloads it.
+The native folder picker and Finder are replaced in the harness's main process,
+so the real `downloader.pickExportFolder` and `downloader.reveal` queries run
+unattended; browser downloads are saved into the sandbox.
+
+- `live.downloader-probe-download-export`: probes a local `.mp4` and YouTube's
+  19-second "Me at the zoo", samples frames, downloads it into the Library at
+  240p, exports M4A audio (a host file on desktop, a browser download on the
+  web) and checks Reveal.
+- `live.mymind-rejects-invalid-key`: the real mymind API rejects a well-formed
+  unknown key and no Source is created.
+- `live.mymind-connect-and-sync` runs only with a real read-only key supplied as
+  files: `CIRCE_E2E_MYMIND_KID_FILE=… CIRCE_E2E_MYMIND_SECRET_FILE=… pnpm e2e:live`.
+  It connects, waits for an error-free import, and disconnects.
+
+Known upstream issue: Add to Library from the Download dialog fails for a bare
+media link (`.mp4`): the probe succeeds, but the web harvest rejects the
+non-HTML response (`web fetch non-html content-type`). Site links work.
 
 Prioritize remaining shared coverage for full Canvas editing/export, keyboard
 selection and Undo/Redo, signed-in Source Sync and Downloads recovery, imports and exports,

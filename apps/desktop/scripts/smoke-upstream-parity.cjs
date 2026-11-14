@@ -1,17 +1,23 @@
 const assert = require("node:assert/strict");
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog, session, shell } = require("electron");
 const {
+  chmodSync,
+  copyFileSync,
+  existsSync,
   mkdtempSync,
   mkdirSync,
   writeFileSync,
   readFileSync,
   rmSync,
 } = require("node:fs");
-const { tmpdir } = require("node:os");
+const { homedir, tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const JSZip = require("jszip");
 const { verifyUpstreamParity } = require("./upstream-parity-cases.cjs");
 const { verifySharedFeatures } = require("./e2e/shared-cases.cjs");
+const { liveCases, optionalLiveCases } = require("./e2e/live-cases.cjs");
+/** `pnpm e2e:live` runs only the live scenarios: real binaries and provider APIs. */
+const LIVE = process.env.CIRCE_E2E_LIVE === "1";
 const {
   transferFixtures,
   verify231Parity,
@@ -34,6 +40,31 @@ writeFileSync(
   join(sandbox, "app-data", "bin", ".yt-dlp-last-check"),
   new Date().toISOString(),
 );
+/** Native dialogs and Finder are replaced so live runs stay unattended; the real queries still run. */
+const native = {
+  exportFolder: join(sandbox, "exports"),
+  revealed: [],
+  downloads: [],
+  completed: new Set(),
+};
+if (LIVE) {
+  mkdirSync(native.exportFolder, { recursive: true });
+  // Reuse a yt-dlp Pond already installed; without one, Pond downloads it from GitHub.
+  const installed = [
+    resolve("../../.artifacts/iris-web-sandbox/app-data/bin/yt-dlp"),
+    join(homedir(), "Library/Application Support/Pond/bin/yt-dlp"),
+  ].find((path) => existsSync(path));
+  if (installed) {
+    copyFileSync(installed, join(sandbox, "app-data", "bin", "yt-dlp"));
+    chmodSync(join(sandbox, "app-data", "bin", "yt-dlp"), 0o755);
+  } else rmSync(join(sandbox, "app-data", "bin", ".yt-dlp-last-check"));
+  console.log("E2E_LIVE_YTDLP", installed ?? "download");
+  dialog.showOpenDialog = async () => ({
+    canceled: false,
+    filePaths: [native.exportFolder],
+  });
+  shell.showItemInFolder = (path) => native.revealed.push(path);
+}
 mkdirSync(join(sandbox, "app-data", "transfer-jobs"), { recursive: true });
 writeFileSync(jobsFile, JSON.stringify(transferFixtures(libraryRoot)));
 let running = false;
@@ -210,6 +241,17 @@ async function verifyBrowser() {
     "content-type": "application/json",
     "x-iris-library": libraryId,
   };
+  session
+    .fromPartition("upstream-parity-browser")
+    .on("will-download", (_event, item) => {
+      const path = join(sandbox, "browser-downloads", item.getFilename());
+      mkdirSync(join(sandbox, "browser-downloads"), { recursive: true });
+      item.setSavePath(path);
+      native.downloads.push(path);
+      item.once("done", (_done, state) => {
+        if (state === "completed") native.completed.add(path);
+      });
+    });
   await browser.loadURL(origin);
   const controls = driver(browser);
   await controls.waitFor(
@@ -220,6 +262,16 @@ async function verifyBrowser() {
     "browser",
   );
   try {
+    if (LIVE)
+      return {
+        live: await verifySharedFeatures({
+          ...controls,
+          directory: evidence,
+          mode: "web",
+          cases: [...liveCases, ...optionalLiveCases()],
+          native,
+        }),
+      };
     const features = await verifySharedFeatures({
       ...controls,
       directory: evidence,
@@ -290,6 +342,26 @@ app.on("web-contents-created", (_, contents) => {
       await controls.waitFor(
         "Boolean(document.querySelector('[data-slot=window]')) && !document.querySelector('[role=dialog]')",
       );
+      if (LIVE) {
+        const desktop = {
+          live: await verifySharedFeatures({
+            ...controls,
+            directory: evidence,
+            mode: "desktop",
+            cases: [...liveCases, ...optionalLiveCases()],
+            native,
+          }),
+        };
+        const web = await verifyBrowser();
+        assert.deepEqual(web, desktop);
+        console.log(
+          "DESKTOP_WEB_LIVE_PASSED",
+          JSON.stringify({ desktop, web }),
+        );
+        clearTimeout(timer);
+        app.quit();
+        return;
+      }
       const features = await verifySharedFeatures({
         ...controls,
         directory: evidence,

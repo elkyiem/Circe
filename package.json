@@ -39,6 +39,7 @@
     "e2e": "pnpm --filter @pond/desktop e2e",
     "e2e:ci": "pnpm --filter @pond/desktop e2e --ci",
     "e2e:coverage": "pnpm --filter @pond/desktop e2e --coverage",
+    "e2e:live": "pnpm --filter @pond/desktop e2e --live",
     "perf:check": "turbo run perf:check:repo",
     "perf:check:repo": "node scripts/check-performance-budgets.mjs",
     "sbom:generate": "pnpm sbom --sbom-format spdx --prod --out pond.spdx.json",

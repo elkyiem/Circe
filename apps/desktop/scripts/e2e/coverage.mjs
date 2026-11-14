@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { WEB_QUERY_ACCESS } from "../../src/shared/web-capabilities.ts";
+import { liveCases } from "./live-cases.cjs";
 import { parityScenario } from "./parity-scenario.cjs";
 import { sharedCases } from "./shared-cases.cjs";
 
 /** The parity suite asserts its queries on both transports alongside the shared cases. */
-const scenarios = [...sharedCases, parityScenario];
+const scenarios = [...sharedCases, parityScenario, ...liveCases];
 
 const inventoryUrl = new URL("./coverage.json", import.meta.url);
 

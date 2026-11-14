@@ -10,7 +10,7 @@ import { runCommand } from "./e2e/run-command.mjs";
 const args = process.argv.slice(2);
 for (const arg of args)
   if (
-    !["--ci", "--list", "--coverage"].includes(arg) &&
+    !["--ci", "--list", "--coverage", "--live"].includes(arg) &&
     !arg.startsWith("--suite=")
   )
     throw new Error(`Unknown E2E option: ${arg}`);
@@ -22,7 +22,9 @@ for (const id of selectedIds)
     throw new Error(`Unknown E2E suite: ${id}`);
 if (args.includes("--list")) {
   for (const suite of suites)
-    console.log(`${suite.id}${suite.ciOnly ? " (isolated CI host only)" : ""}`);
+    console.log(
+      `${suite.id}${suite.ciOnly ? " (isolated CI host only)" : ""}${suite.live ? " (live: real binaries and provider APIs)" : ""}`,
+    );
 } else {
   const inventory = await checkCoverage();
   const summary = coverageSummary(inventory);
@@ -32,7 +34,9 @@ if (args.includes("--list")) {
     const selected = suites.filter((suite) =>
       selectedIds.length
         ? selectedIds.includes(suite.id)
-        : !suite.ciOnly || args.includes("--ci"),
+        : args.includes("--live")
+          ? Boolean(suite.live)
+          : !suite.live && (!suite.ciOnly || args.includes("--ci")),
     );
     if (selected.some((suite) => suite.ciOnly) && !process.env.CI)
       throw new Error(
@@ -70,7 +74,7 @@ if (args.includes("--list")) {
               ...(suite.runtime === "electron" ? ["--use-mock-keychain"] : []),
             ],
             cwd,
-            env,
+            env: { ...env, ...suite.env },
             timeoutMs: suite.timeoutMs,
             logPath,
             signal: controller.signal,

@@ -22,14 +22,15 @@ exports.sharedCases = cases;
 /** Each scenario runs unchanged across the real preload and authenticated browser adapter. */
 exports.verifySharedFeatures = async (controls) => {
   const { run, snapshot, directory, mode } = controls;
+  const scenarios = controls.cases ?? cases;
   const outcomes = {};
   const results = [];
   const saveReport = () =>
     writeFileSync(
-      join(directory, `${mode}-features.json`),
+      join(directory, `${mode}-${controls.cases ? "live" : "features"}.json`),
       JSON.stringify({ mode, results }, null, 2),
     );
-  for (const scenario of cases) {
+  for (const scenario of scenarios) {
     const started = Date.now();
     const observed = new Set();
     const query = (name, params = {}) => {
