@@ -20,12 +20,12 @@ export const librarySection: SectionConfig = {
     {
       title: "Library",
       fullWidth: true,
-      render: () => (
-        <>
-          <LibrarySettings />
-          <BrowserConnections />
-        </>
-      ),
+      render: () => <LibrarySettings />,
+    },
+    {
+      title: "Devices",
+      fullWidth: true,
+      render: () => <BrowserConnections />,
     },
     ...(trashSection.groups ?? []).map((group) => ({
       ...group,
