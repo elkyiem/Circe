@@ -23,6 +23,7 @@ const DEVICE_EXPORT_FOLDER = { path: "", name: "this device's Downloads" };
 const DEVICE_QUERIES = new Set<string>([
   "downloader.clipboardLinks",
   "downloader.export",
+  "downloader.exportFiles",
   "downloader.exportFolder",
   "downloader.pickExportFolder",
   "downloader.reveal",
@@ -381,6 +382,16 @@ export function createBrowserFiles(transport: FileTransport) {
           return { ok: true, destination: "clipboard", path: null };
         }
         return { ok: true, destination: "file", path: null };
+      }
+      if (name === "downloader.exportFiles") {
+        const result = z
+          .union([
+            z.object({ ok: z.literal(false), message: z.string() }),
+            z.object({ ok: z.literal(true), saved: z.literal(true) }),
+            z.object({ ok: z.literal(true), download: z.string() }),
+          ])
+          .parse(await importSelected(name, params));
+        return result.ok ? { ok: true, paths: [] } : result;
       }
       if (name === "library.identity.pickIcon") {
         const [file] = await pickDeviceFiles(

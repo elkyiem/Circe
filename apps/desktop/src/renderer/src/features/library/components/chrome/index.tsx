@@ -1,28 +1,15 @@
-import {
-  FilterBar,
-  FilterToggle,
-} from "@/features/library/components/filter-menu";
-import { ViewMenu } from "@/features/library/components/view-menu";
+import { clsx as cn } from "clsx";
 import { SearchComposer } from "@/features/search";
-import { SearchChrome } from "@/shared/components/search-chrome";
+import styles from "./styles.module.css";
 
-interface LibraryChromeProps {
+interface LibrarySearchProps {
   className?: string;
 }
 
-export function LibraryChrome({ className }: LibraryChromeProps) {
+export function LibrarySearch({ className }: LibrarySearchProps) {
   return (
-    <SearchChrome.Root
-      className={className}
-      actions={
-        <>
-          <FilterToggle />
-          <ViewMenu />
-        </>
-      }
-      below={<FilterBar />}
-    >
+    <div className={cn(styles.search, className)}>
       <SearchComposer />
-    </SearchChrome.Root>
+    </div>
   );
 }

@@ -25,10 +25,18 @@ it("uses the shared browser preview for a Quick Look preference inherited from t
   }
 });
 
-it("retains native Quick Look on the desktop", async () => {
-  const query = vi.fn(async () => ({ ok: true }));
+it("falls back to the shared preview on the desktop when Quick Look has no Mac file", () => {
+  // jsdom is not a Mac and this Save is not loaded, so the host is never asked.
+  const query = vi.fn();
   vi.stubGlobal("pond", { query });
-  runViewerAction("owned-save", "quick-look");
-  await Promise.resolve();
-  expect(query).toHaveBeenCalledWith("saves.quickLook", { id: "owned-save" });
+  const requested: string[] = [];
+  const off = onQuickPreviewRequest((id) => requested.push(id));
+  try {
+    runViewerAction("owned-save", "quick-look");
+    expect(requested).toEqual(["owned-save"]);
+    expect(query).not.toHaveBeenCalled();
+    expect(selection.has("owned-save")).toBe(true);
+  } finally {
+    off();
+  }
 });

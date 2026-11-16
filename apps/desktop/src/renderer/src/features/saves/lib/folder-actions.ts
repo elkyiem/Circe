@@ -5,54 +5,146 @@ import {
 import { errorCopy } from "@/shared/lib/error-copy";
 import { formatPlural } from "@/shared/lib/format";
 import { notify } from "@/shared/lib/toast";
+import { notifyUndoable } from "@/shared/lib/undo-toast";
 
 function saveCount(count: number): string {
   return formatPlural(count, { one: "Save", other: "Saves" });
 }
 
-export function notifyUndoableFolderChange(id: string, title: string): void {
-  notify({
+export interface FolderMembershipChange {
+  kind: "add" | "remove";
+  saveCount: number;
+  folders: readonly Pick<SaveFolderReference, "name">[];
+}
+
+function folderChangeTitle(change: FolderMembershipChange): string {
+  const [only] = change.folders;
+  const target =
+    change.folders.length === 1 && only
+      ? `"${only.name}"`
+      : formatPlural(change.folders.length, {
+          one: "Folder",
+          other: "Folders",
+        });
+  const subject =
+    change.saveCount === 1 ? "" : ` ${saveCount(change.saveCount)}`;
+  return change.kind === "add"
+    ? `Added${subject} to ${target}`
+    : `Removed${subject} from ${target}`;
+}
+
+export function notifyUndoableFolderChange(
+  id: string,
+  title: string,
+  undoId: string | null,
+  undoneTitle = "Folder change undone",
+  onUndo?: () => void,
+): void {
+  notifyUndoable({
     id,
     title,
-    action: {
-      label: "Undo",
-      onClick: () => {
-        void window.pond.undo().then((result) => {
-          if (result.ok) void saveLibraryBridge.refreshFolders();
-          else
-            notify({
-              id: `${id}-undo`,
-              title: "Couldn't undo folder change",
-            });
-        });
-      },
-    },
+    undoneTitle,
+    subject: "folder change",
+    step: undoId,
+    onChange: () => saveLibraryBridge.refreshFolders(),
+    onUndo,
   });
+}
+
+export function notifyFolderMembershipChange(
+  change: FolderMembershipChange,
+  undoId: string | null,
+  onUndo?: () => void,
+): void {
+  notifyUndoableFolderChange(
+    "folder-membership",
+    folderChangeTitle(change),
+    undoId,
+    change.kind === "add" ? "Assignment undone" : "Removal undone",
+    onUndo,
+  );
+}
+
+/** Applies one immediate folder delta to the Saves and confirms it with a scoped Undo. */
+export async function changeSaveFolders(input: {
+  saveIds: readonly string[];
+  add: readonly SaveFolderReference[];
+  remove: readonly SaveFolderReference[];
+}): Promise<void> {
+  if (input.saveIds.length === 0) return;
+  const addIds = input.add.map((folder) => folder.id);
+  const result = await window.pond.query("folders.assign", {
+    saveIds: [...input.saveIds],
+    addIds,
+    removeIds: input.remove.map((folder) => folder.id),
+  });
+  if (addIds.length) saveLibraryBridge.rememberFolderDestinations(addIds);
+  await saveLibraryBridge.refreshFolders();
+  const adding = input.add.length > 0;
+  notifyFolderMembershipChange(
+    {
+      kind: adding ? "add" : "remove",
+      saveCount: input.saveIds.length,
+      folders: adding ? input.add : input.remove,
+    },
+    result.ok ? result.undoId : null,
+  );
 }
 
 export async function assignSavesToFolder(
   ids: readonly string[],
   folder: SaveFolderReference,
-): Promise<void> {
-  if (ids.length === 0) return;
+  onUndo?: () => void,
+): Promise<boolean> {
+  if (ids.length === 0) return false;
   try {
-    await window.pond.query("folders.addSaves", {
+    const result = await window.pond.query("folders.addSaves", {
       folderId: folder.id,
       saveIds: [...ids],
     });
     saveLibraryBridge.rememberFolderDestinations([folder.id]);
     await saveLibraryBridge.refreshFolders();
-    notifyUndoableFolderChange(
-      "add-saves-to-folder",
-      `Added ${saveCount(ids.length)} to "${folder.name}"`,
+    notifyFolderMembershipChange(
+      { kind: "add", saveCount: ids.length, folders: [folder] },
+      result.ok ? result.undoId : null,
+      onUndo,
     );
+    return true;
   } catch (error) {
     notify({
       id: "add-saves-to-folder",
       title: `Couldn't add ${ids.length === 1 ? "Save" : "Saves"} to folder`,
       description: errorCopy(error, "Try again."),
     });
+    return false;
   }
+}
+
+export function createFolderWithSaves(ids: readonly string[]): void {
+  void (async () => {
+    try {
+      const folder = await window.pond.query("folders.createWithSaves", {
+        name: "Untitled",
+        parentId: null,
+        saveIds: [...ids],
+      });
+      saveLibraryBridge.rememberFolderDestinations([folder.id]);
+      await saveLibraryBridge.refreshFolders();
+      saveLibraryBridge.startEditingFolder(folder.id);
+      notifyUndoableFolderChange(
+        "create-folder-with-saves",
+        `Created "${folder.name}" with ${formatPlural(ids.length, { one: "save", other: "saves" })}`,
+        folder.undoId,
+        "Folder creation undone",
+      );
+    } catch (error) {
+      notify({
+        id: "create-folder-with-saves",
+        title: "Couldn't create folder",
+        description: errorCopy(error, "Try again."),
+      });
+    }
+  })();
 }
 
 export async function removeSavesFromFolder(
@@ -61,16 +153,7 @@ export async function removeSavesFromFolder(
 ): Promise<void> {
   if (ids.length === 0) return;
   try {
-    await window.pond.query("folders.assign", {
-      saveIds: [...ids],
-      addIds: [],
-      removeIds: [folder.id],
-    });
-    await saveLibraryBridge.refreshFolders();
-    notifyUndoableFolderChange(
-      "remove-saves-from-folder",
-      `Removed ${saveCount(ids.length)} from "${folder.name}"`,
-    );
+    await changeSaveFolders({ saveIds: ids, add: [], remove: [folder] });
   } catch (error) {
     notify({
       id: "remove-saves-from-folder",

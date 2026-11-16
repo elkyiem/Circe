@@ -1,7 +1,9 @@
 import { saves, tags } from "@pond/schema/db";
+import { applyInboxChange } from "@pond/schema/inbox";
 import type { Transaction } from "@pond/schema/tx";
 import { inArray } from "drizzle-orm";
 import type { BulkEdit } from "../../shared/bulk-contracts";
+import type { UndoableChange } from "../../shared/query-contracts-shared";
 import type { Db } from "../db";
 import { normalizeTagList, planTagRegistryUpdates } from "./tags";
 
@@ -9,8 +11,8 @@ export async function bulkEditSaves(
   input: BulkEdit,
   db: Db,
   commit: (transactions: Transaction[]) => Promise<void>,
-  recordUndo: (transactions: Transaction[]) => void,
-): Promise<{ changed: number }> {
+  recordUndo: (transactions: Transaction[]) => string | null,
+): Promise<{ changed: number } & UndoableChange> {
   const ids = [...new Set(input.ids)];
   const transactions: Transaction[] = [];
   const meta = {
@@ -45,8 +47,11 @@ export async function bulkEditSaves(
         id: saves.id,
         tags: saves.tags,
         rating: saves.rating,
+        favorite: saves.favorite,
         notes: saves.notes,
         suggestedTags: saves.suggestedTags,
+        inboxState: saves.inboxState,
+        inboxUntil: saves.inboxUntil,
         deletedAt: saves.deletedAt,
       })
       .from(saves)
@@ -104,6 +109,27 @@ export async function bulkEditSaves(
             patch: { rating: next },
             meta,
           });
+      } else if (operation.kind === "favorite") {
+        if (!row.deletedAt && operation.favorite !== row.favorite)
+          transactions.push({
+            kind: "update",
+            model: "save",
+            id: row.id,
+            before: { favorite: row.favorite },
+            patch: { favorite: operation.favorite },
+            meta,
+          });
+      } else if (operation.kind === "inbox" || operation.kind === "snooze") {
+        const next = applyInboxChange(operation, row);
+        if (next)
+          transactions.push({
+            kind: "update",
+            model: "save",
+            id: row.id,
+            before: { inboxState: row.inboxState, inboxUntil: row.inboxUntil },
+            patch: next,
+            meta,
+          });
       } else if ((operation.kind === "trash") !== Boolean(row.deletedAt))
         transactions.push({
           kind: operation.kind,
@@ -114,7 +140,7 @@ export async function bulkEditSaves(
     }
   }
   const changed = transactions.length;
-  if (!changed) return { changed: 0 };
+  if (!changed) return { changed: 0, undoId: null };
   if (
     input.operation.kind === "tags" ||
     input.operation.kind === "suggested-tags"
@@ -130,6 +156,7 @@ export async function bulkEditSaves(
       ),
     );
   await commit(transactions);
-  if (input.operation.kind !== "purge") recordUndo(transactions);
-  return { changed };
+  const undoId =
+    input.operation.kind === "purge" ? null : recordUndo(transactions);
+  return { changed, undoId };
 }

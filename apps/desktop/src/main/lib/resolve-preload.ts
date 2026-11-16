@@ -15,6 +15,8 @@ export function resolvePreload(
     | "combine-images.cjs"
     | "enrichment.cjs"
     | "canvas-render.cjs"
+    | "file-ring.cjs"
+    | "missing-library.cjs"
     | "preview.cjs"
     | "settings.cjs"
     | "scrape.cjs",

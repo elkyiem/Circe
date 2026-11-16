@@ -450,7 +450,7 @@ exports.verifyBrowserHostMaintenance =
     };
     const libraryAction = async (label) => {
       await libraryScreen();
-      await click('[aria-label="Library Menu"]');
+      await click("[data-library-menu]");
       await clickText('[role="menuitem"]', "Switch Library");
       await clickText('[role="menuitem"]', label);
     };

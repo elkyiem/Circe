@@ -16,6 +16,7 @@ import {
 } from "./core/combine-images-window";
 import { ensureDefaultLibrary } from "./core/ensure-default-library";
 import { registerSyncActionListener } from "./core/executor";
+import { closeFileRingOverlay } from "./core/file-ring-overlay";
 import { startFishRoutines } from "./core/fish";
 import {
   startGlobalShortcuts,
@@ -47,6 +48,7 @@ import {
 import { startLaunchSync } from "./core/sync/launch";
 import { flushTagsDump, hydrateTagsFromBundle } from "./core/tags-bundle";
 import {
+  registerInboxSnoozeCron,
   registerSyncCron,
   registerTrashCron,
   registerYtDlpUpdateCron,
@@ -62,6 +64,10 @@ import { markSaveLinksReady } from "./deep-link-save";
 import { settleDockAfterClose } from "./dock";
 import { registerIpc } from "./ipc";
 import {
+  registerFileRingOverlayIpc,
+  toggleFileRing,
+} from "./ipc/file-ring-overlay";
+import {
   isWebHostRelaunchPending,
   waitForLibraryLocationChanges,
 } from "./ipc/queries/library-locations";
@@ -71,6 +77,7 @@ import { rotateBundleBackups } from "./lib/library-config";
 import { LibraryMetadataError } from "./lib/library-id";
 import { readLibraryPointer } from "./lib/library-pointer";
 import { disableMenuActionImages } from "./lib/menu-action-images";
+import { openAppInstance } from "./lib/open-app-instance";
 import { killTrackedProcessTrees } from "./lib/process-tree";
 import { RELAUNCH_ARG } from "./lib/relaunch";
 import { limitSharpMemory } from "./lib/sharp-memory";
@@ -86,6 +93,7 @@ import {
 } from "./lifecycle";
 import { resolveLogFile } from "./logging";
 import { installAppMenu, setMenuRecents } from "./menu";
+import { closeMissingLibraryWindow } from "./missing-library-window";
 import { openAppGroupContainer } from "./native/app-group";
 import { writeNativeHostManifests } from "./native/manifests";
 import { safariSocketPath } from "./native/paths";
@@ -296,6 +304,17 @@ app.whenReady().then(async () => {
   registerProtocol();
 
   if (wantsMcp) {
+    if (process.platform === "darwin" && app.isPackaged) {
+      /** macOS sends a click on Pond to any running copy, this headless one included, and gives it a Dock icon. */
+      app.on("activate", () => {
+        app.dock?.hide();
+        openAppInstance({
+          execPath: process.execPath,
+          onError: (error) =>
+            log.error("[pond] could not open Pond from MCP", error),
+        });
+      });
+    }
     await ensureIngestToken().catch((err) =>
       log.error("[pond] ingest token init failed; MCP starts without one", err),
     );
@@ -312,6 +331,7 @@ app.whenReady().then(async () => {
   }
   subscribePrefs((prefs) => broadcast(IPC.prefsChanged, prefs));
   registerCombineImagesWindowIpc();
+  registerFileRingOverlayIpc();
   const menuPrefs = await getPrefs();
   installAppMenu({
     shortcuts: menuPrefs.shortcuts,
@@ -343,6 +363,7 @@ app.whenReady().then(async () => {
   } else {
     void settleDockAfterClose();
   }
+  closeMissingLibraryWindow();
   launched = true;
   flushDroppedFiles();
   watchMainThreadStalls();
@@ -476,6 +497,7 @@ async function postLaunchInit(): Promise<void> {
     log.warn("[pond] interrupted-sync recovery failed", err),
   );
   registerTrashCron();
+  registerInboxSnoozeCron();
   registerYtDlpUpdateCron();
   registerSyncCron();
   await startStorageWatcher().catch((err) =>
@@ -590,6 +612,7 @@ async function registerSummonHotkey() {
         }
         await summonMainWindow();
       }),
+      "app.file-ring": run(toggleFileRing),
     },
     (await getPrefs()).shortcuts.overrides,
   );
@@ -702,6 +725,7 @@ async function shutdownForQuit(): Promise<void> {
   killTrackedProcessTrees();
   closePreviewWindows();
   closeCombineImagesWindow();
+  closeFileRingOverlay();
   try {
     await withDeadline(
       Promise.all([

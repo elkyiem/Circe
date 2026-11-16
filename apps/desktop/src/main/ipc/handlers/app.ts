@@ -2,6 +2,7 @@ import { userInfo } from "node:os";
 import type { Transaction } from "@pond/schema/tx";
 import { app, ipcMain, shell } from "electron";
 import log from "electron-log/main.js";
+import { z } from "zod";
 import { IPC } from "../../../shared/constants";
 import {
   executeBatch,
@@ -14,12 +15,16 @@ import {
   canUndo,
   recordBatchForUndo,
   recordForUndo,
-  redo,
-  undo,
+  redoLatest,
+  redoStep,
+  undoLatest,
+  undoStep,
 } from "../../core/undo";
 import { hasUserTitle } from "../../core/user-metadata";
 import { openSavedFile } from "../../lib/open-saved-file";
 import { resolveSaveFilePath, safeHandle } from "../helpers";
+
+const UndoStepIdSchema = z.string().min(1).max(64);
 
 export function registerAppHandlers(): void {
   ipcMain.on(IPC.libraryId, (event) => {
@@ -82,14 +87,26 @@ export function registerAppHandlers(): void {
     }),
   );
 
-  safeHandle(IPC.undo, async () => {
-    const ok = await undo();
-    return { ok, canUndo: canUndo(), canRedo: canRedo() };
+  safeHandle(IPC.undo, async () => ({
+    ...(await undoLatest()),
+    canUndo: canUndo(),
+    canRedo: canRedo(),
+  }));
+
+  safeHandle(IPC.redo, async () => ({
+    ...(await redoLatest()),
+    canUndo: canUndo(),
+    canRedo: canRedo(),
+  }));
+
+  safeHandle(IPC.undoStep, async (_, step: string) => {
+    const outcome = await undoStep(UndoStepIdSchema.parse(step));
+    return { outcome, canUndo: canUndo(), canRedo: canRedo() };
   });
 
-  safeHandle(IPC.redo, async () => {
-    const ok = await redo();
-    return { ok, canUndo: canUndo(), canRedo: canRedo() };
+  safeHandle(IPC.redoStep, async (_, step: string) => {
+    const outcome = await redoStep(UndoStepIdSchema.parse(step));
+    return { outcome, canUndo: canUndo(), canRedo: canRedo() };
   });
 
   safeHandle(IPC.openExternal, async (_, url: string) => {

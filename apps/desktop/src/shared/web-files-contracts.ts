@@ -13,6 +13,7 @@ export const WebFileQuerySchema = z.strictObject({
     "library.exportDebugReport",
     ...WebSaveFileInputNameSchema.options,
     "downloader.export",
+    "downloader.exportFiles",
     "saves.exportWebp",
     "saves.exportDotLottie",
     "saves.importFiles",

@@ -1,6 +1,7 @@
 import type { SectionConfig } from "@/features/settings/components/engine";
 import { BrowserConnections } from "@/features/settings/components/sections/browser-connections";
 import { LibrarySettings } from "@/features/settings/components/sections/library";
+import { inboxGroup } from "@/features/settings/lib/config-inbox";
 import { trashSection } from "@/features/settings/lib/config-trash";
 
 export const librarySection: SectionConfig = {
@@ -15,6 +16,7 @@ export const librarySection: SectionConfig = {
     "browsers",
     "devices",
     "pairing",
+    "inbox",
   ],
   groups: [
     {
@@ -22,6 +24,7 @@ export const librarySection: SectionConfig = {
       fullWidth: true,
       render: () => <LibrarySettings />,
     },
+    inboxGroup,
     {
       title: "Devices",
       fullWidth: true,

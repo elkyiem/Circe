@@ -70,6 +70,11 @@ interface MarkSelection {
   swatch: LibrarySwatch;
 }
 
+const RETIRED_HUES = new Map([
+  ["ruby", "red"],
+  ["navy", "blue"],
+]);
+
 function restoreMark(
   library: LibraryCustomizeDialogProps["library"],
 ): MarkSelection {
@@ -82,7 +87,8 @@ function restoreMark(
       swatch: DEFAULT_LIBRARY_SWATCH,
     };
   }
-  const hue = source.color.split("-")[0];
+  const base = source.color.split("-")[0] ?? "";
+  const hue = RETIRED_HUES.get(base) ?? base;
   /** A retired shade keeps its hue so the mark still reopens as an emoji or icon. */
   const swatch =
     LIBRARY_SWATCHES.find((entry) => entry.id === source.color) ??
@@ -415,7 +421,7 @@ function MarkGlyph({ mark }: { mark: LibraryMark }) {
     return (
       <img
         className={styles.image}
-        src={logo?.preview ?? defaultAppIcon}
+        src={logo?.base.light ?? defaultAppIcon}
         alt=""
       />
     );
@@ -521,7 +527,7 @@ function pickerOptions(picker: Picker, mark: LibraryMark): PickerOption[] {
     return POND_LOGOS.map((entry) => ({
       key: entry.id,
       label: entry.label,
-      content: <img className={styles.logo} src={entry.preview} alt="" />,
+      content: <img className={styles.logo} src={entry.base.light} alt="" />,
       selected:
         mark.kind === "pond"
           ? mark.tint === entry.id

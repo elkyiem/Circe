@@ -17,6 +17,7 @@ import { createSaveMenuContext } from "./menu/context";
 import { buildCopyItems } from "./menu/copy";
 import { buildDetailItems, buildViewerDisplayItems } from "./menu/details";
 import { buildExportItems, buildExportPopupItems } from "./menu/export";
+import { buildInboxItems } from "./menu/inbox";
 import { buildOpenItems, openMenuLabels } from "./menu/open";
 import { buildOrganizeItems } from "./menu/organize";
 import { sensitiveContentMenuItem } from "./menu/sensitive";
@@ -28,6 +29,7 @@ import type { BuildSaveMenuOptions } from "./menu/types";
 export {
   loadOpenWithApps,
   type OpenWithApp,
+  openWith,
   openWithKind,
   peekOpenWithApps,
 } from "@/features/saves/lib/open-with-menu";
@@ -54,6 +56,7 @@ export function buildSaveMenu(
     ...openItems,
     ...supplementalItems.file,
     { type: "separator" },
+    ...buildInboxItems(context),
     ...organizeItems.destinations,
     {
       type: "submenu",

@@ -128,9 +128,11 @@ describe("SaveDetails", () => {
     return router;
   }
 
-  it("shows an empty column when the library has no selection", async () => {
+  it("shows an empty inspector when the library has no selection", async () => {
     await mount("/");
-    expect(host.textContent).toContain("No save selected");
+    await vi.waitFor(() =>
+      expect(host.textContent).toContain("Nothing selected"),
+    );
   });
 
   it("inspects the library selection without opening the save", async () => {
@@ -142,7 +144,6 @@ describe("SaveDetails", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(host.textContent).toContain("One");
-    expect(host.textContent).not.toContain("No save selected");
   });
 
   it("inspects a multi-save library selection", async () => {

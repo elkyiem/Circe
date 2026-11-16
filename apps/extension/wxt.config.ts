@@ -15,7 +15,7 @@ const ICONS = {
 };
 
 const FONT_RESOURCE = {
-  resources: ["fonts/inter/variable.woff2"],
+  resources: ["fonts/intern/variable.woff2", "fonts/inter/variable.woff2"],
   matches: ["<all_urls>"],
 };
 
@@ -141,7 +141,7 @@ export default defineConfig({
       "alarms",
     ],
     host_permissions: ["<all_urls>"],
-    /** The overlay registers Inter on the page; a per-session URL keeps sites from probing for the extension. */
+    /** The overlay registers Intern and Inter on the page; a per-session URL keeps sites from probing for the extension. */
     web_accessible_resources: [
       browser === "firefox"
         ? FONT_RESOURCE

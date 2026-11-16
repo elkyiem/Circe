@@ -19,7 +19,9 @@ const rendererTypeScriptTests = [
   "src/renderer/src/features/library/state/library-chrome.test.ts",
   "src/renderer/src/features/library/state/saved-views.test.ts",
   "src/renderer/src/features/library/state/view-store.test.ts",
+  "src/renderer/src/features/library/state/folder-appearance.test.ts",
   "src/renderer/src/features/library/lib/library-layout-transition.test.ts",
+  "src/renderer/src/features/library/lib/folder-appearance-menu.test.ts",
   "src/renderer/src/features/library/components/view/empty-gallery-menu.test.ts",
   "src/renderer/src/features/library/components/new-menu/spec.test.ts",
   "src/renderer/src/features/library/components/folder-sidebar/folder-cover.test.ts",
@@ -34,6 +36,9 @@ export default defineConfig({
       "electron-log/main.js": stub("electron-log.ts"),
       "@": fileURLToPath(new URL("./src/renderer/src", import.meta.url)),
       "@shared": fileURLToPath(new URL("./src/shared", import.meta.url)),
+      "@pond/render": fileURLToPath(
+        new URL("../../packages/render/src/index.ts", import.meta.url),
+      ),
     },
   },
   test: {

@@ -19,6 +19,7 @@ import { fishMcpQueries } from "../ipc/queries/fish-mcp";
 import { foldersQueries } from "../ipc/queries/folders";
 import { inspectQueries } from "../ipc/queries/inspect";
 import { libraryQueries } from "../ipc/queries/library";
+import { libraryHealthQueries } from "../ipc/queries/library-health";
 import { libraryRepairQueries } from "../ipc/queries/library-repairs";
 import { mediaUnderstandingQueries } from "../ipc/queries/media-understanding";
 import { queueQueries } from "../ipc/queries/queue";
@@ -40,6 +41,7 @@ const handlers = {
   ...arenaLinkQueries,
   ...apiTokensQueries,
   ...libraryRepairQueries,
+  ...libraryHealthQueries,
   ...enrichmentQueries,
   ...fishQueries,
   ...fishMcpQueries,

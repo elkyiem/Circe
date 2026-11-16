@@ -1,17 +1,24 @@
 import { Shell } from "@pond/ui";
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { useLayoutEffect, useMemo } from "react";
-import { canvasIdFromPath } from "@/features/canvas";
-import { fishIdFromPath } from "@/features/fish";
-import { LibraryChrome } from "@/features/library/components/chrome";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import { FileRing } from "@/features/library/components/file-ring";
+import { FilterBar } from "@/features/library/components/filter-menu";
+import { InboxReview } from "@/features/library/components/inbox-review";
 import { LibraryView } from "@/features/library/components/view";
 import { AppShell } from "@/features/library/components/workspace-shell";
+import { showsLibraryGrid } from "@/features/library/lib/grid-path";
+import { useLibraryNav } from "@/features/library/state/library-chrome";
 import {
   getLastListPath,
   getLastListSearch,
   rememberListPath,
+  SaveSelectionBar,
 } from "@/features/saves";
-import { saveIdFromPath } from "@/features/saves/navigation";
+import {
+  resultNavigation,
+  saveIdFromPath,
+  selection,
+} from "@/features/saves/navigation";
 import {
   ScrollRestorationContext,
   useScrollRestoration,
@@ -22,30 +29,29 @@ export function Library() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.searchStr });
   const isSave = saveIdFromPath(pathname) !== null;
-  const isSources = pathname.startsWith("/sources");
-  const isDownloads = pathname.startsWith("/downloads");
-  const isFish = fishIdFromPath(pathname) !== null;
-  const isTags = pathname === "/tags";
-  const isSettings = pathname.startsWith("/settings");
-  const isCanvas =
-    canvasIdFromPath(isSave ? getLastListPath() : pathname) !== null;
-  const showLibraryGrid =
-    !isSources &&
-    !isDownloads &&
-    !isFish &&
-    !isTags &&
-    !isSettings &&
-    !isCanvas;
+  const nav = useLibraryNav();
+  const showLibraryGrid = showsLibraryGrid(pathname);
 
   useLayoutEffect(() => {
     rememberListPath(pathname, search);
   }, [pathname, search]);
+
+  const wasSave = useRef(isSave);
+  /** Focus only lands once this commit lifts `inert` from the grid, not when the route is pushed. */
+  useLayoutEffect(() => {
+    const closed = wasSave.current && !isSave;
+    wasSave.current = isSave;
+    if (!closed || !showLibraryGrid) return;
+    const cursor = selection.getCursor();
+    if (cursor) void resultNavigation.reveal(cursor, { focus: true });
+  }, [isSave, showLibraryGrid]);
 
   const listPath = isSave ? getLastListPath() : pathname;
   const listSearch = isSave ? getLastListSearch() : search;
   const restoration = useScrollRestoration(`${listPath}${listSearch}`);
   /** The grid stays mounted under an open Save, so a route change must not re-render it. */
   const view = useMemo(() => <LibraryView />, []);
+  const covered = isSave || nav.kind === "inbox";
 
   return (
     <div className={styles.stage}>
@@ -53,12 +59,16 @@ export function Library() {
         <div
           className={styles["keep-alive"]}
           data-suppressed={isSave || undefined}
-          inert={isSave || undefined}
-          aria-hidden={isSave || undefined}
+          inert={covered || undefined}
+          aria-hidden={covered || undefined}
         >
           <AppShell.Content>
             <Shell.Body className={styles.body}>
-              {isSave ? null : <LibraryChrome className={styles.chrome} />}
+              {isSave ? null : (
+                <div className={styles.chrome}>
+                  <FilterBar />
+                </div>
+              )}
               <ScrollRestorationContext.Provider value={restoration}>
                 <Shell.Main
                   ref={restoration.ref}
@@ -68,11 +78,14 @@ export function Library() {
                   {view}
                 </Shell.Main>
               </ScrollRestorationContext.Provider>
+              {isSave ? null : <SaveSelectionBar />}
+              {isSave ? null : <FileRing />}
             </Shell.Body>
           </AppShell.Content>
         </div>
       ) : null}
 
+      {showLibraryGrid && !isSave ? <InboxReview /> : null}
       {isSave ? (
         <div className={styles.overlay}>
           <Outlet />

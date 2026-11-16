@@ -29,6 +29,7 @@ import { fishMcpQueries } from "./fish-mcp";
 import { foldersQueries } from "./folders";
 import { inspectQueries } from "./inspect";
 import { libraryQueries } from "./library";
+import { libraryHealthQueries } from "./library-health";
 import { libraryRepairQueries } from "./library-repairs";
 import { mediaProcessingQueries } from "./media-processing";
 import { mediaUnderstandingQueries } from "./media-understanding";
@@ -75,6 +76,7 @@ const queryRegistry = {
   ...foldersQueries,
   ...libraryQueries,
   ...libraryRepairQueries,
+  ...libraryHealthQueries,
   ...mediaUnderstandingQueries,
   ...mediaProcessingQueries,
   ...inspectQueries,

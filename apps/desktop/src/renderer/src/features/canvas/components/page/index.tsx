@@ -1,4 +1,4 @@
-import { IconCanvasFill } from "@pond/icons";
+import { IconCanvas } from "@pond/icons";
 import { Empty } from "@pond/ui";
 import type { Canvas } from "@shared/canvas-contracts";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -54,7 +54,7 @@ export function CanvasPage({
       ) : current ? (
         <Empty.Root className={styles.empty}>
           <Empty.Media>
-            <IconCanvasFill size={32} />
+            <IconCanvas size={32} />
           </Empty.Media>
           <Empty.Title>
             {current.status === "missing"

@@ -10,12 +10,15 @@ import { UndoRedoBridge } from "@/app/effects/undo-redo-bridge";
 import { useDownloadDialog } from "@/features/downloads/state/download-dialog";
 import { fishIdFromPath } from "@/features/fish";
 import { FolderSidebar } from "@/features/library/components/folder-sidebar";
+import { selectLibraryNav } from "@/features/library/components/folder-sidebar/navigation";
 import { NewMenuDialogHost } from "@/features/library/components/new-menu";
 import { OrganizationRenameDialogHost } from "@/features/library/components/organization-rename-dialog";
 import { AppShell } from "@/features/library/components/workspace-shell";
 import { enterFolder } from "@/features/library/operations/enter-folder";
+import { useDetailsOpen } from "@/features/library/state/library-chrome";
 import { savedViews } from "@/features/library/state/saved-views";
 import { DuplicateImportReviewHost } from "@/features/saves/components/duplicate-import-review";
+import { SnoozeDialogHost } from "@/features/saves/components/snooze-dialog";
 import { SaveTagPickerHost } from "@/features/saves/components/tag-picker-host";
 import { SaveHotkeys } from "@/features/saves/effects/save-hotkeys";
 import { ViewerPreload } from "@/features/saves/effects/viewer-preload";
@@ -28,6 +31,10 @@ import {
   SourceDetailsPageSchema,
 } from "@/features/sources/state/source-detail";
 import { getAppRouter } from "@/shared/lib/app-router";
+import {
+  lazyWithPreload,
+  preloadWhenIdle,
+} from "@/shared/lib/lazy-with-preload";
 import { settingsHref } from "@/shared/lib/open-settings";
 
 const FishDetails = lazy(() =>
@@ -36,10 +43,10 @@ const FishDetails = lazy(() =>
   })),
 );
 
-const SettingsSidebar = lazy(() =>
-  import("@/features/settings/components/sidebar").then((module) => ({
-    default: module.SettingsSidebar,
-  })),
+const SettingsSidebar = lazyWithPreload(() =>
+  import("@/features/settings/components/sidebar").then(
+    (module) => module.SettingsSidebar,
+  ),
 );
 
 const DownloadDialogHost = lazy(() =>
@@ -75,6 +82,8 @@ export function RootShell() {
   const sourceDetail = parseSourceDetailPath(pathname, detailPage);
   const viewingFish = fishIdFromPath(pathname) !== null;
   const viewingLibrary = isSaveCollectionPath(pathname);
+  const viewingSave = saveIdFromPath(pathname) !== null;
+  const detailsOpen = useDetailsOpen();
   useEffect(() => {
     return window.pond.onNavigate((path) => {
       const pathname = path.split("?")[0] ?? "";
@@ -84,6 +93,10 @@ export function RootShell() {
       const viewId = params.get("view");
       if (pathname === "/" && folderId) {
         enterFolder(folderId);
+        return;
+      }
+      if (pathname === "/" && params.has("inbox")) {
+        selectLibraryNav({ kind: "inbox" });
         return;
       }
       if (pathname === "/" && viewId) {
@@ -103,6 +116,7 @@ export function RootShell() {
       getAppRouter()?.history.push(pathname);
     });
   }, []);
+  useEffect(() => preloadWhenIdle(SettingsSidebar.preload), []);
 
   return (
     <>
@@ -110,12 +124,15 @@ export function RootShell() {
       <UndoRedoBridge />
       <MenuBridge />
       <SaveHotkeys />
-      <ViewerPreload />
+      <ViewerPreload
+        details={detailsOpen && !viewingFish && (viewingLibrary || viewingSave)}
+      />
       <AppHotkeys />
       <NewMenuDialogHost />
       <OrganizationRenameDialogHost />
       <DuplicateImportReviewHost />
       <SaveTagPickerHost />
+      <SnoozeDialogHost />
       <AppShell.Root
         header={<Toolbar />}
         right={
@@ -127,9 +144,7 @@ export function RootShell() {
             <SaveDetails />
           )
         }
-        rightOpen={
-          viewingFish || viewingLibrary || saveIdFromPath(pathname) !== null
-        }
+        rightOpen={viewingFish || viewingLibrary || viewingSave}
         left={
           isSettings ? (
             <Suspense fallback={null}>

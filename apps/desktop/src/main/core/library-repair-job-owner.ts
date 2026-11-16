@@ -42,6 +42,7 @@ export function createLibraryRepairJobs(dependencies: {
     phase: LibraryRepairJob["phase"],
     kind: LibraryRepairKind,
     token?: string,
+    saveIds?: readonly string[],
   ): LibraryRepairJob {
     admit();
     for (const [id, record] of jobs) {
@@ -82,6 +83,7 @@ export function createLibraryRepairJobs(dependencies: {
         if (phase === "preview") {
           const preview = await dependencies.service.preview({
             kind,
+            saveIds,
             signal: record.controller.signal,
             onProgress: progress,
           });
@@ -118,8 +120,8 @@ export function createLibraryRepairJobs(dependencies: {
   }
 
   return {
-    preview(kind: LibraryRepairKind) {
-      return createJob("preview", kind);
+    preview(kind: LibraryRepairKind, saveIds?: readonly string[]) {
+      return createJob("preview", kind, undefined, saveIds);
     },
     apply(token: string) {
       admit();

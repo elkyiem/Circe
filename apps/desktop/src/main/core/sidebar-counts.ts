@@ -15,6 +15,7 @@ import { recentlyAddedSince } from "../../shared/recently-added";
 import type { LibrarySidebarCounts } from "../../shared/sidebar-counts";
 import type { Db } from "../db";
 import { libraryQueryWhere } from "./library-query";
+import { countSplitPosts } from "./split-posts";
 
 export function querySidebarCounts(
   db: Db,
@@ -30,6 +31,8 @@ export function querySidebarCounts(
         untagged: sql<number>`sum(case when json_array_length(coalesce(${saves.tags},'[]'))=0 then 1 else 0 end)`,
         uncategorized: sql<number>`sum(case when not exists(select 1 from save_folders where save_id=${saves.id}) then 1 else 0 end)`,
         recentlyAdded: sql<number>`sum(case when ${saves.savedAt} >= ${recentlyAddedSince(now)} then 1 else 0 end)`,
+        inbox: sql<number>`sum(case when ${saves.inboxState} = 'review' then 1 else 0 end)`,
+        inboxSnoozed: sql<number>`sum(case when ${saves.inboxState} = 'snoozed' then 1 else 0 end)`,
       })
       .from(saves)
       .where(live)
@@ -61,6 +64,8 @@ export function querySidebarCounts(
       untagged: rows?.untagged ?? 0,
       uncategorized: rows?.uncategorized ?? 0,
       recentlyAdded: rows?.recentlyAdded ?? 0,
+      inbox: rows?.inbox ?? 0,
+      inboxSnoozed: rows?.inboxSnoozed ?? 0,
       recentlyUsed:
         recentIds.length === 0
           ? 0
@@ -69,6 +74,7 @@ export function querySidebarCounts(
               .from(saves)
               .where(and(live, inArray(saves.id, [...recentIds])))
               .get()?.n ?? 0),
+      splitPosts: countSplitPosts(db, hiddenFolderIds),
       trash:
         db
           .select({ n: count() })

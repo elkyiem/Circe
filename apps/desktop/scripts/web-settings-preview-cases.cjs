@@ -442,7 +442,7 @@ exports.verifyBrowserSettingsPreview =
     };
     const preferencesScreen = async () => {
       await libraryScreen();
-      await click('[aria-label="Library Menu"]');
+      await click("[data-library-menu]");
       await click(
         await mark(
           "[role=menuitem]",
@@ -667,7 +667,7 @@ exports.verifyBrowserSettingsPreview =
         );
         await libraryScreen();
         await waitFor("Number(getComputedStyle(document.body).zoom)===1.5");
-        const trigger = '[aria-label="Library Menu"]';
+        const trigger = "[data-library-menu]";
         await assertControl(trigger);
         const physicalClick = async (selector) => {
           win.focus();

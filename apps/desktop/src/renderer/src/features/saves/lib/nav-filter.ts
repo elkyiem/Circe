@@ -1,6 +1,8 @@
 import type { Folder } from "@pond/schema/db";
+import type { SaveLike } from "@pond/schema/filters";
+import { splitPostKey } from "@pond/schema/filters/fields";
 import type { Save } from "@/features/saves/types";
-import type { LibraryNav } from "@/shared/lib/library-nav";
+import { inboxScope, type LibraryNav } from "@/shared/lib/library-nav";
 
 export function descendantFolderIds(
   id: string,
@@ -19,7 +21,10 @@ export function descendantFolderIds(
   return ids;
 }
 
-export function applyNavFilter<T extends Pick<Save, "id" | "tags">>(
+export function applyNavFilter<
+  T extends Pick<Save, "id" | "tags" | "inboxState"> &
+    Pick<SaveLike, "source" | "rawJson">,
+>(
   saves: readonly T[],
   nav: LibraryNav,
   memberships: Record<string, string[]>,
@@ -37,6 +42,10 @@ export function applyNavFilter<T extends Pick<Save, "id" | "tags">>(
   ) {
     return [...saves];
   }
+  if (nav.kind === "inbox") {
+    const state = inboxScope(nav);
+    return saves.filter((save) => save.inboxState === state);
+  }
   if (nav.kind === "uncategorized") {
     return saves.filter((save) => (memberships[save.id] ?? []).length === 0);
   }
@@ -48,6 +57,8 @@ export function applyNavFilter<T extends Pick<Save, "id" | "tags">>(
       (memberships[save.id] ?? []).some((folderId) => ids.has(folderId)),
     );
   }
+  if (nav.kind === "post")
+    return saves.filter((save) => splitPostKey(save) === nav.key);
   if (nav.kind === "tag") {
     const needle = nav.name.toLowerCase();
     return saves.filter((save) =>

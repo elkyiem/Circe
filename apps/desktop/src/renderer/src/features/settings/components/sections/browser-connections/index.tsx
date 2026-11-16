@@ -183,7 +183,7 @@ export function BrowserConnections() {
                   </a>{" "}
                   on your other device and enter this code.
                 </Dialog.Description>
-                <Input.Root size="xl">
+                <Input.Root size="md">
                   <Input.Field
                     className={styles.code}
                     aria-label="Connection code"

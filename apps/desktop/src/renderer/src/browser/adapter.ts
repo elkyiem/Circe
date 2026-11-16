@@ -58,15 +58,40 @@ function runHistory(kind: "undo" | "redo") {
       historySnapshot?.revision === historyRevision &&
       !(kind === "undo" ? historySnapshot.canUndo : historySnapshot.canRedo)
     )
-      return { ok: false, ...historySnapshot };
-    const state = WebHistorySchema.parse(
-      await webRequest(
-        "history",
-        JSON.stringify({ kind, revision: historyRevision }),
-      ),
+      return { ok: false, step: null, ...historySnapshot };
+    const reply = await webRequest(
+      "history",
+      JSON.stringify({ kind, revision: historyRevision }),
     );
+    const state = WebHistorySchema.parse(reply);
     receiveHistory(state);
-    return { ok: true, ...state };
+    const { step } = z
+      .object({ step: z.string().nullable().catch(null) })
+      .parse(reply);
+    return { ok: true, step, ...state };
+  });
+  historyCommands = operation.then(
+    () => {},
+    () => {},
+  );
+  return operation;
+}
+
+/** Scoped toast Undo/Redo reverses only its own step; the host refuses stale steps. */
+function runHistoryStep(kind: "undoStep" | "redoStep", step: string) {
+  const library = boundLibraryId;
+  const operation = historyCommands.then(async () => {
+    if (library !== boundLibraryId)
+      throw new Error(
+        "The active Library changed. Reload before Undo or Redo.",
+      );
+    const reply = await webRequest("history", JSON.stringify({ kind, step }));
+    const state = WebHistorySchema.parse(reply);
+    receiveHistory(state);
+    const { outcome } = z
+      .object({ outcome: z.enum(["done", "stale", "failed"]) })
+      .parse(reply);
+    return { outcome, canUndo: state.canUndo, canRedo: state.canRedo };
   });
   historyCommands = operation.then(
     () => {},
@@ -284,6 +309,8 @@ export async function installBrowserAdapter(libraryId: string) {
     openCombineImagesWindow: async (input) => {
       openBrowserCombine(input);
     },
+    // The ring over other apps belongs to the host's screen; Settings hides it here.
+    openFileRing: async () => {},
     tx: async (transaction) => {
       await webRequest(
         "transactions",
@@ -296,6 +323,8 @@ export async function installBrowserAdapter(libraryId: string) {
     },
     undo: () => runHistory("undo"),
     redo: () => runHistory("redo"),
+    undoStep: (step) => runHistoryStep("undoStep", step),
+    redoStep: (step) => runHistoryStep("redoStep", step),
     openPreviewWindow: previews.open,
     configurePreviewWindow: previews.configure,
     navigatePreviewWindow: previews.navigate,

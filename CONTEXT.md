@@ -18,6 +18,10 @@ _Avoid_: item, bookmark, document, entry, post (as the Library row)
 Turning one Save from a multi-image or multi-video post into one Save per image or video. Each keeps the post's Source, author, URL, tags, notes, and Folders, and records which media of the post it holds.
 _Avoid_: unbundle, explode, slide (as the Library row)
 
+**Split Post**:
+The post a Split came from, found again through the Saves that share its Source and post Source ID. Split Posts lists every post with two or more live Saves, and Show Post opens one in post order.
+_Avoid_: gallery collection, album, carousel group
+
 **List kinds**:
 Whether you liked or saved that item, or both. Stored on the Save as `liked` and `saved`. Public like and bookmark counts on the Capture are metrics, not this.
 _Avoid_: origin, bookmark (as the Library row)
@@ -29,6 +33,14 @@ _Avoid_: ScrapedHarvest, harvest meta, extras, raw scrape, DTO
 **Seed**:
 A Capture supplied when a Save is enqueued, so harvest can skip a fresh scrape while it is still fresh.
 _Avoid_: prefill, stub, partial capture
+
+**Inbox**:
+Where new Saves wait for you to process them. Each Save records its own Inbox state: needs review, snoozed until a time, or processed. A Save with no state was never sent to the Inbox. The state is independent of Folders, so filing a Save doesn't process it. Settings choose which capture paths send new Saves here.
+_Avoid_: queue, triage folder, unread, Uncategorized (that's Saves with no Folder)
+
+**Snooze**:
+Hiding a Save from the Inbox until a time, when it needs review again.
+_Avoid_: remind, defer, later
 
 **Tag**:
 A label you attach to Saves, optionally in a group.
@@ -51,7 +63,7 @@ A chat character stored in the Library's `fish.json`, with a name, color, instru
 _Avoid_: Assistant, agent, bot, fishes
 
 **Routine**:
-Standing work a fish runs when new Saves arrive or on a schedule. Each run opens its own chat.
+Standing work a fish runs when new Saves arrive, when Saves arrive in the Inbox, or on a schedule. Each run opens its own chat.
 _Avoid_: job, automation, cron
 
 ### Sources

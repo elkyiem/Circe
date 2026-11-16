@@ -1,0 +1,91 @@
+.popup {
+  --width: 440px;
+}
+
+.content {
+  gap: 12px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+  background: var(--ds-background-secondary);
+  border-radius: var(--ds-radius-lg);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  padding-inline: 2px 4px;
+  font-size: var(--ds-text-body);
+  color: var(--ds-foreground-primary);
+  border-radius: var(--ds-radius-md);
+
+  &[data-dragging] {
+    z-index: 1;
+    background: var(--ds-background-primary);
+    box-shadow: var(--ds-shadow-overlay);
+  }
+}
+
+.handle {
+  touch-action: none;
+  cursor: grab;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--ds-foreground-secondary);
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot {
+  flex: none;
+  font-size: var(--ds-text-small);
+  color: var(--ds-foreground-tertiary);
+}
+
+.row[data-missing] :is(.label, .icon) {
+  color: var(--ds-foreground-tertiary);
+}
+
+.controls {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+.empty {
+  padding-block: 24px;
+  background: var(--ds-background-secondary);
+  border-radius: var(--ds-radius-lg);
+}
+
+.add {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.capacity {
+  font-size: var(--ds-text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-foreground-tertiary);
+}

@@ -1,4 +1,4 @@
-import { IconCaretRightFill } from "@pond/icons";
+import { IconCaretRight, IconCheck } from "@pond/icons";
 import { Keyboard, Loader, PickerPanel } from "@pond/ui";
 import {
   type CSSProperties,
@@ -107,6 +107,13 @@ const EntryRow = memo(function EntryRow({
         <span className={styles.shortcut}>
           <ShortcutKeys id={entry.shortcut} density="flat" />
         </span>
+      ) : entry.keys?.length ? (
+        <span className={styles.shortcut}>
+          <Keyboard.Cluster keys={[...entry.keys]} density="flat" />
+        </span>
+      ) : null}
+      {entry.checked ? (
+        <IconCheck className={styles.indicator} size={12} aria-hidden />
       ) : null}
       {active && entry.actions ? (
         <Keyboard.Key className={styles.hint} density="flat" aria-hidden>
@@ -114,11 +121,7 @@ const EntryRow = memo(function EntryRow({
         </Keyboard.Key>
       ) : null}
       {entry.page ? (
-        <IconCaretRightFill
-          className={styles.indicator}
-          size={10}
-          aria-hidden
-        />
+        <IconCaretRight className={styles.indicator} size={10} aria-hidden />
       ) : null}
     </PickerPanel.Item>
   );

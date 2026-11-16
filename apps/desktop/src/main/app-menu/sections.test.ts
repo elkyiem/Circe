@@ -237,9 +237,14 @@ describe("app menu sections", () => {
         "find.visual-search",
         "organize.rating.0",
         "organize.rating.5",
+        "organize.favorite",
+        "organize.add-to-multiple-folders",
+        "organize.add-to-recent-folder",
         "organize.clear-tags",
         "organize.copy-tags",
         "organize.paste-tags",
+        "organize.mark-processed",
+        "organize.snooze",
       ]),
     );
   });

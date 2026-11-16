@@ -13,8 +13,10 @@ import {
 import { ViewerHud } from "@/features/saves/components/viewers/hud";
 import {
   ChromePortal,
+  useViewerChromeEnabled,
   useViewerChromeRoot,
 } from "@/features/saves/components/viewers/media-viewer/chrome";
+import { useReportMediaReady } from "@/features/saves/hooks/use-media-ready";
 import { useMediaReveal } from "@/features/saves/hooks/use-media-reveal";
 import { useSave } from "@/features/saves/hooks/use-saves";
 import { containImage } from "@/features/saves/lib/image-regions";
@@ -111,6 +113,10 @@ function VideoSurface({
   const { actions } = useVideo();
   const frame = useRef<HTMLDivElement>(null);
   const shown = useMediaReveal(useFirstFrame(src), src);
+  const [loadedPoster, setLoadedPoster] = useState<string | null>(null);
+  useReportMediaReady(
+    shown || (placeholder !== undefined && loadedPoster === placeholder),
+  );
   const [viewerSize, setViewerSize] = useState({ width: 0, height: 0 });
   /**
    * The fitted box must exist before first paint so the video never shows at its unfitted size.
@@ -174,7 +180,11 @@ function VideoSurface({
           : undefined
       }
     >
-      <Poster.Start src={placeholder} covered={shown} />
+      <Poster.Start
+        src={placeholder}
+        covered={shown}
+        onLoad={() => setLoadedPoster(placeholder ?? null)}
+      />
       <Video.Media
         className={styles.media}
         data-pending={!shown || undefined}
@@ -219,6 +229,7 @@ export function VideoPlayer({
   const save = useSave(saveId);
   const [viewer] = usePrefs("viewer");
   const chromeRoot = useViewerChromeRoot();
+  const chrome = useViewerChromeEnabled();
   const trackUrl = useChaptersTrackUrl(chapters);
   const subtitle = save?.files.find((file) => file.kind === "subtitle");
   const subtitleUrl = save && subtitle ? buildPondUrl(save.id, subtitle) : null;
@@ -284,7 +295,7 @@ export function VideoPlayer({
       frameRate={frameRate}
       fullscreenTarget={chromeRoot}
       initialMuted={viewer.videoMuted}
-      chrome
+      chrome={chrome}
     >
       <MediaBridge
         key={src}
@@ -311,7 +322,25 @@ export function VideoPlayer({
       >
         <Poster.End src={poster} />
       </VideoSurface>
-      {active ? (
+      {active && !chrome ? (
+        <Video.Controls role="toolbar" aria-label="Playback">
+          <Video.Row>
+            <Video.PlayButton />
+            <Video.CurrentTime aria-label="Elapsed time" />
+            <div className={styles.timeline}>
+              <Video.Scrubber
+                renderPreview={(time) => (
+                  <TimelinePreview src={src} time={time} />
+                )}
+              />
+            </div>
+            <Video.Duration aria-label="Duration" />
+            <Video.MuteButton />
+            <Video.FullscreenButton />
+          </Video.Row>
+        </Video.Controls>
+      ) : null}
+      {active && chrome ? (
         <>
           <VideoToolbarContent
             save={save}

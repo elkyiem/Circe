@@ -36,10 +36,12 @@ async function cancelRetiredJob(id: string): Promise<void> {
 
 export function LibraryRepairDialog({
   kind,
+  saveIds,
   open,
   onClose,
 }: {
   kind: LibraryRepairKind;
+  saveIds?: readonly string[];
   open: boolean;
   onClose: () => void;
 }) {
@@ -84,7 +86,10 @@ export function LibraryRepairDialog({
       }
     }
     void window.pond
-      .query("libraryRepairs.preview", { kind })
+      .query("libraryRepairs.preview", {
+        kind,
+        saveIds: saveIds ? [...saveIds] : undefined,
+      })
       .then(async (next) => {
         if (current !== generation.current) {
           await cancelRetiredJob(next.id);
@@ -99,7 +104,7 @@ export function LibraryRepairDialog({
       if (current === generation.current) generation.current++;
       if (timer) clearTimeout(timer);
     };
-  }, [kind, open]);
+  }, [kind, open, saveIds]);
 
   async function apply(): Promise<void> {
     if (!preview || running) return;

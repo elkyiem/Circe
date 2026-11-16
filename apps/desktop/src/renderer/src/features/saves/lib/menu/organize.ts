@@ -1,9 +1,10 @@
 import {
   IconCanvas,
   IconClipboard,
+  IconFolder,
   IconFolderPlus,
   IconFolderSend,
-  IconFolders,
+  IconHeart,
   IconImage,
   IconPencil,
   IconPinTack,
@@ -19,43 +20,18 @@ import {
 } from "@/features/saves/lib/actions";
 import {
   assignSavesToFolder,
-  notifyUndoableFolderChange,
+  createFolderWithSaves,
   removeSavesFromFolder,
 } from "@/features/saves/lib/folder-actions";
 import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
 import { pasteTagsForSelection } from "@/features/saves/lib/selection";
-import { errorCopy } from "@/shared/lib/error-copy";
+import { toggleFavorite } from "@/features/saves/lib/triage";
 import { buildFolderTreeMenu } from "@/shared/lib/folder-tree-menu";
 import { formatPlural } from "@/shared/lib/format";
 import { shortcutGlyphs } from "@/shared/lib/shortcuts";
 import { notify } from "@/shared/lib/toast";
 import { glyph } from "./shared";
 import type { SaveMenuContext } from "./types";
-
-function createFolderWithSaves(ids: string[]): void {
-  void (async () => {
-    try {
-      const folder = await window.pond.query("folders.createWithSaves", {
-        name: "Untitled",
-        parentId: null,
-        saveIds: ids,
-      });
-      saveLibraryBridge.rememberFolderDestinations([folder.id]);
-      await saveLibraryBridge.refreshFolders();
-      saveLibraryBridge.startEditingFolder(folder.id);
-      notifyUndoableFolderChange(
-        "create-folder-with-saves",
-        `Created "${folder.name}" with ${formatPlural(ids.length, { one: "save", other: "saves" })}`,
-      );
-    } catch (error) {
-      notify({
-        id: "create-folder-with-saves",
-        title: "Couldn't create folder",
-        description: errorCopy(error, "Try again."),
-      });
-    }
-  })();
-}
 
 function buildFolderItems(ids: string[], batch: boolean): MenuItemSpec[] {
   const counts = new Map<string, number>();
@@ -89,7 +65,7 @@ function buildFolderItems(ids: string[], batch: boolean): MenuItemSpec[] {
   ];
 }
 
-function buildCanvasItems(ids: string[]): MenuItemSpec[] {
+export function buildCanvasItems(ids: string[]): MenuItemSpec[] {
   return [
     ...saveLibraryBridge.canvasesSnapshot().map((canvas): MenuItemSpec => {
       const onCanvas = new Set(canvas.saveIds);
@@ -142,7 +118,7 @@ function buildAddItems(ids: string[], batch: boolean): MenuItemSpec[] {
     {
       type: "submenu",
       label: "Add to Folders",
-      icon: glyph(IconFolders),
+      icon: glyph(IconFolder),
       items: buildFolderItems(ids, batch),
     },
     {
@@ -194,6 +170,7 @@ export function buildOrganizeItems(
 ): OrganizeMenuItems {
   const {
     save,
+    saves,
     ids,
     batch,
     clipboardEmpty,
@@ -204,9 +181,16 @@ export function buildOrganizeItems(
     resolvedPinned,
   } = context;
 
+  const favorited = saves.every((item) => item.favorite === true);
   return {
     destinations: buildAddItems(ids, batch),
     editing: [
+      {
+        label: favorited ? "Unfavorite" : "Favorite",
+        icon: glyph(IconHeart),
+        shortcut: shortcutGlyphs("save.favorite"),
+        onClick: () => void toggleFavorite(ids),
+      },
       {
         label: "Rename",
         icon: glyph(IconPencil),

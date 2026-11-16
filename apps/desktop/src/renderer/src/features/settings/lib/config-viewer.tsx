@@ -1,4 +1,6 @@
-import { IS_MAC } from "@/shared/lib/platform";
+import { FileRingSetting } from "@/features/settings/components/file-ring-customization";
+import { FileRingShortcutSetting } from "@/features/settings/components/file-ring-shortcut";
+import { IS_MAC, isBrowserRuntime } from "@/shared/lib/platform";
 import { defineCustomSection, group } from "./engine-types";
 
 export const viewerSection = defineCustomSection({
@@ -22,12 +24,14 @@ export const viewerSection = defineCustomSection({
           control: "select",
           key: "spaceAction",
           title: "Space Action",
-          description: "What Space opens for the selected Save.",
+          description: IS_MAC
+            ? "Saves without a file open in Quick Preview."
+            : "What Space opens for the selected Save.",
           options: [
-            { value: "preview", label: "Quick Preview" },
             ...(IS_MAC
               ? [{ value: "quick-look", label: "macOS Quick Look" }]
               : []),
+            { value: "preview", label: "Quick Preview" },
             { value: "presentation", label: "Presentation" },
             { value: "detached", label: "Detached Window" },
             { value: "open", label: "Save Details" },
@@ -60,6 +64,47 @@ export const viewerSection = defineCustomSection({
             { value: "none", label: "Do Nothing" },
           ],
         },
+        {
+          control: "switch",
+          key: "dragToFile",
+          title: "Drag to File",
+          description:
+            "Hold Shift while you drag a Save, file or link to show a ring of folders and actions.",
+          keywords: [
+            "drag",
+            "drop",
+            "ring",
+            "radial",
+            "folder",
+            "quick access",
+          ],
+        },
+        {
+          control: "custom",
+          key: "fileRingItems",
+          title: "Ring Items",
+          keywords: ["drag to file", "ring", "radial", "reorder", "pin"],
+          render: () => <FileRingSetting />,
+        },
+        // The ring over other apps is a window on the host's screen, not this browser.
+        ...(isBrowserRuntime()
+          ? []
+          : [
+              {
+                control: "custom" as const,
+                key: "fileRingShortcut",
+                title: "Ring Over Any App",
+                keywords: [
+                  "drag to file",
+                  "ring",
+                  "global",
+                  "shortcut",
+                  "overlay",
+                  "finder",
+                ],
+                render: () => <FileRingShortcutSetting />,
+              },
+            ]),
         {
           control: "select",
           key: "wheelBehavior",

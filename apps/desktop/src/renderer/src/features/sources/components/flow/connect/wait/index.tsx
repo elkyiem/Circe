@@ -1,4 +1,4 @@
-import { IconCircleCheckFill } from "@pond/icons";
+import { IconCircleCheck } from "@pond/icons";
 import { connectsByHandle } from "@pond/schema/sources";
 import { Button, Dialog } from "@pond/ui";
 import { useEffect, useState } from "react";
@@ -162,7 +162,7 @@ function ConnectPromises({
         <ul className={styles.checklist}>
           {(byHandle ? HANDLE_PROMISES : SESSION_PROMISES).map((promise) => (
             <li key={promise}>
-              <IconCircleCheckFill size={12} className={styles.check} />
+              <IconCircleCheck size={12} className={styles.check} />
               <span>
                 {isBrowserRuntime() && promise === SESSION_PROMISES[0]
                   ? "Keep your session on the host computer"

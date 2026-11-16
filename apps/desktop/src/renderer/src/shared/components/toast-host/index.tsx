@@ -1,4 +1,4 @@
-import { IconSparkleFill } from "@pond/icons";
+import { IconSparkle } from "@pond/icons";
 import { Button, Toast } from "@pond/ui";
 import {
   TOAST_TIMEOUT_MS,
@@ -32,7 +32,7 @@ function AskActions({ id, ask, spotlight }: AskActionsProps) {
           void ask.onConfirm();
         }}
       >
-        {spotlight ? <IconSparkleFill size={12} /> : null}
+        {spotlight ? <IconSparkle size={12} /> : null}
         {ask.confirm}
       </Button>
     </Toast.Actions>
@@ -67,7 +67,10 @@ function ToastItem({ toast }: { toast: ToastObject }) {
           {data?.note ? <Toast.Meta>{data.note}</Toast.Meta> : null}
         </Toast.Header>
         {data?.action ? (
-          <Toast.Action onClick={data.action.onClick}>
+          <Toast.Action
+            disabled={data.action.disabled}
+            onClick={data.action.onClick}
+          >
             {data.action.label}
           </Toast.Action>
         ) : null}

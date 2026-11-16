@@ -8,6 +8,7 @@ exports.parityScenario = {
     "saves.setImageThumbnail",
     "saves.split",
     "saves.splitAllStatus",
+    "saves.splitPosts",
     "saves.splittableCount",
   ],
 };

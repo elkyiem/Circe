@@ -7,10 +7,17 @@ import {
   selectOnlySave,
 } from "@/features/saves/lib/select";
 import { pool } from "@/features/saves/state/pool";
+import { resultNavigation } from "@/features/saves/state/result-navigation";
 import { primarySelection, selection } from "@/features/saves/state/selection";
+import {
+  closeSnoozeDialog,
+  useSnoozeDialog,
+} from "@/features/saves/state/snooze-dialog";
 import type { Save, SaveFile } from "@/features/saves/types";
 import {
+  bindingKeys,
   configureShortcuts,
+  resolveShortcuts,
   SHORTCUTS,
   shortcutConflict,
   shortcutGlyphs,
@@ -190,5 +197,287 @@ describe("Split Into Saves hotkey", () => {
     });
     await press("s");
     expect(calls).toEqual([{ name: "saves.split", ids: [carousel.id] }]);
+  });
+});
+
+interface TriageInput {
+  ids?: readonly string[];
+}
+
+describe("Triage hotkeys", () => {
+  let host: HTMLDivElement;
+  let root: Root;
+  const calls: Array<{ name: string; input: TriageInput }> = [];
+
+  function collection(): HTMLElement {
+    const element = host.querySelector<HTMLElement>("[data-save-collection]");
+    if (!element) throw new Error("Missing collection");
+    return element;
+  }
+
+  async function press(key: string, init: KeyboardEventInit = {}) {
+    await act(async () => {
+      collection().dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key,
+          code: `Key${key.toUpperCase()}`,
+          bubbles: true,
+          cancelable: true,
+          ...init,
+        }),
+      );
+      await Promise.resolve();
+    });
+  }
+
+  beforeEach(async () => {
+    calls.length = 0;
+    configureShortcuts({ profile: "pond", overrides: {} });
+    document.documentElement.setAttribute("data-reduce-motion", "true");
+    vi.stubGlobal("pond", {
+      query: async (name: string, input: TriageInput) => {
+        calls.push({ name, input });
+        if (name === "saves.bulkEdit")
+          return { changed: input.ids?.length ?? 0, undoId: "step-1" };
+        return [];
+      },
+    });
+    pool.clear();
+    clearSaveSelection();
+    for (const id of ["a", "b", "c"]) pool.upsert(save(id, [image(id)]));
+    resultNavigation.setSource({ key: "triage", ids: ["a", "b", "c"] });
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <HotkeysProvider>
+          <div
+            tabIndex={0}
+            data-save-collection=""
+            role="listbox"
+            aria-label="Saves"
+          >
+            <SaveHotkeys />
+          </div>
+        </HotkeysProvider>,
+      );
+    });
+    collection().focus();
+    await act(async () => selectOnlySave("a"));
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+    resultNavigation.setSource({ ids: [] });
+    document.documentElement.removeAttribute("data-reduce-motion");
+    pool.clear();
+    clearSaveSelection();
+    vi.unstubAllGlobals();
+  });
+
+  it("binds triage actions without colliding in either profile", () => {
+    const ids = [
+      "save.add-to-recent-folder",
+      "save.assign-multiple-folders",
+      "save.favorite",
+      "save.skip",
+      "save.skip-back",
+    ] as const;
+    for (const profile of ["pond", "eagle"] as const) {
+      const preferences = { profile, overrides: {} };
+      const bindings = resolveShortcuts(preferences);
+      for (const id of ids)
+        expect(
+          shortcutConflict(id, bindingKeys(bindings, id), preferences),
+        ).toBeNull();
+    }
+  });
+
+  it("skips forward and back without editing the Save", async () => {
+    const primary = (id: string) =>
+      vi.waitFor(() => expect(primarySelection.get()).toBe(id));
+    await press("j");
+    await primary("b");
+    await press("j");
+    await primary("c");
+    await press("j");
+    await primary("c");
+    await press("k");
+    await primary("b");
+    expect(calls.filter((call) => call.name === "saves.bulkEdit")).toEqual([]);
+    expect(pool.get("a")).toEqual(save("a", [image("a")]));
+  });
+
+  it("toggles Favorite for the selection with one change", async () => {
+    await act(async () => {
+      selection.set(["a", "b"]);
+      primarySelection.set("a");
+    });
+    await press("F", { shiftKey: true });
+    expect(calls).toEqual([
+      {
+        name: "saves.bulkEdit",
+        input: {
+          ids: ["a", "b"],
+          operation: { kind: "favorite", favorite: true },
+        },
+      },
+    ]);
+    expect(pool.get("b")?.favorite).toBe(true);
+
+    calls.length = 0;
+    await press("F", { shiftKey: true });
+    expect(calls).toEqual([
+      {
+        name: "saves.bulkEdit",
+        input: {
+          ids: ["a", "b"],
+          operation: { kind: "favorite", favorite: false },
+        },
+      },
+    ]);
+  });
+
+  it("moves the open Save to Trash without asking", async () => {
+    const edits = () => calls.filter((call) => call.name === "saves.bulkEdit");
+    await press("Backspace", { code: "Backspace" });
+    await vi.waitFor(() => expect(edits()).toHaveLength(1));
+    expect(edits()).toEqual([
+      {
+        name: "saves.bulkEdit",
+        input: { ids: ["a"], operation: { kind: "trash" } },
+      },
+    ]);
+  });
+});
+
+interface EditInput {
+  ids?: readonly string[];
+  operation?: { kind: string; state?: string | null };
+}
+
+function SnoozeProbe() {
+  const dialog = useSnoozeDialog();
+  return <output data-snooze={dialog?.saveIds.join(",") ?? ""} />;
+}
+
+describe("Inbox hotkeys", () => {
+  let host: HTMLDivElement;
+  let root: Root;
+  const edits: EditInput[] = [];
+
+  function snoozing(): string | null {
+    return (
+      host.querySelector("[data-snooze]")?.getAttribute("data-snooze") ?? null
+    );
+  }
+
+  async function press(key: string) {
+    const target = host.querySelector<HTMLElement>("[data-save-collection]");
+    if (!target) throw new Error("Missing collection");
+    target.focus();
+    await act(async () => {
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key,
+          code: `Key${key.toUpperCase()}`,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await Promise.resolve();
+    });
+  }
+
+  beforeEach(async () => {
+    edits.length = 0;
+    configureShortcuts({ profile: "pond", overrides: {} });
+    vi.stubGlobal("pond", {
+      query: async (name: string, input: EditInput) => {
+        if (name === "saves.bulkEdit") edits.push(input);
+        return { changed: input.ids?.length ?? 0 };
+      },
+    });
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    pool.clear();
+    clearSaveSelection();
+    pool.upsert(save("waiting", [image("a.jpg")], { inboxState: "review" }));
+    pool.upsert(save("library", [image("b.jpg")]));
+    await act(async () => {
+      root.render(
+        <HotkeysProvider>
+          <div
+            tabIndex={0}
+            data-save-collection=""
+            role="listbox"
+            aria-label="Saves"
+          >
+            <SaveHotkeys />
+          </div>
+          <SnoozeProbe />
+        </HotkeysProvider>,
+      );
+    });
+  });
+
+  afterEach(async () => {
+    closeSnoozeDialog();
+    await act(async () => root.unmount());
+    host.remove();
+    pool.clear();
+    clearSaveSelection();
+    vi.unstubAllGlobals();
+  });
+
+  it("binds P and H without colliding in either profile", () => {
+    expect(shortcutGlyphs("save.mark-processed")).toEqual(["P"]);
+    expect(shortcutGlyphs("save.snooze")).toEqual(["H"]);
+    for (const profile of ["pond", "eagle"] as const) {
+      const preferences = { profile, overrides: {} };
+      expect(
+        shortcutConflict("save.mark-processed", "P", preferences),
+      ).toBeNull();
+      expect(shortcutConflict("save.snooze", "H", preferences)).toBeNull();
+    }
+  });
+
+  it("marks only Saves waiting in the Inbox processed", async () => {
+    await act(async () => selectOnlySave("library"));
+    await press("p");
+    expect(edits).toEqual([]);
+
+    await act(async () => {
+      selection.set(["waiting", "library"]);
+      primarySelection.set("waiting");
+    });
+    await press("p");
+    expect(edits).toEqual([
+      { ids: ["waiting"], operation: { kind: "inbox", state: "processed" } },
+    ]);
+  });
+
+  it("follows the primary Save when the viewer has moved past the selection", async () => {
+    await act(async () => {
+      selection.set(["library"]);
+      primarySelection.set("waiting");
+    });
+    await press("p");
+    expect(edits).toEqual([
+      { ids: ["waiting"], operation: { kind: "inbox", state: "processed" } },
+    ]);
+  });
+
+  it("opens the snooze picker for a waiting Save", async () => {
+    await act(async () => selectOnlySave("library"));
+    await press("h");
+    expect(snoozing()).toBe("");
+
+    await act(async () => selectOnlySave("waiting"));
+    await press("h");
+    expect(snoozing()).toBe("waiting");
   });
 });

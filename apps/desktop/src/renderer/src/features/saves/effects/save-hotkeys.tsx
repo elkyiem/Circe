@@ -16,16 +16,19 @@ import {
   purgeForever,
   refreshSaveMetadata,
   resolveFileIndex,
-  trashSave,
   untrashSave,
 } from "@/features/saves/lib/actions";
-import { ensureSaves } from "@/features/saves/lib/ensure-saves";
 import { addSavesToLastUsedFolder } from "@/features/saves/lib/folder-actions";
+import {
+  markProcessed,
+  waitingInInbox,
+} from "@/features/saves/lib/inbox-actions";
 import { saveOwnsKeyboard } from "@/features/saves/lib/keyboard-owner";
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
+import {
+  type FolderPickerMode,
+  saveLibraryBridge,
+} from "@/features/saves/lib/library-bridge";
 import { rateSaves } from "@/features/saves/lib/rating";
-import { openSave, saveIdFromPath } from "@/features/saves/lib/save-nav";
-import { selectOnlySave } from "@/features/saves/lib/select";
 import {
   copyFilesForSelection,
   copyIdsForSelection,
@@ -39,12 +42,18 @@ import {
   refreshDetailsForSelection,
   revealFilesForSelection,
   type SelectionActionResult,
-  trashSelection,
 } from "@/features/saves/lib/selection";
 import {
   splitIntoSaves,
   splitTargetIds,
 } from "@/features/saves/lib/split-save";
+import {
+  moveSavesToTrash,
+  moveSelectionToTrash,
+  showResult,
+  skipSave,
+  toggleFavorite,
+} from "@/features/saves/lib/triage";
 import { pool } from "@/features/saves/state/pool";
 import { resultNavigation } from "@/features/saves/state/result-navigation";
 import {
@@ -52,9 +61,8 @@ import {
   selection,
   useSelectionSize,
 } from "@/features/saves/state/selection";
-import { tumbleToTrash } from "@/features/saves/state/trash-tumble";
+import { openSnoozeDialog } from "@/features/saves/state/snooze-dialog";
 import type { Save } from "@/features/saves/types";
-import { getAppRouter } from "@/shared/lib/app-router";
 import { appHotkeyBlockedByEditable } from "@/shared/lib/editable-target";
 import {
   bindingKeys,
@@ -91,6 +99,18 @@ function withSelection(
   };
 }
 
+/** The viewer moves the primary Save without clearing the grid selection, so one selected id may be stale. */
+function targetIds(): readonly string[] {
+  const selected = selection.snapshot();
+  const primary = primarySelectionStore.state.id;
+  if (selected.length > 1) return selected;
+  return primary ? [primary] : [];
+}
+
+function openFolderPicker(mode: FolderPickerMode): void {
+  saveLibraryBridge.openFolderPicker(targetIds(), mode);
+}
+
 function canCopyPrimaryMedia(save: Save): boolean {
   return copyableImageIndex(save) != null || resolveFileIndex(save) != null;
 }
@@ -112,14 +132,7 @@ export function SaveHotkeys() {
           advance && current ? await resultNavigation.next(current, 1) : null;
         await rateSaves(ids, rating);
         if (!next || primarySelectionStore.state.id !== primary) return;
-        await ensureSaves([next]);
-        if (primarySelectionStore.state.id !== primary) return;
-        const detail =
-          saveIdFromPath(getAppRouter()?.state.location.pathname ?? "") !==
-          null;
-        selectOnlySave(next);
-        if (detail) openSave(next);
-        else await resultNavigation.reveal(next);
+        await showResult(next, primary);
       })
       .catch(() => {
         notify({
@@ -134,25 +147,38 @@ export function SaveHotkeys() {
     [
       {
         hotkey: bindingKeys(shortcuts, "save.assign-folders"),
-        callback: () => {
-          const selected = selection.snapshot();
-          const primary = primarySelectionStore.state.id;
-          saveLibraryBridge.openFolderPicker(
-            selected.length ? selected : primary ? [primary] : [],
-          );
-        },
+        callback: () => openFolderPicker("all"),
+        options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.assign-multiple-folders"),
+        callback: () => openFolderPicker("multiple"),
+        options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.add-to-recent-folder"),
+        callback: () => openFolderPicker("recent"),
         options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
       },
       {
         hotkey: bindingKeys(shortcuts, "save.add-to-last-folder"),
-        callback: () => {
-          const selected = selection.snapshot();
-          const primary = primarySelectionStore.state.id;
-          void addSavesToLastUsedFolder(
-            selected.length ? selected : primary ? [primary] : [],
-          );
-        },
+        callback: () => void addSavesToLastUsedFolder(targetIds()),
         options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.favorite"),
+        callback: () => void toggleFavorite(targetIds()),
+        options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.skip"),
+        callback: () => void skipSave(1),
+        options: { enabled: hasPrimary, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.skip-back"),
+        callback: () => void skipSave(-1),
+        options: { enabled: hasPrimary, ignoreInputs: true },
       },
       ...RATING_COMMANDS.flatMap((command) => [
         {
@@ -314,17 +340,30 @@ export function SaveHotkeys() {
         options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
       },
       {
+        hotkey: bindingKeys(shortcuts, "save.mark-processed"),
+        callback: () => void markProcessed(waitingInInbox(targetIds())),
+        options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
+        hotkey: bindingKeys(shortcuts, "save.snooze"),
+        callback: () => {
+          const ids = waitingInInbox(targetIds());
+          if (ids.length > 0) openSnoozeDialog(ids);
+        },
+        options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
+      },
+      {
         hotkey: bindingKeys(shortcuts, "save.trash"),
         callback: () => {
           const ids = selection.snapshot();
           if (ids.length > 0) {
-            void tumbleToTrash([...ids]).then(() => trashSelection(ids));
+            void moveSelectionToTrash(ids);
             return;
           }
           const save = primarySave();
           if (!save) return;
           if (save.deletedAt) void untrashSave(save);
-          else void tumbleToTrash([save.id]).then(() => trashSave(save));
+          else void moveSavesToTrash([save.id]);
         },
         options: { enabled: hasPrimary || hasMulti, ignoreInputs: true },
       },

@@ -10,7 +10,15 @@ import { stringifyWebValue } from "../../shared/web-serialization";
 import { registerSyncActionListener } from "../core/executor";
 import { getPrefs, setVideoDownloadPrefs } from "../core/prefs";
 import { registerTransferDelivery } from "../core/transfer-delivery";
-import { canRedo, canUndo, redo, undo, undoRevision } from "../core/undo";
+import {
+  canRedo,
+  canUndo,
+  redoLatest,
+  redoStep,
+  undoLatest,
+  undoRevision,
+  undoStep,
+} from "../core/undo";
 import { libraryLocationOpenQueries } from "../ipc/queries/library-location-open";
 import { toWireSyncAction } from "../ipc/wire";
 import { subscribeBroadcast } from "../lib/broadcast";
@@ -217,17 +225,22 @@ export async function startWebHost() {
       });
     },
     history: async (action) => {
-      const ok = action
-        ? await (action.kind === "undo"
-            ? undo(action.revision)
-            : redo(action.revision))
-        : undefined;
-      return {
-        ok,
+      const state = () => ({
         revision: undoRevision(),
         canUndo: canUndo(),
         canRedo: canRedo(),
-      };
+      });
+      if (!action) return state();
+      if ("step" in action) {
+        const outcome = await (action.kind === "undoStep"
+          ? undoStep(action.step)
+          : redoStep(action.step));
+        return { outcome, ...state() };
+      }
+      const result = await (action.kind === "undo"
+        ? undoLatest(action.revision)
+        : redoLatest(action.revision));
+      return { ...result, ...state() };
     },
     mutate: applyWebTransactions,
     command: async (input) =>

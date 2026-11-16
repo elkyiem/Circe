@@ -173,6 +173,90 @@ exports.liveCases = [
     },
   },
   {
+    id: "live.downloader-export-page-files",
+    queries: ["downloader.exportFiles", "saves.list", "saves.bulkEdit"],
+    async verify({ query, native, mode, nonce }) {
+      // Two distinct PNGs a page linked to, served from loopback.
+      const png = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+        "base64",
+      );
+      const server = createServer((request, response) => {
+        if (!/^\/(one|two)-/.test(request.url)) {
+          response.statusCode = 404;
+          response.end();
+          return;
+        }
+        response.setHeader("content-type", "image/png");
+        response.setHeader("content-length", png.length);
+        response.end(png);
+      });
+      await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const base = `http://127.0.0.1:${server.address().port}`;
+      const page = `${base}/page-${nonce}`;
+      const files = [`${base}/one-${nonce}.png`, `${base}/two-${nonce}.png`];
+      try {
+        const saved = await query("downloader.exportFiles", {
+          url: page,
+          title: `E2E page files ${nonce}`,
+          files,
+          destination: "library",
+        });
+        assert.deepEqual(saved, { ok: true, paths: [] });
+        const save = (await query("saves.list", { limit: 10000 })).find(
+          (row) => row.url === page,
+        );
+        assert.ok(save, "the page's files became one Save");
+        assert.equal(
+          save.files.filter((file) => file.kind === "image").length,
+          2,
+        );
+
+        const before = native.downloads.length;
+        const exported = await query("downloader.exportFiles", {
+          url: page,
+          title: null,
+          files,
+          destination: "file",
+        });
+        assert.equal(exported.ok, true, JSON.stringify(exported));
+        if (mode === "web") {
+          // Browsers receive several files as one zip download.
+          assert.deepEqual(exported.paths, []);
+          const deadline = Date.now() + 60000;
+          while (native.downloads.length === before && Date.now() < deadline)
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          const file = native.downloads.at(-1);
+          while (!native.completed.has(file) && Date.now() < deadline)
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          assert.match(file, /\.zip$/);
+          assert.equal(readFileSync(file).subarray(0, 2).toString(), "PK");
+        } else {
+          assert.equal(exported.paths.length, 2);
+          for (const path of exported.paths) {
+            assert.ok(
+              realpathSync(path).startsWith(realpathSync(native.exportFolder)),
+              path,
+            );
+            assert.deepEqual(readFileSync(path), png);
+          }
+        }
+        return { savedToLibrary: true, exportedFiles: true };
+      } finally {
+        const rows = (await query("saves.list", { limit: 10000 })).filter(
+          (row) => row.url === page,
+        );
+        if (rows.length)
+          await query("saves.bulkEdit", {
+            ids: rows.map((row) => row.id),
+            operation: { kind: "purge" },
+          });
+        server.closeAllConnections();
+        await new Promise((resolve) => server.close(resolve));
+      }
+    },
+  },
+  {
     id: "live.mymind-rejects-invalid-key",
     queries: ["accounts.connectMymind", "accounts.list"],
     async verify({ query }) {

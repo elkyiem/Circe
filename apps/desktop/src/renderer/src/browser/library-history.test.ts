@@ -63,3 +63,30 @@ it("uses explicit navigation and rejects ambiguous or invalid scope parameters",
   history.push("/");
   expect(history.location.href).toBe("/");
 });
+it("keeps the Inbox and split posts, which also live at the root, through reloads", () => {
+  const { history, state, detach } = browser("/");
+  state.setNav({ kind: "inbox" });
+  history.push("/");
+  expect(history.location.href).toBe("/?scope=inbox");
+  expect(state.getNav()).toEqual({ kind: "inbox" });
+  state.setNav({ kind: "inbox", snoozed: true });
+  history.push("/");
+  expect(state.getNav()).toEqual({ kind: "inbox", snoozed: true });
+  expect(browser(history.location.href).state.getNav()).toEqual({
+    kind: "inbox",
+    snoozed: true,
+  });
+  state.setNav({ kind: "post", key: "instagram:abc", title: "A carousel" });
+  history.push("/");
+  expect(history.location.href).toBe(
+    "/?post=instagram%3Aabc&postTitle=A+carousel",
+  );
+  expect(browser(history.location.href).state.getNav()).toEqual({
+    kind: "post",
+    key: "instagram:abc",
+    title: "A carousel",
+  });
+  history.back();
+  expect(state.getNav()).toEqual({ kind: "inbox", snoozed: true });
+  detach();
+});

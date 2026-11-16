@@ -1,17 +1,20 @@
-import { IconBookmark, IconTriangleWarning, IconXmark } from "@pond/icons";
+import { IconTag, IconTriangleWarning, IconXmark } from "@pond/icons";
 import { sensitiveContentBand } from "@pond/schema/content-safety";
-import { Button, Empty, Pane, Tabs } from "@pond/ui";
+import { Button, Empty, Pane, Rating, Tabs } from "@pond/ui";
 import { mediaEmbeddingVersion } from "@shared/embeddings";
 import { useEffect, useMemo, useState } from "react";
 import { DISABLED_HINTS, TASK_ENABLED } from "@/features/enrichment";
 import { ColorSwatch } from "@/features/saves/components/detail/color-swatch";
 import { SaveInfoSections } from "@/features/saves/components/detail/info-sections";
 import { KebabMenu } from "@/features/saves/components/detail/kebab";
-import { RatingStars } from "@/features/saves/components/detail/rating";
 import { RelatedSaves } from "@/features/saves/components/detail/related-saves";
 import { useRetainedSaves, useSaves } from "@/features/saves/hooks/use-saves";
 import { ensureSaves, reloadSaves } from "@/features/saves/lib/ensure-saves";
-import { saveLibraryBridge } from "@/features/saves/lib/library-bridge";
+import { changeSaveFolders } from "@/features/saves/lib/folder-actions";
+import {
+  type SaveFolderReference,
+  saveLibraryBridge,
+} from "@/features/saves/lib/library-bridge";
 import { sensitiveContentMenuItem } from "@/features/saves/lib/menu/sensitive";
 import { bulkMutation } from "@/features/saves/lib/mutate";
 import { pool } from "@/features/saves/state/pool";
@@ -33,7 +36,9 @@ import { AssignMenu, type AssignOption } from "./assign-menu";
 import { AssignmentChip } from "./chip";
 import { EnrichedText } from "./enriched-text";
 import { ratingMenu, SaveFacts } from "./facts";
+import { FavoriteRow } from "./favorite";
 import { SaveIdentity } from "./identity";
+import { InboxSection } from "./inbox";
 import { SaveNote } from "./note";
 import { SavePreviews } from "./previews";
 import { SourceCard } from "./source-card";
@@ -76,6 +81,32 @@ function folderOptions(folders: readonly InspectorFolder[]): FolderOption[] {
     return parts.join(" / ");
   };
   return folders.map((folder) => ({ ...folder, path: path(folder) }));
+}
+
+function CloseDetails() {
+  return (
+    <Button
+      type="button"
+      icon
+      size="sm"
+      variant="ghost"
+      aria-label="Close Details"
+      onClick={saveLibraryBridge.closeDetails}
+    >
+      <IconXmark />
+    </Button>
+  );
+}
+
+export function EmptySaveInspector() {
+  return (
+    <section className={styles.root} aria-label="Details">
+      <Empty.Root role="status">
+        <Empty.Title>Nothing selected</Empty.Title>
+        <Empty.Description>Select a save to see its details.</Empty.Description>
+      </Empty.Root>
+    </section>
+  );
 }
 
 export function SaveInspector({
@@ -183,7 +214,7 @@ export function SaveInspector({
     key,
     label: name,
     crumb: tagGroupOf.get(key),
-    icon: <IconBookmark />,
+    icon: <IconTag />,
     state: applied.has(key) ? "on" : tagCounts.has(key) ? "mixed" : "off",
   }));
   const suggestedTags = new Set(
@@ -218,14 +249,12 @@ export function SaveInspector({
     await reloadSaves(targets);
   }
 
-  async function assignFolder(folderId: string, add: boolean) {
-    await window.pond.query("folders.assign", {
-      saveIds: [...ids],
-      addIds: add ? [folderId] : [],
-      removeIds: add ? [] : [folderId],
+  async function assignFolder(folder: SaveFolderReference, add: boolean) {
+    await changeSaveFolders({
+      saveIds: ids,
+      add: add ? [folder] : [],
+      remove: add ? [] : [folder],
     });
-    if (add) saveLibraryBridge.rememberFolderDestinations([folderId]);
-    await saveLibraryBridge.refreshFolders();
   }
 
   function createFolder(rawName: string) {
@@ -241,13 +270,13 @@ export function SaveInspector({
           (current) => current && new Set(current).add(folderId),
         );
       } else {
-        await assignFolder(folderId, true);
+        await assignFolder({ id: folderId, name }, true);
       }
     });
   }
 
   function toggleFolder(option: InspectorFolder) {
-    void run(() => assignFolder(option.id, option.count !== ids.length));
+    void run(() => assignFolder(option, option.count !== ids.length));
   }
 
   function toggleStagedFolder(option: AssignOption) {
@@ -265,14 +294,15 @@ export function SaveInspector({
     setFailure(null);
     setApplyingFolderBatch(true);
     try {
-      const addIds = [...stagedFolderIds];
-      await window.pond.query("folders.assign", {
-        saveIds: [...ids],
-        addIds,
-        removeIds: [],
+      const staged = [...stagedFolderIds];
+      await changeSaveFolders({
+        saveIds: ids,
+        add: staged.map((id) => ({
+          id,
+          name: folderNames.get(id) ?? "Folder",
+        })),
+        remove: [],
       });
-      saveLibraryBridge.rememberFolderDestinations(addIds);
-      await saveLibraryBridge.refreshFolders();
       setStagedFolderIds(null);
     } catch (error) {
       setFailure({
@@ -342,6 +372,7 @@ export function SaveInspector({
               <strong>{ids.length}</strong> items selected
             </p>
           ) : null}
+          <InboxSection saves={saves} />
           <SaveIdentity
             key={targetKey}
             save={single}
@@ -454,9 +485,7 @@ export function SaveInspector({
                     count={folder.count}
                     total={ids.length}
                     removeLabel={`Remove folder ${folder.path}`}
-                    onRemove={() =>
-                      void run(() => assignFolder(folder.id, false))
-                    }
+                    onRemove={() => void run(() => assignFolder(folder, false))}
                   />
                 ))}
             </AssignmentChip.List>
@@ -483,10 +512,11 @@ export function SaveInspector({
                     <PropertyList.Row>
                       <PropertyList.Label>Rating</PropertyList.Label>
                       <div className={styles.rating}>
-                        <RatingStars value={rating} onChange={setRating} />
+                        <Rating value={rating} onValueChange={setRating} />
                       </div>
                     </PropertyList.Row>
                   </SpecContextMenu>
+                  <FavoriteRow saves={saves} />
                   <SaveFacts save={single} />
                 </>
               }
@@ -514,9 +544,9 @@ export function SaveInspector({
                 <PropertyList.Row>
                   <PropertyList.Label>Rating</PropertyList.Label>
                   <div className={styles.rating}>
-                    <RatingStars
+                    <Rating
                       value={rating}
-                      onChange={(next) =>
+                      onValueChange={(next) =>
                         void run(async () => {
                           await bulkMutation([...ids], {
                             kind: "rating",
@@ -530,6 +560,7 @@ export function SaveInspector({
                     ) : null}
                   </div>
                 </PropertyList.Row>
+                <FavoriteRow saves={saves} />
               </PropertyList.Root>
             </Section>
           )}
@@ -564,16 +595,7 @@ export function SaveInspector({
         }
       >
         {single ? <KebabMenu save={single} fileIndex={fileIndex} /> : null}
-        <Button
-          type="button"
-          icon
-          size="sm"
-          variant="ghost"
-          aria-label="Close Details"
-          onClick={saveLibraryBridge.closeDetails}
-        >
-          <IconXmark />
-        </Button>
+        <CloseDetails />
       </Pane.Header>
       {single ? (
         <>

@@ -43,7 +43,7 @@ import { WebReplayRequestSchema } from "../../shared/web-replay-contracts";
 import { stringifyWebValue } from "../../shared/web-serialization";
 import { WebVideoRequestSchema } from "../../shared/web-video-contracts";
 import { WebWatchedFolderRequestSchema } from "../../shared/web-watched-folder-contracts";
-import type { WireSyncAction } from "../../shared/wire";
+import type { UndoStepOutcome, WireSyncAction } from "../../shared/wire";
 import { LibraryTransitionError, libraryAccess } from "../core/library-access";
 import {
   createWebSessions,
@@ -107,10 +107,17 @@ export interface WebHost {
   subscribeStatus?: (
     listener: (event: { name: string; data: string }) => void,
   ) => () => void;
-  history?: (action?: {
-    kind: "undo" | "redo";
-    revision: number;
-  }) => Promise<ReturnType<typeof WebHistorySchema.parse> & { ok?: boolean }>;
+  history?: (
+    action?:
+      | { kind: "undo" | "redo"; revision: number }
+      | { kind: "undoStep" | "redoStep"; step: string },
+  ) => Promise<
+    ReturnType<typeof WebHistorySchema.parse> & {
+      ok?: boolean;
+      step?: string | null;
+      outcome?: UndoStepOutcome;
+    }
+  >;
   mutate?: (
     input: ReturnType<typeof WebTransactionsSchema.parse>,
     libraryId: string,
@@ -427,10 +434,16 @@ export function createWebApp(host: WebHost) {
   app.post("/web/history", async (c) => {
     if (!host.history) return c.notFound();
     const input = z
-      .strictObject({
-        kind: z.enum(["undo", "redo"]),
-        revision: z.number().int().nonnegative(),
-      })
+      .union([
+        z.strictObject({
+          kind: z.enum(["undo", "redo"]),
+          revision: z.number().int().nonnegative(),
+        }),
+        z.strictObject({
+          kind: z.enum(["undoStep", "redoStep"]),
+          step: z.string().min(1).max(64),
+        }),
+      ])
       .parse(await c.req.json());
     const result = await host.history(input);
     return result.ok === false

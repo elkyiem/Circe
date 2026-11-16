@@ -1,4 +1,8 @@
 import { resolveFileIndex } from "@/features/saves/lib/actions";
+import {
+  endSaveDragSession,
+  startSaveDragSession,
+} from "@/features/saves/state/drag-session";
 import { pool } from "@/features/saves/state/pool";
 import { selection } from "@/features/saves/state/selection";
 import { formatPlural } from "@/shared/lib/format";
@@ -19,6 +23,7 @@ export interface SaveDragDataTransfer {
 
 export interface SaveDragStartEvent {
   readonly dataTransfer: SaveDragDataTransfer | null;
+  readonly altKey?: boolean;
   preventDefault(): void;
 }
 
@@ -67,7 +72,7 @@ function createDragPreview(ids: readonly string[]): HTMLElement {
   for (const [index, id] of ids.slice(0, 3).entries()) {
     const layer = document.createElement("div");
     const offset = index * 5;
-    layer.style.cssText = `position:absolute;inset:${offset}px ${12 - offset}px ${12 - offset}px ${offset}px;overflow:hidden;background:var(--ds-gray-3,#e5e5e5);border:1px solid color-mix(in srgb,var(--ds-gray-12,#111),transparent 82%);border-radius:10px;box-shadow:0 4px 12px rgb(0 0 0 / 20%);`;
+    layer.style.cssText = `position:absolute;inset:${offset}px ${12 - offset}px ${12 - offset}px ${offset}px;overflow:hidden;background:var(--ds-background-tertiary,#e5e5e5);border:1px solid color-mix(in srgb,var(--ds-foreground-primary,#111),transparent 82%);border-radius:10px;box-shadow:0 4px 12px rgb(0 0 0 / 20%);`;
     const image = cardImage(id);
     if (image) {
       /** SAFETY: cloning an img element always yields an img element. */
@@ -83,7 +88,7 @@ function createDragPreview(ids: readonly string[]): HTMLElement {
   const count = document.createElement("span");
   count.textContent = formatPlural(ids.length, SAVES);
   count.style.cssText =
-    "position:absolute;right:0;bottom:0;display:flex;align-items:center;min-height:24px;padding:0 8px;color:white;font:600 11px/1 system-ui,sans-serif;background:var(--ds-accent-9,#1677ff);border:2px solid white;border-radius:999px;box-shadow:0 2px 8px rgb(0 0 0 / 24%);white-space:nowrap;";
+    "position:absolute;right:0;bottom:0;display:flex;align-items:center;min-height:24px;padding:0 8px;color:white;font:600 11px/1 system-ui,sans-serif;background:var(--ds-accent,#1677ff);border:2px solid white;border-radius:999px;box-shadow:0 2px 8px rgb(0 0 0 / 24%);white-space:nowrap;";
   preview.append(count);
   document.body.append(preview);
   return preview;
@@ -170,6 +175,7 @@ function installNativeSessionListeners(): void {
 
 export function endSaveDrag(): void {
   draggingIds = [];
+  endSaveDragSession();
   removeSessionListeners?.();
   document.body.removeAttribute("data-save-dragging");
   dragPreview?.remove();
@@ -181,13 +187,25 @@ export function beginSaveDrag(id: string, event?: SaveDragStartEvent): void {
   const selected = selection.has(id) ? [...selection.snapshot()] : [id];
   draggingIds = selected;
   document.body.dataset.saveDragging = String(selected.length);
-  announce(`${formatPlural(selected.length, SAVES)} ready to add to a folder`);
   const ids = selected.filter((saveId) => {
     const save = pool.get(saveId);
     return save ? resolveFileIndex(save) != null : false;
   });
-  if (ids.length > 0 && !isBrowserRuntime()) {
-    /** `startDrag` only adds files to Chromium's drag; running both strands this window in a drag that never ends. */
+  startSaveDragSession({ ids: selected, hasFiles: ids.length > 0 });
+  /**
+   * Default is the in-app drag, which drops onto folders and stays reliable on
+   * Wayland; holding Option starts the native drag that carries the file to the OS.
+   * @remarks `startDrag` only adds files to Chromium's drag; running both strands this window in a drag that never ends.
+   * Browsers have no native file drag, so Option keeps the in-app drag there.
+   */
+  const nativeDrag =
+    event?.altKey === true && ids.length > 0 && !isBrowserRuntime();
+  announce(
+    nativeDrag
+      ? `${formatPlural(selected.length, SAVES)} ready to drag as a file`
+      : `${formatPlural(selected.length, SAVES)} ready to add to a folder`,
+  );
+  if (nativeDrag) {
     event?.preventDefault();
     installNativeSessionListeners();
     const fileIndexes: Record<string, number> = {};

@@ -1,6 +1,9 @@
+import { splitPostPredicate } from "@pond/schema/filters/fields";
 import type { LibraryQueryRequest } from "@shared/library-query";
 import { recentlyAddedSince } from "@shared/recently-added";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { searchViewFor } from "@/features/library/lib/search-view";
+import { combineQueries } from "@/features/library/lib/smart-folders";
 import {
   useFolderMemberships,
   useFolders,
@@ -29,6 +32,7 @@ import {
 } from "@/features/saves/tag-picker";
 import type { Save } from "@/features/saves/types";
 import { keywordScopesFromPrefs, useRetrievalOverlay } from "@/features/search";
+import { inboxScope } from "@/shared/lib/library-nav";
 import { usePrefs } from "@/shared/state/prefs";
 import { useRetainedTagPickerSaves } from "./retain-tag-picker-saves";
 
@@ -40,19 +44,21 @@ export function useNarrowedSaves(mode: SaveListMode, sourceFilter: string) {
   const recents = useRecents();
   const query = useEffectiveFilterQuery();
   const keywords = useSearchText();
-  const searchScope = useSearchScope();
+  const nav = useLibraryNav();
+  const searchScope = useSearchScope(searchViewFor(mode, nav));
   const sortKey = useSortKey();
   const sortDir = useSortDir();
   const randomSeed = useRandomSeed();
   const [folderViews, , viewsReady] = usePrefs("folderViews");
   const [searchPrefs] = usePrefs("search");
   const includeSubfolders = useIncludeSubfolders();
-  const nav = useLibraryNav();
   const memberships = useFolderMemberships();
   const folders = useFolders();
   const folderId = nav.kind === "folder" ? nav.id : null;
   const searchEverywhere = searchScope === "all" && keywords.trim().length > 0;
   const recentlyAdded = !searchEverywhere && mode === "recentlyAdded";
+  const postKey = !searchEverywhere && nav.kind === "post" ? nav.key : null;
+  const ascending = postKey !== null || (!recentlyAdded && sortDir === "asc");
   // A visit rewrites recents for every collection. Only Recents queries by those ids.
   const recentSaveIds = useMemo(
     () => (mode === "recents" ? recents.map((entry) => entry.saveId) : null),
@@ -73,13 +79,18 @@ export function useNarrowedSaves(mode: SaveListMode, sourceFilter: string) {
   }, [folderId, folderViews, viewsReady]);
   const request = useMemo<LibraryQueryRequest>(
     () => ({
-      query,
+      query: postKey
+        ? combineQueries([
+            query,
+            { combinator: "and", rules: [splitPostPredicate(postKey)] },
+          ])
+        : query,
       keywords,
       keywordScopes: keywordScopesFromPrefs(searchPrefs.scopes),
-      sortKey: recentlyAdded ? "savedAt" : sortKey,
+      sortKey: recentlyAdded ? "savedAt" : postKey ? "post" : sortKey,
       randomSeed,
       orderFolderId: searchEverywhere ? undefined : (folderId ?? undefined),
-      sortDir: !recentlyAdded && sortDir === "asc" ? "asc" : "desc",
+      sortDir: ascending ? "asc" : "desc",
       scope: {
         savedSince:
           recentlyAdded && addedSince !== null ? addedSince : undefined,
@@ -87,6 +98,10 @@ export function useNarrowedSaves(mode: SaveListMode, sourceFilter: string) {
         source: searchEverywhere ? undefined : sourceFilter || undefined,
         untagged: !searchEverywhere && mode === "untagged",
         uncategorized: !searchEverywhere && nav.kind === "uncategorized",
+        inbox:
+          !searchEverywhere && nav.kind === "inbox"
+            ? inboxScope(nav)
+            : undefined,
         folderIds:
           !searchEverywhere && nav.kind === "folder"
             ? [
@@ -108,10 +123,11 @@ export function useNarrowedSaves(mode: SaveListMode, sourceFilter: string) {
       searchPrefs.scopes,
       searchEverywhere,
       recentlyAdded,
+      postKey,
       sortKey,
       randomSeed,
       folderId,
-      sortDir,
+      ascending,
       mode,
       sourceFilter,
       nav,

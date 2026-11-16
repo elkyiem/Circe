@@ -287,7 +287,7 @@ exports.verifyBrowserLibraries = async function verifyBrowserLibraries({
       ))
     )
       await click('[aria-label="Toggle Sidebar"]');
-    await click('[aria-label="Library Menu"]');
+    await click("[data-library-menu]");
     await clickText('[role="menuitem"]', "Switch Library");
   };
   const menuAction = async (name) => {

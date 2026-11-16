@@ -1,4 +1,5 @@
 import type { SavedView } from "@pond/schema/db";
+import { splitPostPredicate } from "@pond/schema/filters/fields";
 import { EMPTY_QUERY, type Query } from "@pond/schema/filters/types";
 import type { QueryInput } from "@shared/query-contracts";
 import { useSelector } from "@tanstack/react-store";
@@ -17,12 +18,16 @@ import {
   setInheritedQuery,
 } from "@/features/library/state/view-store";
 import { descendantFolderIds } from "@/features/saves";
+import { inboxScope } from "@/shared/lib/library-nav";
 
-export interface SavedViewEditorRequest {
-  token: number;
-  kind: "smart_folder" | "group";
-  parentId: string | null;
-}
+export type SavedViewEditorRequest =
+  | {
+      token: number;
+      mode: "create";
+      kind: "smart_folder" | "group";
+      parentId: string | null;
+    }
+  | { token: number; mode: "edit"; viewId: string };
 
 interface SavedViewsState {
   views: SavedView[];
@@ -34,7 +39,12 @@ interface SavedViewsState {
 const store = new Store<SavedViewsState>({
   views: [],
   editingId: null,
-  editorRequest: { token: 0, kind: "smart_folder", parentId: null },
+  editorRequest: {
+    token: 0,
+    mode: "create",
+    kind: "smart_folder",
+    parentId: null,
+  },
   loaded: false,
 });
 
@@ -60,11 +70,18 @@ function currentQuery(): Query {
       combinator: "and",
       rules: [{ field: "tags", operator: "some", value: [nav.name] }],
     };
+  } else if (nav.kind === "inbox") {
+    scope = {
+      combinator: "and",
+      rules: [{ field: "inbox", operator: "eq", value: inboxScope(nav) }],
+    };
   } else if (nav.kind === "uncategorized") {
     scope = {
       combinator: "and",
       rules: [{ field: "folder", operator: "empty", value: null }],
     };
+  } else if (nav.kind === "post") {
+    scope = { combinator: "and", rules: [splitPostPredicate(nav.key)] };
   }
   return combineQueries([inheritedQuery, query, scope]);
 }
@@ -90,8 +107,19 @@ export const savedViews = {
       ...state,
       editorRequest: {
         token: state.editorRequest.token + 1,
+        mode: "create",
         kind: input.kind,
         parentId: input.parentId ?? null,
+      },
+    }));
+  },
+  editView(viewId: string): void {
+    store.setState((state) => ({
+      ...state,
+      editorRequest: {
+        token: state.editorRequest.token + 1,
+        mode: "edit",
+        viewId,
       },
     }));
   },

@@ -431,7 +431,7 @@ exports.verifyBrowserPwaShell = async function verifyBrowserPwaShell({
   const preferencesScreen = async () => {
     await libraryScreen();
     await sidebar(true);
-    await click('[aria-label="Library Menu"]');
+    await click("[data-library-menu]");
     await click(
       await mark(
         "[role=menuitem]",

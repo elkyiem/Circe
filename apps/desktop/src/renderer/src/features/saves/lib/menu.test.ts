@@ -8,6 +8,7 @@ import {
   conversionDialogStore,
 } from "@/features/library/state/conversion-dialog";
 import { folders } from "@/features/library/state/folders";
+import { libraryChrome } from "@/features/library/state/library-chrome";
 import { buildViewerMenu } from "@/features/saves/components/viewers/media-viewer/lib/menu";
 import { pool } from "@/features/saves/state/pool";
 import { selection } from "@/features/saves/state/selection";
@@ -422,6 +423,44 @@ describe("buildSaveMenu", () => {
     ]);
   });
 
+  it("shows the whole post from a split Save", () => {
+    const options = {
+      clipboardEmpty: true,
+      openWithApps: previewOpenWithApps(),
+    };
+    expect(topLevelLabels(buildSaveMenu(fileSave(), options))).not.toContain(
+      "Show Post",
+    );
+    const items = buildSaveMenu(
+      fileSave({
+        rawJson: {
+          capture: {
+            id: "DAbC",
+            source: "twitter",
+            url: "https://example.test/file",
+            media: [],
+          },
+          extractorId: "twitter",
+          extractedAt: "2026-11-14T00:00:00.000Z",
+          split: { sourceId: "DAbC", media: [1] },
+        },
+      }),
+      options,
+    );
+    const showPost = items.find(
+      (item) => "label" in item && item.label === "Show Post",
+    );
+    if (!showPost || !("onClick" in showPost))
+      throw new Error("Missing Show Post action");
+    showPost.onClick?.();
+    expect(libraryChrome.getState().nav).toEqual({
+      kind: "post",
+      key: "twitter:DAbC",
+      title: "File",
+    });
+    libraryChrome.setNav({ kind: "all" });
+  });
+
   it("keeps common actions flat and reserves submenus for option families", () => {
     const items = buildSaveMenu(fileSave(), {
       clipboardEmpty: true,
@@ -436,12 +475,14 @@ describe("buildSaveMenu", () => {
       REVEAL_LABEL,
       "Open Original in Browser",
       "Replace File",
+      "Add to Inbox",
       "Add Tags",
       "Add to Folders",
       "Add to Canvas",
       "Add to Other Library",
       "Export",
       "Share",
+      "Favorite",
       "Paste Tags",
       "Find Duplicates",
       "Merge Duplicates",
@@ -778,6 +819,41 @@ describe("buildSaveMenu", () => {
     const refs = sectionItems(items, "Refs") ?? [];
     expect(refs[0]).toMatchObject({ type: "checkbox", checked: true });
     expect(refs[2]).toMatchObject({ label: "Shots", checked: false });
+  });
+
+  it("processes and snoozes a Save waiting in the Inbox", () => {
+    const items = buildSaveMenu(fileSave({ inboxState: "review" }), {
+      clipboardEmpty: true,
+    });
+    expect(topLevelLabels(items)).toEqual(
+      expect.arrayContaining(["Mark Processed", "Snooze", "Remove from Inbox"]),
+    );
+    expect(topLevelLabels(items)).not.toContain("Add to Inbox");
+    const markProcessed = visibleLeafItems(items).find(
+      (item) => "label" in item && item.label === "Mark Processed",
+    );
+    expect(markProcessed).toMatchObject({ shortcut: ["P"] });
+    expect(visibleLabels(sectionItems(items, "Snooze") ?? [])).toContain(
+      "Choose Date and Time",
+    );
+  });
+
+  it("brings a snoozed Save back without leaving the Trash in the Inbox", () => {
+    const snoozed = topLevelLabels(
+      buildSaveMenu(fileSave({ inboxState: "snoozed" }), {
+        clipboardEmpty: true,
+      }),
+    );
+    expect(snoozed).toEqual(
+      expect.arrayContaining(["Mark Processed", "Return to Inbox"]),
+    );
+    const trashed = topLevelLabels(
+      buildSaveMenu(fileSave({ inboxState: "review", deletedAt: 1 }), {
+        clipboardEmpty: true,
+      }),
+    );
+    expect(trashed).not.toContain("Mark Processed");
+    expect(trashed).not.toContain("Add to Inbox");
   });
 
   it("hides Fish for trashed saves", () => {

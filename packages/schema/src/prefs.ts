@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { ExtensionSettingsSchema } from "./browser-extension";
-import { FolderPresentationSchema } from "./folder-presentation";
+import { FileRingPrefsSchema } from "./file-ring";
+import {
+  FolderAppearancePrefsSchema,
+  FolderPresentationSchema,
+} from "./folder-presentation";
 import { FolderRulesSchema } from "./folder-rules";
+import { DEFAULT_INBOX_CHANNELS } from "./inbox";
 import {
   DEFAULT_APP_ICON,
   DEFAULT_DARK_PRESET_ID,
@@ -61,6 +66,7 @@ export const SIDEBAR_DESTINATIONS = [
   "recentlyUsed",
   "tags",
   "random",
+  "splitPosts",
   "trash",
   "sources",
   "downloads",
@@ -153,6 +159,7 @@ const sidebar = z.object({
       recentlyUsed: z.boolean().catch(true),
       tags: z.boolean().catch(true),
       random: z.boolean().catch(true),
+      splitPosts: z.boolean().catch(true),
       trash: z.boolean().catch(true),
       downloads: z.boolean().catch(true),
       sources: z.boolean().catch(true),
@@ -165,6 +172,7 @@ const sidebar = z.object({
       recentlyUsed: true,
       tags: true,
       random: true,
+      splitPosts: true,
       trash: true,
       downloads: true,
       sources: true,
@@ -207,6 +215,19 @@ const feedback = z.object({
 const trash = z.object({
   autoEmptyDays: z.number().nullable().catch(null),
   confirmBeforeEmpty: z.boolean().catch(true),
+});
+
+const inbox = z.object({
+  /** Off stops new Saves entering the Inbox from every path; Saves already there stay. */
+  enabled: z.boolean().catch(true),
+  channels: z
+    .object({
+      captures: z.boolean().catch(DEFAULT_INBOX_CHANNELS.captures),
+      sync: z.boolean().catch(DEFAULT_INBOX_CHANNELS.sync),
+      watches: z.boolean().catch(DEFAULT_INBOX_CHANNELS.watches),
+      imports: z.boolean().catch(DEFAULT_INBOX_CHANNELS.imports),
+    })
+    .catch({ ...DEFAULT_INBOX_CHANNELS }),
 });
 
 export const WindowPrefsSchema = z.object({
@@ -469,6 +490,10 @@ const shortcuts = z.object({
 const PrefsObject = z.object({
   folderRules: z.record(z.string(), FolderRulesSchema).catch({}),
   folderViews: z.record(z.string(), FolderPresentationSchema).catch({}),
+  folderAppearance: FolderAppearancePrefsSchema.catch(
+    FolderAppearancePrefsSchema.parse({}),
+  ),
+  fileRing: FileRingPrefsSchema.catch(FileRingPrefsSchema.parse({})),
   savedViewViews: z.record(z.string(), SavedViewPresentationSchema).catch({}),
   viewer: ViewerPrefsSchema.catch(ViewerPrefsSchema.parse({})),
   shortcuts: shortcuts.catch(shortcuts.parse({})),
@@ -476,6 +501,7 @@ const PrefsObject = z.object({
   sidebar: sidebar.catch(sidebar.parse({})),
   feedback: feedback.catch(feedback.parse({})),
   trash: trash.catch(trash.parse({})),
+  inbox: inbox.catch(inbox.parse({})),
   window: WindowPrefsSchema.catch(WindowPrefsSchema.parse({})),
   system: system.catch(system.parse({})),
   quickCapture: quickCapture.catch(quickCapture.parse({})),

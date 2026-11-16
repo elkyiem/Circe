@@ -607,7 +607,7 @@ exports.verifyBrowserLibraryCopyStorage =
     };
     const storageScreen = async () => {
       await libraryScreen();
-      await click('[aria-label="Library Menu"]');
+      await click("[data-library-menu]");
       await click(
         await mark(
           '[role="menuitem"]',

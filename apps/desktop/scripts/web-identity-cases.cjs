@@ -173,7 +173,7 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
     const login =
       "Boolean(document.querySelector('[data-browser-connection]'))";
     const connected =
-      'Boolean(document.querySelector(\'[aria-label="Library Menu"], [aria-label="Library Name"], [data-library-search]\'))';
+      "Boolean(document.querySelector('[data-library-menu], [aria-label=\"Library Name\"], [data-library-search]'))";
     await waitUntil(
       () =>
         run(
@@ -214,7 +214,7 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
       ))
     )
       await click('[aria-label="Toggle Sidebar"]');
-    await click('[aria-label="Library Menu"]');
+    await click("[data-library-menu]");
     await clickText('[role="menuitem"]', "Switch Library");
     await clickText('[role="menuitem"]', "Customize Library");
     await waitFor(`document.querySelector(${JSON.stringify(customize)})`);
@@ -300,7 +300,7 @@ exports.verifyBrowserIdentity = async function verifyBrowserIdentity({
     assert.equal(basename(value.path), `${name}.pond`);
     assert.equal(dirname(value.path), dirname(initial.path));
     await waitFor(
-      `document.querySelector('[aria-label="Library Menu"]')?.textContent.includes(${JSON.stringify(name)})`,
+      `document.querySelector('[data-library-menu]')?.getAttribute('aria-label') === ${JSON.stringify(name)}`,
     );
   };
 

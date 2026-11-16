@@ -4,6 +4,7 @@ import {
   mkdir,
   readFile,
   realpath,
+  rename,
   rm,
   stat,
   writeFile,
@@ -18,7 +19,10 @@ import { CombineImagesOptionsSchema } from "../../shared/combine-images-contract
 import { IPC } from "../../shared/constants";
 import { conversationMarkdown } from "../../shared/conversation-markdown";
 import { ConversionRequestSchema } from "../../shared/conversion-contracts";
-import { DownloadExportInputSchema } from "../../shared/downloader-contracts";
+import {
+  DownloadExportFilesInputSchema,
+  DownloadExportInputSchema,
+} from "../../shared/downloader-contracts";
 import type { QueryName, QueryResult } from "../../shared/query-contracts";
 import { WebCanvasRenderSchema } from "../../shared/web-canvas-contracts";
 import {
@@ -57,8 +61,10 @@ import { libraryId, libraryRoot } from "../paths";
 import { unzipWebDirectory, zipWebDirectory } from "./archives";
 import { renderWebCanvas } from "./canvas-render";
 import {
+  exportDownloadFilesForBrowser,
   exportDownloadForBrowser,
   type WebDownloadExport,
+  type WebDownloadFilesExport,
 } from "./downloader-export";
 import { createWebEagleImport } from "./eagle-import";
 import { WebRequestError } from "./errors";
@@ -280,6 +286,36 @@ export function createWebFiles(root: string) {
             exported.file,
             exported.file,
             1,
+            expected,
+          );
+        }
+      } else if (name === "downloader.exportFiles") {
+        const directory = await workDirectory();
+        const input = DownloadExportFilesInputSchema.parse(params);
+        let exported: WebDownloadFilesExport;
+        try {
+          exported = await exportDownloadFilesForBrowser(input, directory.path);
+        } catch (error) {
+          await rm(directory.path, { recursive: true, force: true });
+          throw error;
+        }
+        if (!exported.ok || "saved" in exported) {
+          await rm(directory.path, { recursive: true, force: true });
+          result = exported;
+        } else if (exported.files.length === 1 && exported.files[0]) {
+          const file = exported.files[0];
+          result = await finish(directory, file, file, 1, expected);
+        } else {
+          const output = join(directory.path, "files");
+          await mkdir(output, { mode: 0o700 });
+          for (const file of exported.files)
+            await rename(join(directory.path, file), join(output, file));
+          await zipWebDirectory(output, join(directory.path, "download.zip"));
+          result = await finish(
+            directory,
+            "Files.zip",
+            "download.zip",
+            exported.files.length,
             expected,
           );
         }

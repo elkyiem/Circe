@@ -291,6 +291,13 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
       slides.every((save) => memberships.some((row) => row.saveId === save.id)),
     );
     await query("saves.split", { ids: [original.id] });
+    // Pond 2.8 lists split carousels again as Split Posts.
+    assert.ok(
+      (await query("saves.splitPosts")).some((post) =>
+        slides.every((save) => post.saveIds.includes(save.id)),
+      ),
+      "the split carousel is listed under Split Posts",
+    );
     assert.equal(
       (await query("saves.list", { limit: 10000 })).filter(
         (row) => row.title === title,
@@ -388,7 +395,7 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
     await click("[data-save-details] video");
     await waitFor("document.querySelector('[data-save-details] video').paused");
     await click('[aria-label="Back"]');
-    await click('[aria-label="Library Menu"]');
+    await click("[data-library-menu]");
     await click(await textControl('[role="menuitem"]', "Settings"));
     await nav("Images");
     await waitFor("document.body.innerText.includes('Split Existing Saves')");

@@ -38,6 +38,7 @@ function Root({
   chrome,
   fullscreenTarget,
   initialMuted = false,
+  "aria-label": ariaLabel = "Video Player",
   ...props
 }: RootProps) {
   const {
@@ -73,7 +74,14 @@ function Root({
 
   return (
     <VideoContext value={value}>
-      <div ref={rootRef} className={cn(styles.root, className)} {...props}>
+      {/* biome-ignore lint/a11y/useSemanticElements: a media player is a group of controls, not a form fieldset. */}
+      <div
+        ref={rootRef}
+        role="group"
+        aria-label={ariaLabel}
+        className={cn(styles.root, className)}
+        {...props}
+      >
         {children}
       </div>
     </VideoContext>
@@ -82,11 +90,17 @@ function Root({
 
 interface MediaProps extends React.ComponentPropsWithoutRef<"video"> {}
 
-function Media({ className, children, ...props }: MediaProps) {
+function Media({
+  className,
+  children,
+  "aria-label": ariaLabel = "Video",
+  ...props
+}: MediaProps) {
   const { meta } = useVideo();
   return (
     <video
       ref={meta.registerVideo}
+      aria-label={ariaLabel}
       className={cn(styles.video, className)}
       playsInline
       {...props}
@@ -136,11 +150,7 @@ function PlayButton({ className, ...props }: ButtonProps) {
       aria-label={state.playing ? "Pause" : "Play"}
       {...props}
     >
-      {state.playing ? (
-        <PauseIcon width={ICON} height={ICON} />
-      ) : (
-        <PlayIcon width={ICON} height={ICON} />
-      )}
+      {state.playing ? <PauseIcon size={ICON} /> : <PlayIcon size={ICON} />}
     </button>
   );
 }
@@ -156,11 +166,7 @@ function MuteButton({ className, ...props }: ButtonProps) {
       aria-label={muted ? "Unmute" : "Mute"}
       {...props}
     >
-      {muted ? (
-        <VolumeOffIcon width={ICON} height={ICON} />
-      ) : (
-        <VolumeIcon width={ICON} height={ICON} />
-      )}
+      {muted ? <VolumeOffIcon size={ICON} /> : <VolumeIcon size={ICON} />}
     </button>
   );
 }
@@ -175,7 +181,11 @@ function CurrentTime({
 }: React.ComponentPropsWithoutRef<"span">) {
   const { state } = useVideo();
   return (
-    <span className={cn(styles.time, className)} {...props}>
+    <span
+      className={cn(styles.time, className)}
+      data-pending={state.metadataLoaded ? undefined : ""}
+      {...props}
+    >
       {formatTime(state.currentTime)}
     </span>
   );
@@ -187,7 +197,11 @@ function Duration({
 }: React.ComponentPropsWithoutRef<"span">) {
   const { state } = useVideo();
   return (
-    <span className={cn(styles.time, className)} {...props}>
+    <span
+      className={cn(styles.time, className)}
+      data-pending={state.metadataLoaded ? undefined : ""}
+      {...props}
+    >
       {formatTime(state.duration)}
     </span>
   );
@@ -202,6 +216,7 @@ function TimeDisplay({
     <div
       className={cn(styles["time-display"], className)}
       data-visible={chrome || state.controlsVisible ? "" : undefined}
+      data-pending={state.metadataLoaded ? undefined : ""}
       {...props}
     >
       <span>{formatTime(state.currentTime)}</span>
@@ -222,7 +237,7 @@ function FullscreenButton({ className, ...props }: ButtonProps) {
       aria-label={state.fullscreen ? "Exit full screen" : "Full screen"}
       {...props}
     >
-      <FullscreenIcon width={ICON} height={ICON} />
+      <FullscreenIcon size={ICON} />
     </button>
   );
 }

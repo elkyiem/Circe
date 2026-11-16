@@ -70,8 +70,19 @@ async function findToolbar(host: HTMLElement, label: string): Promise<void> {
 describe("SaveViewer", () => {
   let host: HTMLDivElement;
   let root: Root;
+  /** jsdom has no image decoding, so tests settle `decode()` explicitly. */
+  let decodes: Array<{ src: string; resolve: () => void }> = [];
 
   beforeEach(() => {
+    decodes = [];
+    Object.defineProperty(HTMLImageElement.prototype, "decode", {
+      configurable: true,
+      value(this: HTMLImageElement) {
+        return new Promise<void>((resolve) => {
+          decodes.push({ src: this.src, resolve });
+        });
+      },
+    });
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -108,6 +119,7 @@ describe("SaveViewer", () => {
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    Reflect.deleteProperty(HTMLImageElement.prototype, "decode");
     host.remove();
     resultNavigation.setSource({ ids: [] });
     vi.unstubAllGlobals();
@@ -158,6 +170,215 @@ describe("SaveViewer", () => {
     expect(host.querySelector('img[alt="Mixed viewer"]')).not.toBeNull();
     await click(host, "Next Slide");
     await findToolbar(host, "Font");
+  });
+
+  describe("stepping between images", () => {
+    const decode = (name: string) =>
+      act(async () => {
+        for (const pending of decodes) {
+          if (pending.src.includes(`/${name}`)) pending.resolve();
+        }
+      });
+    const layers = () => {
+      const images = host.querySelectorAll('img[alt="Mixed viewer"]');
+      return [...images].map((image) => {
+        let role = "current";
+        if (image.closest("[data-held]")) role = "held";
+        if (image.closest("div[data-pending]")) role = "pending";
+        const name = image.getAttribute("src")?.match(/\/(\w+)\.jpg/)?.[1];
+        return `${role} ${name}`;
+      });
+    };
+
+    it("keeps the shown image on screen until the next one decodes", async () => {
+      const save = mixedSave([
+        file("first.jpg", "image", "image/jpeg"),
+        file("second.jpg", "image", "image/jpeg"),
+      ]);
+      pool.upsert(save);
+      resultNavigation.setSource({ ids: [save.id], total: 1 });
+
+      await act(async () => root.render(<SaveViewer save={save} />));
+      await decode("first.jpg");
+      expect(layers()).toEqual(["current first"]);
+
+      await click(host, "Next Slide");
+      expect(layers()).toEqual(["held first", "pending second"]);
+      expect(labeledButton(host, "Previous Slide").disabled).toBe(false);
+      expect(labeledButton(host, "Next Slide").disabled).toBe(true);
+
+      await decode("second.jpg");
+      expect(layers()).toEqual(["current second"]);
+      const second = host.querySelector('img[src*="second.jpg"]');
+      expect(second?.hasAttribute("data-pending")).toBe(false);
+    });
+
+    it("abandons a skipped image and holds the shown one for the newest", async () => {
+      const save = mixedSave([
+        file("first.jpg", "image", "image/jpeg"),
+        file("second.jpg", "image", "image/jpeg"),
+        file("third.jpg", "image", "image/jpeg"),
+      ]);
+      pool.upsert(save);
+      resultNavigation.setSource({ ids: [save.id], total: 1 });
+
+      await act(async () => root.render(<SaveViewer save={save} />));
+      await decode("first.jpg");
+      await click(host, "Next Slide");
+      await click(host, "Next Slide");
+      expect(layers()).toEqual(["held first", "pending third"]);
+
+      await decode("second.jpg");
+      expect(layers()).toEqual(["held first", "pending third"]);
+
+      await decode("third.jpg");
+      expect(layers()).toEqual(["current third"]);
+    });
+  });
+
+  describe("stepping between Saves", () => {
+    const imageSave = (id: string): Save => ({
+      ...mixedSave([file(`${id}.jpg`, "image", "image/jpeg")]),
+      id,
+      sourceId: id,
+      mediaType: "image",
+    });
+    const videoSave = (id: string): Save => ({
+      ...mixedSave([
+        file(`${id}.mp4`, "video", "video/mp4"),
+        file(`${id}-poster.jpg`, "poster", "image/jpeg"),
+      ]),
+      id,
+      sourceId: id,
+      mediaType: "video",
+    });
+    const show = (save: Save) =>
+      act(async () => {
+        pool.upsert(save);
+        root.render(<SaveViewer save={save} />);
+      });
+    const fileName = (src: string | null | undefined) =>
+      src?.split("?")[0]?.split("/").pop();
+    const decode = (name: string) =>
+      act(async () => {
+        for (const pending of decodes) {
+          if (fileName(pending.src) === name) pending.resolve();
+        }
+      });
+    const stage = () =>
+      [...host.querySelectorAll<HTMLElement>("[data-blossom-slide]")].map(
+        (slide) => {
+          const layer = slide.closest("[data-held], div[data-pending]");
+          let role = "current";
+          if (layer?.hasAttribute("data-held")) role = "held";
+          else if (layer) role = "pending";
+          const media =
+            slide.querySelector("video")?.getAttribute("src") ??
+            slide.querySelector('img[src*=".jpg"]')?.getAttribute("src");
+          return `${role} ${fileName(media)}`;
+        },
+      );
+    const timing = () => {
+      const elapsed = host.querySelectorAll('[aria-label="Elapsed time"]');
+      const duration = host.querySelectorAll('[aria-label="Duration"]');
+      const seek = host.querySelector('[aria-label="Seek"]');
+      expect(elapsed).toHaveLength(1);
+      expect(duration).toHaveLength(1);
+      return {
+        pending: [elapsed[0], duration[0], seek].map((part) =>
+          part?.hasAttribute("data-pending"),
+        ),
+        duration: duration[0]?.textContent,
+        seekDisabled: seek?.hasAttribute("data-disabled"),
+      };
+    };
+    const loadMetadata = (name: string, seconds: number) =>
+      act(async () => {
+        const video = host.querySelector<HTMLVideoElement>(
+          `video[src*="/${name}"]`,
+        );
+        if (!video) throw new Error(`Missing ${name}`);
+        Object.defineProperty(video, "duration", {
+          configurable: true,
+          value: seconds,
+        });
+        video.dispatchEvent(new Event("loadedmetadata"));
+      });
+
+    beforeEach(() => {
+      vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+      vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(
+        () => {},
+      );
+    });
+
+    it("never lets an earlier Save's decode reveal a newer one", async () => {
+      await show(imageSave("first"));
+      await decode("first.jpg");
+      await show(imageSave("second"));
+      await show(imageSave("third"));
+      expect(stage()).toEqual(["held first.jpg", "pending third.jpg"]);
+
+      await decode("second.jpg");
+      expect(stage()).toEqual(["held first.jpg", "pending third.jpg"]);
+
+      await decode("third.jpg");
+      expect(stage()).toEqual(["current third.jpg"]);
+    });
+
+    it("keeps an incoming video's timeline pending until its metadata loads", async () => {
+      await show(imageSave("photo"));
+      await decode("photo.jpg");
+      await show(videoSave("clip"));
+
+      expect(stage()).toEqual(["held photo.jpg", "pending clip.mp4"]);
+      const pending = host.querySelector("div[data-pending]");
+      expect(
+        pending?.querySelector('img[src^="pond://clip/clip-poster.jpg"]'),
+      ).not.toBeNull();
+      expect(
+        pending?.querySelector("video")?.hasAttribute("data-pending"),
+      ).toBe(true);
+      expect(timing()).toMatchObject({
+        pending: [true, true, true],
+        seekDisabled: true,
+      });
+
+      await loadMetadata("clip.mp4", 45);
+
+      expect(timing()).toEqual({
+        pending: [false, false, false],
+        duration: "0:45",
+        seekDisabled: false,
+      });
+    });
+
+    it("never shows the previous video's duration on the next one", async () => {
+      await show(videoSave("short"));
+      await loadMetadata("short.mp4", 45);
+      expect(timing().duration).toBe("0:45");
+
+      await show(videoSave("long"));
+
+      expect(stage()).toEqual(["held short.mp4", "pending long.mp4"]);
+      const next = timing();
+      expect(next.pending).toEqual([true, true, true]);
+      expect(next.duration).not.toBe("0:45");
+
+      await loadMetadata("long.mp4", 200);
+      expect(timing().duration).toBe("3:20");
+    });
+
+    it("keeps stepping when a video's metadata never arrives", async () => {
+      await show(videoSave("stuck"));
+      expect(timing().pending).toEqual([true, true, true]);
+
+      await show(imageSave("after"));
+      await decode("after.jpg");
+
+      expect(stage()).toEqual(["current after.jpg"]);
+      expect(host.querySelector('[aria-label="Duration"]')).toBeNull();
+    });
   });
 
   it("offers Download Video until the video file arrives", async () => {

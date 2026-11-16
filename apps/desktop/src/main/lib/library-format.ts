@@ -1,4 +1,9 @@
 import type { Save } from "@pond/schema/db";
+import {
+  type InboxFields,
+  type InboxState,
+  InboxStateSchema,
+} from "@pond/schema/inbox";
 import { z } from "zod";
 
 export const INFO_FILE = "info.json";
@@ -20,6 +25,7 @@ export interface InfoFile {
 export type SaveUserData = Pick<
   Save,
   | "rating"
+  | "favorite"
   | "dominantColors"
   | "primaryColor"
   | "rotate"
@@ -28,8 +34,15 @@ export type SaveUserData = Pick<
   | "crop"
 >;
 
+/** Absent means the Save was never sent to the Inbox. */
+export interface InfoInbox {
+  state: InboxState;
+  until?: string;
+}
+
 export interface InfoDoc {
   userData?: SaveUserData;
+  inbox?: InfoInbox;
   schema: typeof INFO_SCHEMA;
   id: string;
   source: string;
@@ -61,6 +74,7 @@ export const StoredInfoDocSchema = z.object({
   userData: z
     .object({
       rating: z.number().min(0).max(5).nullable(),
+      favorite: z.boolean().catch(false),
       dominantColors: z.array(z.string()),
       primaryColor: z
         .string()
@@ -75,6 +89,10 @@ export const StoredInfoDocSchema = z.object({
         .nullable(),
     })
     .optional(),
+  inbox: z
+    .object({ state: InboxStateSchema, until: z.string().optional() })
+    .optional()
+    .catch(undefined),
   schema: z.number().int().optional(),
   id: z.string().catch(""),
   source: z.string().catch(""),
@@ -140,6 +158,25 @@ function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
 }
 
+export function infoInbox(
+  state: InboxState | null | undefined,
+  until: number | null | undefined,
+): InfoInbox | undefined {
+  if (!state) return undefined;
+  return state === "snoozed" && until != null
+    ? { state, until: new Date(until).toISOString() }
+    : { state };
+}
+
+export function inboxFromInfo(inbox: InfoInbox | undefined): InboxFields {
+  const until = inbox?.until ? Date.parse(inbox.until) : Number.NaN;
+  return {
+    inboxState: inbox?.state ?? null,
+    inboxUntil:
+      inbox?.state === "snoozed" && Number.isFinite(until) ? until : null,
+  };
+}
+
 export function infoDocFromSave(
   save: Save,
   files: InfoFile[],
@@ -148,6 +185,7 @@ export function infoDocFromSave(
   return {
     userData: {
       rating: save.rating ?? null,
+      favorite: save.favorite ?? false,
       dominantColors: save.dominantColors ?? [],
       primaryColor: save.primaryColor ?? null,
       rotate: save.rotate ?? 0,
@@ -155,6 +193,7 @@ export function infoDocFromSave(
       flipY: save.flipY ?? false,
       crop: save.crop ?? null,
     },
+    inbox: infoInbox(save.inboxState, save.inboxUntil),
     schema: INFO_SCHEMA,
     id: save.id,
     source: save.source,
@@ -184,12 +223,15 @@ export function infoDocFromSave(
 const EXPORTED_SAVE_FIELDS = [
   "files",
   "rating",
+  "favorite",
   "dominantColors",
   "primaryColor",
   "rotate",
   "flipX",
   "flipY",
   "crop",
+  "inboxState",
+  "inboxUntil",
   "importedFrom",
   "url",
   "title",
@@ -226,6 +268,7 @@ export function applyPatchToInfo(
   };
   const userFields = [
     "rating",
+    "favorite",
     "dominantColors",
     "primaryColor",
     "rotate",
@@ -236,6 +279,7 @@ export function applyPatchToInfo(
   if (userFields.some((key) => patch[key] !== undefined)) {
     next.userData = {
       rating: info.userData?.rating ?? null,
+      favorite: info.userData?.favorite ?? false,
       dominantColors: info.userData?.dominantColors ?? [],
       primaryColor: info.userData?.primaryColor ?? null,
       rotate: info.userData?.rotate ?? 0,
@@ -244,6 +288,8 @@ export function applyPatchToInfo(
       crop: info.userData?.crop ?? null,
     };
     if (patch.rating !== undefined) next.userData.rating = patch.rating;
+    if (patch.favorite !== undefined)
+      next.userData.favorite = patch.favorite ?? false;
     if (patch.dominantColors !== undefined)
       next.userData.dominantColors = patch.dominantColors ?? [];
     if (patch.primaryColor !== undefined)
@@ -254,6 +300,13 @@ export function applyPatchToInfo(
     if (patch.crop !== undefined) next.userData.crop = patch.crop;
   }
 
+  if (patch.inboxState !== undefined || patch.inboxUntil !== undefined) {
+    const current = inboxFromInfo(info.inbox);
+    next.inbox = infoInbox(
+      patch.inboxState !== undefined ? patch.inboxState : current.inboxState,
+      patch.inboxUntil !== undefined ? patch.inboxUntil : current.inboxUntil,
+    );
+  }
   if (patch.files !== undefined) next.files = infoFilesFromSave(patch.files);
   if (patch.importedFrom !== undefined)
     next.importedFrom = patch.importedFrom ?? undefined;

@@ -18,6 +18,7 @@ import {
   IconUngroup,
 } from "@pond/icons";
 import {
+  CANVAS_ITEM_LIMIT,
   type Canvas,
   type CanvasAlign,
   CanvasClipSchema,
@@ -118,6 +119,7 @@ import {
   noteAt,
   pasteOf,
   placeSaves,
+  placeSavesBeside,
   reorder,
   resizeTable,
   type StrokePoint,
@@ -208,6 +210,8 @@ const SAVE_DELAY_MS = 400;
 const PEN_SIZE = 4;
 const HIGHLIGHT_SIZE = 28;
 const CLIP_TYPE = "application/x-pond-canvas";
+/** Past this many items only on-screen ones mount, so a folder's worth of Save cards doesn't stall panning. */
+const LARGE_BOARD = 400;
 
 function parseClip(raw: string): CanvasSnapshot | null {
   if (!raw) return null;
@@ -454,13 +458,29 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
   }, [flow]);
 
   const addSaves = useCallback(
-    (saveIds: readonly string[], at?: XYPosition) => {
+    (saveIds: readonly string[], at?: XYPosition | "beside") => {
       const onBoard = new Set(
         latest.current.nodes.flatMap((node) =>
           node.type === "save" ? [node.data.saveId] : [],
         ),
       );
-      const fresh = [...new Set(saveIds)].filter((id) => !onBoard.has(id));
+      const fresh = [...new Set(saveIds)]
+        .filter((id) => !onBoard.has(id))
+        .slice(0, Math.max(0, CANVAS_ITEM_LIMIT - latest.current.nodes.length));
+      if (at === "beside") {
+        const items = placeSavesBeside(fresh, current().items, viewCenter());
+        insert(items);
+        if (items.length)
+          requestAnimationFrame(
+            () =>
+              void flow.fitView({
+                nodes: items.map(({ id }) => ({ id })),
+                duration: 200,
+                padding: 0.2,
+              }),
+          );
+        return;
+      }
       if (!fresh.length) {
         const wanted = new Set(saveIds);
         setNodes((existing) =>
@@ -473,7 +493,7 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
       }
       insert(placeSaves(fresh, at ?? viewCenter()));
     },
-    [insert, viewCenter],
+    [current, flow, insert, viewCenter],
   );
 
   useEffect(
@@ -1903,6 +1923,7 @@ export function Board({ canvas, onExport, snapshot }: BoardProps) {
               canvas.viewport,
               interfaceScale,
             )}
+            onlyRenderVisibleElements={nodes.length > LARGE_BOARD}
             minZoom={0.05 * interfaceScale}
             maxZoom={8 * interfaceScale}
             connectionMode={ConnectionMode.Loose}

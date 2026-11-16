@@ -4,6 +4,7 @@ import { userError } from "../../../shared/user-error";
 import { startAutoImport, stopAutoImport } from "../../core/auto-import";
 import { closeCombineImagesWindow } from "../../core/combine-images-window";
 import { resumeMutations, suspendMutations } from "../../core/executor";
+import { closeFileRingOverlay } from "../../core/file-ring-overlay";
 import { libraryAccess } from "../../core/library-access";
 import {
   resumeLibraryTransfers,
@@ -172,6 +173,7 @@ async function softRepointInDev(): Promise<void> {
   await resumeLibraryWork();
   closePreviewWindows();
   closeCombineImagesWindow();
+  closeFileRingOverlay();
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.reload();
   }

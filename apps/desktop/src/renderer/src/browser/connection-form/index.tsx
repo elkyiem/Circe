@@ -76,7 +76,7 @@ export function BrowserConnectionForm({
         {useKey ? (
           <>
             <Field.Label htmlFor="host-key">Access key</Field.Label>
-            <Input.Root size="lg">
+            <Input.Root size="md">
               <Input.Field
                 id="host-key"
                 name="key"
@@ -155,7 +155,7 @@ export function BrowserConnectionForm({
         </span>
       </label>
       {useKey && (
-        <Button type="submit" width="full" size="lg" loading={busy}>
+        <Button type="submit" width="full" size="md" loading={busy}>
           Connect
         </Button>
       )}

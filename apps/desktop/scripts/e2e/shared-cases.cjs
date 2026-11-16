@@ -8,6 +8,7 @@ const { canvasFishCases } = require("./canvas-fish-cases.cjs");
 const { sourceCases } = require("./source-cases.cjs");
 const { libraryCases } = require("./library-cases.cjs");
 const { downloadsCases } = require("./downloads-cases.cjs");
+const { inboxHealthCases } = require("./inbox-health-cases.cjs");
 
 const cases = [
   ...saveCases,
@@ -16,6 +17,7 @@ const cases = [
   ...sourceCases,
   ...libraryCases,
   ...downloadsCases,
+  ...inboxHealthCases,
 ];
 exports.sharedCases = cases;
 

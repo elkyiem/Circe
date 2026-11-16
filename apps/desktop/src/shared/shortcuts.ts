@@ -268,6 +268,12 @@ export const SHORTCUTS = {
     label: "Restore from Trash",
     group: "Saves",
   },
+  "save.mark-processed": {
+    keys: "P",
+    label: "Mark Processed",
+    group: "Saves",
+  },
+  "save.snooze": { keys: "H", label: "Snooze", group: "Saves" },
   "save.delete-forever": {
     keys: "Mod+Backspace",
     label: "Delete Forever",
@@ -397,6 +403,23 @@ export const SHORTCUTS = {
     label: "Add to Last Used Folder",
     group: "Saves",
   },
+  "save.add-to-recent-folder": {
+    keys: "Alt+D",
+    label: "Add to Recent Folder",
+    group: "Saves",
+  },
+  "save.assign-multiple-folders": {
+    keys: "Alt+Shift+F",
+    label: "Add to Multiple Folders",
+    group: "Saves",
+  },
+  "save.favorite": { keys: "Shift+F", label: "Favorite", group: "Saves" },
+  "save.skip": { keys: "J", label: "Skip to Next Save", group: "Saves" },
+  "save.skip-back": {
+    keys: "K",
+    label: "Back to Previous Save",
+    group: "Saves",
+  },
 
   "tags.rename": { keys: "E", label: "Rename", group: "Tags" },
 
@@ -455,6 +478,11 @@ export function isValidShortcut(chord: string): boolean {
   return result.valid && result.warnings.length === 0;
 }
 
+/** Sequences are fixed; every other shortcut takes recorded keys, even one that ships unbound. */
+export function isRecordable(definition: ShortcutDef): boolean {
+  return !definition.sequence;
+}
+
 export function isShortcutId(id: string): id is ShortcutId {
   return Object.hasOwn(SHORTCUTS, id);
 }
@@ -508,7 +536,7 @@ export function resolveShortcuts(
   }
   for (const id of Object.keys(resolved).filter(isShortcutId)) {
     const override = preferences.overrides[id];
-    if (override && resolved[id].keys && isValidShortcut(override))
+    if (override && isRecordable(resolved[id]) && isValidShortcut(override))
       resolved[id] = {
         ...resolved[id],
         keys: normalizeHotkey(override, SHORTCUT_PLATFORM),

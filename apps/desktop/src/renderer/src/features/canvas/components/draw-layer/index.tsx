@@ -84,7 +84,7 @@ export function DrawLayer({
         <svg className={styles.preview} aria-hidden="true">
           <path
             d={preview}
-            fill={mode === "erase" ? "var(--ds-gray-a8)" : INK[color]}
+            fill={mode === "erase" ? "var(--ds-border-strong)" : INK[color]}
             opacity={mode === "highlight" ? 0.45 : undefined}
           />
         </svg>

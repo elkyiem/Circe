@@ -38,9 +38,9 @@
   }
 
   &[data-background="checkerboard"] {
-    background-color: var(--ds-gray-2);
+    background-color: var(--ds-background-secondary);
     background-image: repeating-conic-gradient(
-      var(--ds-gray-5) 0% 25%,
+      var(--ds-surface-tertiary) 0% 25%,
       transparent 0% 50%
     );
     background-size: 16px 16px;
@@ -77,11 +77,9 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transition: opacity var(--ds-duration-snap) linear;
 
   &[data-pending] {
     opacity: 0;
-    transition: none;
   }
 }
 
@@ -97,10 +95,8 @@
     object-fit: contain;
   }
 
-  /* Stays under the media until its fade-in ends, so the fade never shows the empty stage. */
   &[data-covered] {
     visibility: hidden;
-    transition: visibility 0s linear var(--ds-duration-snap);
   }
 }
 

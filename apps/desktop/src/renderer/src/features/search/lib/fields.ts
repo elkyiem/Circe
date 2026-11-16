@@ -9,6 +9,7 @@ import {
   IconCamera as CameraMakeIcon,
   IconCamera2 as CameraModelIcon,
   IconChatBubble as Caption,
+  IconHeart as FavoriteIcon,
   IconFile as FileIcon,
   IconCopy as FilesIcon,
   IconFocus as FocalLengthIcon,
@@ -18,19 +19,21 @@ import {
   IconHeading1 as Heading,
   IconVector as HeightIcon,
   IconDownload as ImportIcon,
+  IconInbox as InboxIcon,
   IconEyeLens as LensIcon,
   IconLink2 as LinkIcon,
   IconListFavs as ListIcon,
   IconMicrophone as Mic,
-  IconMusic as Music,
+  IconMusicNote as Music,
   IconGridLayoutCols as OrientationIcon,
   IconPalette as Palette,
   IconPencil as Pencil,
+  IconLayers as PostIcon,
   IconShieldCheck as SafetyIcon,
   IconCameraSparkle as SensitivityIcon,
   IconServer as SizeIcon,
   IconStar as Star,
-  IconBookmark as Tag,
+  IconTag as Tag,
   IconText as TextIcon,
   IconStopwatch as Timer,
   IconGlobe as UrlIcon,
@@ -55,7 +58,9 @@ const FIELD_ICONS = {
   folder: FolderIcon,
   list: ListIcon,
   source: LinkIcon,
+  post: PostIcon,
   importedFrom: ImportIcon,
+  inbox: InboxIcon,
   type: FileIcon,
   format: FormatIcon,
   fileCount: FilesIcon,
@@ -83,6 +88,7 @@ const FIELD_ICONS = {
   modifiedAt: CalendarPen,
   takenAt: CalendarDate,
   rating: Star,
+  favorite: FavoriteIcon,
   fileSize: SizeIcon,
   width: WidthIcon,
   height: HeightIcon,
@@ -135,6 +141,7 @@ export function describePredicate(predicate: Predicate): PredicateChip {
   switch (meta.type) {
     case "enum": {
       const negated = operator === "neq" || operator === "nin";
+      if (field === "post") return { ...base, label: meta.label, negated };
       const list = (Array.isArray(value) ? value : [value]).map((v) =>
         field === "account" ? accountChipLabel(String(v)) : String(v),
       );
@@ -206,6 +213,14 @@ export function describePredicate(predicate: Predicate): PredicateChip {
         ...base,
         label: `${name} · ${valuePart}`,
         negated: false,
+      };
+    }
+    case "boolean": {
+      const preset = meta.presets?.find((p) => p.value === value);
+      return {
+        ...base,
+        label: preset?.label ?? meta.label,
+        negated: value === false,
       };
     }
     default:

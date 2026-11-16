@@ -8,10 +8,10 @@ import { query } from "./params";
 export const libraryRepairQueries = {
   "libraryRepairs.preview": query(
     LibraryRepairPreviewRequestSchema,
-    async ({ kind }) =>
+    async ({ kind, saveIds }) =>
       (
         await import("../../core/library-repair-jobs")
-      ).startLibraryRepairPreview(kind),
+      ).startLibraryRepairPreview(kind, saveIds),
   ),
   "libraryRepairs.apply": query(
     LibraryRepairApplyRequestSchema,

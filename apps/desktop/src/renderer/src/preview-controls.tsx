@@ -1,8 +1,8 @@
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowsExpandDiagonal,
   IconContrast,
-  IconExpand,
   IconFileExport,
   IconFlipHorizontal2,
   IconFullScreen,
@@ -102,7 +102,7 @@ function MediaTools({
         pressed={state.zoom !== null}
         side={side}
       >
-        {state.zoom === null ? <IconSizeLg /> : <IconExpand />}
+        {state.zoom === null ? <IconSizeLg /> : <IconArrowsExpandDiagonal />}
       </PreviewTool>
     </div>
   ) : (
@@ -113,7 +113,7 @@ function MediaTools({
         pressed={state.size === "fill"}
         side={side}
       >
-        <IconExpand />
+        <IconArrowsExpandDiagonal />
       </PreviewTool>
     </div>
   );

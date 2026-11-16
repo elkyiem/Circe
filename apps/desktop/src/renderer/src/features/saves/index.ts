@@ -4,6 +4,7 @@ export {
   useMultiSelectActive,
 } from "./components/card/context";
 export { CardThumb } from "./components/card/media";
+export { useSaveCardModel } from "./components/card/model";
 export { Card } from "./components/card/parts";
 export { SaveTile } from "./components/card/tile";
 export type { LibraryCardView } from "./components/card/types";
@@ -12,29 +13,48 @@ export {
   FolderMenu,
   type FolderMenuItem,
 } from "./components/detail/folder-menu";
+export { RecentFolderMenu } from "./components/detail/recent-folder-menu";
+export { SaveSelectionBar } from "./components/selection-bar";
 export { StoredFileViewer } from "./components/viewers/file-viewer";
-export { MediaViewer, type ViewerNav } from "./components/viewers/media-viewer";
+export {
+  MediaViewer,
+  type ViewerNav,
+  type ViewerPosition,
+} from "./components/viewers/media-viewer";
 export { useCardActions } from "./hooks/use-card-actions";
 export { useMediaPickOptions } from "./hooks/use-media-pick-options";
 export { confirmEmptyTrash } from "./lib/empty-trash";
-export { notifyUndoableFolderChange } from "./lib/folder-actions";
+export {
+  assignSavesToFolder,
+  changeSaveFolders,
+  createFolderWithSaves,
+  notifyFolderMembershipChange,
+  notifyUndoableFolderChange,
+} from "./lib/folder-actions";
+export { canImportDrop } from "./lib/import-feedback";
+export { markProcessed, trashWithUndo } from "./lib/inbox-actions";
 export { collectionOwnsKeyboard, saveOwnsKeyboard } from "./lib/keyboard-owner";
+export type { FolderPickerMode } from "./lib/library-bridge";
 export { parseMode, type SaveListMode } from "./lib/list";
 export {
   getLastListPath,
   getLastListSearch,
+  isSaveCollectionPath,
   listPathForLocation,
   rememberListPath,
 } from "./lib/list-path";
 export { storedFileViewerKind } from "./lib/media/file-viewer";
 export {
+  buildSaveMenu,
   loadOpenWithApps,
   type OpenWithApp,
+  openWith,
   openWithKind,
   peekOpenWithApps,
 } from "./lib/menu";
 export { applyNavFilter, descendantFolderIds } from "./lib/nav-filter";
 export {
+  notifyUnsupportedDrop,
   type PasteImport,
   pasteImportOf,
   runPasteImport,
@@ -47,15 +67,8 @@ export {
   selectOnlySave,
 } from "./lib/select";
 export { selectResults } from "./lib/select-results";
-export {
-  copyUrlsForSelection,
-  exportSelectionCsv,
-  exportSelectionFiles,
-  openInBrowserForSelection,
-  restoreSelection,
-  revealFilesForSelection,
-  trashSelection,
-} from "./lib/selection";
+export { exportSelectionCsv, exportSelectionFiles } from "./lib/selection";
+export { getSourceLabel } from "./lib/source-labels";
 export type { ResultDirection } from "./lib/spatial-navigation";
 export {
   announceSaveDragTarget,
@@ -65,7 +78,7 @@ export {
   type SaveDragDataTransfer,
   saveDropIds,
 } from "./lib/start-drag";
-export { isTextOnlySave } from "./lib/text";
+export { displayTitleForSave, isTextOnlySave } from "./lib/text";
 export { asUrlList } from "./lib/url-list";
 export { previewFileIndex, runViewerAction } from "./lib/viewer-actions";
 export { activeVideoShown } from "./state/active-video";
@@ -79,6 +92,11 @@ export {
   useDisplayPrefs,
   useItemInfo,
 } from "./state/display-prefs";
+export {
+  currentSaveDragSession,
+  type SaveDragSession,
+  useSaveDragSession,
+} from "./state/drag-session";
 export { importFilesWithDuplicateReview } from "./state/duplicate-import-review";
 export { inspect, useInspect } from "./state/inspect";
 export {

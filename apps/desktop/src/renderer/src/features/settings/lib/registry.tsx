@@ -3,7 +3,8 @@ import {
   IconArchive as Backups,
   IconGlobe as Extension,
   IconGear3 as General,
-  IconImages as Images,
+  IconShieldCheck as Health,
+  IconImage as Images,
   IconFolder as Library,
   IconCode as LocalApi,
   IconBracketsCurly as Mcp,
@@ -16,7 +17,7 @@ import {
   IconKeyboard as Shortcuts,
   IconDownload as Sources,
   IconServer as Storage,
-  IconBookmark as Tags,
+  IconTag as Tags,
   IconMovie as Videos,
 } from "@pond/icons";
 import type { IconComponent } from "@pond/icons/types";
@@ -42,6 +43,7 @@ const ICONS = new Map<string, IconComponent>([
   ["local-api", LocalApi],
   ["tags", Tags],
   ["library", Library],
+  ["health", Health],
   ["processing", Processing],
   ["backups", Backups],
   ["models", Providers],

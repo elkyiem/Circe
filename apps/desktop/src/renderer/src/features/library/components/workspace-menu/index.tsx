@@ -1,14 +1,13 @@
 import {
-  IconCheckFill,
+  IconCheck,
   IconChevronDown,
   IconFaceSmile,
   IconFolder,
   IconFolderOpen,
   IconFolderPlus,
-  IconFolders,
   IconLayers,
 } from "@pond/icons";
-import { cssVars, Menu } from "@pond/ui";
+import { cssVars, Menu, Tooltip } from "@pond/ui";
 import type { QueryResult } from "@shared/query-contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -101,7 +100,7 @@ function LibraryMenuContent({
                     className={styles.label}
                     aria-label="Current Library"
                   >
-                    <IconCheckFill size={12} />
+                    <IconCheck size={12} />
                   </Menu.SecondaryLabel>
                 ) : null}
               </Menu.Item>
@@ -135,7 +134,7 @@ function LibraryMenuContent({
         </Menu.Item>
         <Menu.Item onClick={() => void mergeLibrary()}>
           <Menu.ItemIcon>
-            <IconFolders />
+            <IconFolder />
           </Menu.ItemIcon>
           <Menu.ItemLabel>Merge Library</Menu.ItemLabel>
         </Menu.Item>
@@ -179,24 +178,25 @@ export function WorkspaceMenu() {
           if (next) void refetch();
         }}
       >
-        <Menu.Trigger
-          variant="ghost"
-          density="compact"
-          className={styles.trigger}
-          aria-label="Library Menu"
-        >
-          <span className={styles.mark} aria-hidden>
-            <img
-              className={styles.icon}
-              src={info?.icon ?? defaultAppIcon}
-              alt=""
-            />
-          </span>
-          <span className={styles.name} title={name}>
-            {name}
-          </span>
-          <IconChevronDown size={12} className={styles.chevron} aria-hidden />
-        </Menu.Trigger>
+        <Tooltip label={name} side="bottom">
+          <Menu.Trigger
+            variant="ghost"
+            density="compact"
+            className={styles.trigger}
+            aria-label={name}
+            // Circé browser and E2E checks find the menu without depending on the Library's name.
+            data-library-menu=""
+          >
+            <span className={styles.mark} aria-hidden>
+              <img
+                className={styles.icon}
+                src={info?.icon ?? defaultAppIcon}
+                alt=""
+              />
+            </span>
+            <IconChevronDown size={12} className={styles.chevron} aria-hidden />
+          </Menu.Trigger>
+        </Tooltip>
         <Menu.Portal>
           <Menu.Positioner align="start" side="bottom" alignOffset={-2}>
             <Menu.Popup

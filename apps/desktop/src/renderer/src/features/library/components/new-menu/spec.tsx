@@ -25,9 +25,9 @@ import {
   IconScan,
   IconSettingsWrench,
   IconShieldCheck,
-  IconTags,
+  IconTag,
   IconUserPlus,
-  IconVersions,
+  IconWindow,
 } from "@pond/icons";
 import { Dialog, type MenuItemSpec } from "@pond/ui";
 import {
@@ -42,6 +42,7 @@ import {
   pickWatchedFolder,
   watchableSourceItems,
 } from "@/features/sources";
+import { openSettings } from "@/shared/lib/open-settings";
 import { shortcutGlyphs } from "@/shared/lib/shortcuts";
 import {
   createBlankDocument,
@@ -136,7 +137,7 @@ export function buildNewMenuItems(
         {
           id: "tag",
           label: "New Tag",
-          icon: <IconTags />,
+          icon: <IconTag />,
           keywords: "label organize",
           shortcut: shortcutGlyphs("library.new-tag"),
           onClick: () => newTag("tag"),
@@ -144,7 +145,7 @@ export function buildNewMenuItems(
         {
           id: "tag-group",
           label: "New Tag Group",
-          icon: <IconVersions />,
+          icon: <IconWindow />,
           keywords: "labels organize",
           shortcut: shortcutGlyphs("library.new-tag-group"),
           onClick: () => newTag("tag-group"),
@@ -375,6 +376,13 @@ export function buildNewMenuItems(
           keywords: "reconcile index files disk",
           shortcut: shortcutGlyphs("library.rescan"),
           onClick: () => void runNewAction(rescanLibrary),
+        },
+        {
+          id: "health",
+          label: "Library Health",
+          icon: <IconShieldCheck />,
+          keywords: "status problems failed missing thumbnails posters check",
+          onClick: () => openSettings("health"),
         },
         {
           id: "verify",

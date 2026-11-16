@@ -148,7 +148,7 @@ describe("library Tags page", () => {
 
   it("filters tags using the existing manager", async () => {
     await mount();
-    const search = host.querySelector('input[placeholder="Search tags…"]');
+    const search = host.querySelector('input[placeholder="Search…"]');
     if (!(search instanceof HTMLInputElement))
       throw new Error("Missing search");
     await fill(search, "animation");
@@ -311,7 +311,9 @@ describe("library Tags page", () => {
     }
     await act(async () => trigger.click());
 
-    const picker = document.body.querySelector('input[placeholder="Search…"]');
+    const picker = document.body.querySelector(
+      'input[placeholder="Search…"]:not([data-tags-search])',
+    );
     if (!(picker instanceof HTMLInputElement)) {
       throw new Error("Missing tag picker");
     }

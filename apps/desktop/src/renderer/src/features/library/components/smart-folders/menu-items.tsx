@@ -17,8 +17,8 @@ import {
   IconRename,
   IconTable,
   IconTrash,
-  IconVersions,
   IconViewPlusSign,
+  IconWindow,
 } from "@pond/icons";
 import type { SavedView } from "@pond/schema/db";
 import { Chip, type MenuItemSpec } from "@pond/ui";
@@ -48,7 +48,7 @@ type EntryTypes = { [Kind in SavedView["kind"]]: EntryType };
 export const ENTRY_TYPES: EntryTypes = {
   smart_folder: { label: "Smart Folder", icon: IconFolderSearch },
   group: { label: "Group", icon: IconGrid },
-  saved_view: { label: "Saved View", icon: IconVersions },
+  saved_view: { label: "Saved View", icon: IconWindow },
 };
 
 const CREATE_ENTRY_ICONS = {
@@ -143,6 +143,23 @@ async function moveSavedViewQuickAccess(
   );
 }
 
+export function quickAccessIdsFor(
+  views: readonly SavedView[],
+  presentations: Record<string, SavedViewPresentation>,
+): string[] {
+  return views
+    .filter((view) => presentations[view.id]?.quickAccess)
+    .toSorted(
+      (left, right) =>
+        (presentations[left.id]?.quickAccessOrder ?? Number.MAX_SAFE_INTEGER) -
+          (presentations[right.id]?.quickAccessOrder ??
+            Number.MAX_SAFE_INTEGER) ||
+        left.sortOrder - right.sortOrder ||
+        left.name.localeCompare(right.name),
+    )
+    .map((view) => view.id);
+}
+
 export function entryItems({
   view,
   views,
@@ -177,7 +194,7 @@ export function entryItems({
     },
     {
       label: view.kind === "saved_view" ? "Update Saved View" : "Save Filters",
-      icon: <IconVersions />,
+      icon: <IconWindow />,
       disabled: !active,
       onClick: () => void runAction(() => savedViews.updateCurrent(view.id)),
     },

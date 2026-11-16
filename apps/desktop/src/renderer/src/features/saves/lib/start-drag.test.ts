@@ -27,8 +27,11 @@ interface TestSaveDragDataTransfer extends SaveDragDataTransfer {
   readonly dragImage: Element | null;
 }
 
-function start(dataTransfer: SaveDragDataTransfer | null = null) {
-  return { dataTransfer, preventDefault: vi.fn() };
+function start(
+  dataTransfer: SaveDragDataTransfer | null = null,
+  altKey = false,
+) {
+  return { dataTransfer, preventDefault: vi.fn(), altKey };
 }
 
 function seedImage(id: string) {
@@ -148,7 +151,7 @@ it("hands saves with files to a native drag and cancels the browser drag", () =>
   vi.stubGlobal("pond", { query });
   seedImage("photo");
   const data = transfer();
-  const event = start(data);
+  const event = start(data, true);
 
   beginSaveDrag("photo", event);
 
@@ -170,7 +173,7 @@ it("sends each save's own file index in a native drag", () => {
   seedImage("two");
   selection.set(["one", "two"]);
 
-  beginSaveDrag("one", start(transfer()));
+  beginSaveDrag("one", start(transfer(), true));
 
   expect(query).toHaveBeenCalledWith("saves.startDrag", {
     ids: ["one", "two"],
@@ -182,7 +185,7 @@ it("sends each save's own file index in a native drag", () => {
 it("ignores a released pointer until the native drag has crossed the window", () => {
   vi.stubGlobal("pond", { query: vi.fn(async () => ({ ok: true })) });
   seedImage("photo");
-  beginSaveDrag("photo", start(transfer()));
+  beginSaveDrag("photo", start(transfer(), true));
 
   window.dispatchEvent(new PointerEvent("pointermove", { buttons: 0 }));
   expect(draggingSaveIds()).toEqual(["photo"]);
@@ -196,11 +199,11 @@ it("ignores a released pointer until the native drag has crossed the window", ()
 it("ends a native drag on the next click or Escape", () => {
   vi.stubGlobal("pond", { query: vi.fn(async () => ({ ok: true })) });
   seedImage("photo");
-  beginSaveDrag("photo", start(transfer()));
+  beginSaveDrag("photo", start(transfer(), true));
   window.dispatchEvent(new PointerEvent("pointerdown"));
   expect(draggingSaveIds()).toEqual([]);
 
-  beginSaveDrag("photo", start(transfer()));
+  beginSaveDrag("photo", start(transfer(), true));
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
   expect(draggingSaveIds()).toEqual([]);
 });
@@ -215,9 +218,24 @@ it("ends the drag and explains why when Pond can't start it", async () => {
   };
   window.addEventListener("pond:notification", onNotification);
   seedImage("photo");
-  beginSaveDrag("photo", start(transfer()));
+  beginSaveDrag("photo", start(transfer(), true));
 
   await vi.waitFor(() => expect(draggingSaveIds()).toEqual([]));
   window.removeEventListener("pond:notification", onNotification);
   expect(titles).toContain("Couldn't start the drag");
+});
+
+it("drags a file-backed save as an in-app payload by default, not a native drag", () => {
+  const query = vi.fn(async () => ({ ok: true }));
+  vi.stubGlobal("pond", { query });
+  seedImage("photo");
+  const data = transfer();
+
+  beginSaveDrag("photo", start(data));
+
+  expect(query).not.toHaveBeenCalled();
+  expect(data.getData(SAVE_DRAG_TYPE)).toBe("photo");
+  expect(isLibrarySaveDrag(data)).toBe(true);
+  expect(saveDropIds(data)).toEqual(["photo"]);
+  expect(draggingSaveIds()).toEqual(["photo"]);
 });

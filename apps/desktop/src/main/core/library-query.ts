@@ -6,6 +6,7 @@ import {
   asc,
   count,
   desc,
+  eq,
   isNotNull,
   isNull,
   type SQLWrapper,
@@ -62,9 +63,19 @@ export function librarySortColumn(
       return sql`lower(${saves.source})`;
     case "type":
       return sql`lower(coalesce(${saves.mediaType}, ''))`;
+    case "post":
+      return splitPostOrder();
     default:
       return saves.savedAt;
   }
+}
+
+/**
+ * Capture media position first, then newest first, since a split stamps each slide one millisecond before the last.
+ * @remarks Zero-padded text keeps the single-value cursor exact; a packed integer would pass 2^53 in JavaScript.
+ */
+function splitPostOrder(): SQLWrapper {
+  return sql`printf('%06d %013d', coalesce(json_extract(${saves.rawSlim}, '$.split.media[0]'), 999999), 9999999999999 - ${saves.savedAt})`;
 }
 
 export function libraryQueryWhere(
@@ -83,12 +94,17 @@ export function libraryQueryWhere(
       ? sql`lower(${saves.source}) = ${scope.source.toLowerCase()}`
       : undefined,
     scope.untagged ? sql`json_array_length(${saves.tags}) = 0` : undefined,
+    // Member test as a one-shot semi-join (id in derived set), not a per-row
+    // exists: the exists re-evaluates the N-folder `in` for every save row,
+    // which measured ~3.8 s for a 4,716-folder descendant set. Deriving the
+    // member save ids once and matching `id` against that set is ~13 ms.
     scope.folderIds
-      ? sql`exists (select 1 from save_folders sf where sf.save_id = ${saves.id} and sf.folder_id in (select value from json_each(${JSON.stringify(scope.folderIds)})))`
+      ? sql`${saves.id} in (select sf.save_id from save_folders sf where sf.folder_id in (select value from json_each(${JSON.stringify(scope.folderIds)})))`
       : undefined,
     scope.uncategorized
       ? sql`not exists (select 1 from save_folders sf where sf.save_id = ${saves.id})`
       : undefined,
+    scope.inbox ? eq(saves.inboxState, scope.inbox) : undefined,
     scope.tag
       ? sql`exists (select 1 from json_each(${saves.tags}) where lower(value) = ${scope.tag.toLowerCase()})`
       : undefined,

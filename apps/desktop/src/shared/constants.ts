@@ -22,6 +22,8 @@ export const IPC = {
   undo: "pond:undo",
   redo: "pond:redo",
   historyChanged: "pond:history-changed",
+  undoStep: "pond:undo-step",
+  redoStep: "pond:redo-step",
   query: "pond:query",
   syncAction: "pond:sync-action",
   appInfo: "pond:app-info",
@@ -115,6 +117,7 @@ export type MenuActionId =
   | "view.zoom-reset"
   | "library.search"
   | "nav.library"
+  | "nav.inbox"
   | "nav.sources"
   | "nav.downloads"
   | "nav.tags"
@@ -210,12 +213,17 @@ export type MenuActionId =
   | "organize.rating.3"
   | "organize.rating.4"
   | "organize.rating.5"
+  | "organize.favorite"
   | "organize.add-to-folders"
+  | "organize.add-to-multiple-folders"
+  | "organize.add-to-recent-folder"
   | "organize.add-to-last-folder"
   | "organize.add-tag"
   | "organize.clear-tags"
   | "organize.copy-tags"
   | "organize.paste-tags"
+  | "organize.mark-processed"
+  | "organize.snooze"
   | "view.sidebar.toggle"
   | "view.grayscale"
   | "view.random"

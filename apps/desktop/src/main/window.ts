@@ -2,7 +2,7 @@ import type { BrowserWindowConstructorOptions } from "electron";
 import { app, BrowserWindow, nativeTheme, shell } from "electron";
 import log from "electron-log/main.js";
 import { DEFAULT_APP_ICON } from "../shared/app-icons";
-import { IPC } from "../shared/constants";
+import { IPC, type MenuActionId } from "../shared/constants";
 import { SHELL_HINT_ARG, type ShellHint } from "../shared/shell-hint";
 import { attachEditableContextMenu } from "./context-menu";
 import { hardenArchiveWebviews } from "./core/archive-viewer";
@@ -104,7 +104,7 @@ export async function syncShellChrome(): Promise<void> {
   win.setBackgroundColor(background);
 }
 
-async function resolveShellHint(): Promise<ShellHint> {
+export async function resolveShellHint(): Promise<ShellHint> {
   const resolved = await resolveTheme();
   if (!resolved) return {};
   const { mode, ...vars } = resolved;
@@ -364,6 +364,14 @@ export async function summonMainWindow(): Promise<void> {
   win.focus();
 }
 
+export async function runLibraryMenuAction(id: MenuActionId): Promise<void> {
+  await openLibraryWindow();
+  mainWindowState.current?.webContents.send(IPC.menuAction, {
+    id,
+    source: "menu",
+  });
+}
+
 export async function initTray(): Promise<void> {
   try {
     tray = await ensureTray({
@@ -376,13 +384,7 @@ export async function initTray(): Promise<void> {
         await openLibraryWindow();
         mainWindowState.current?.webContents.send(IPC.nav, "/downloads");
       },
-      onMenuAction: async (id) => {
-        await openLibraryWindow();
-        mainWindowState.current?.webContents.send(IPC.menuAction, {
-          id,
-          source: "menu",
-        });
-      },
+      onMenuAction: runLibraryMenuAction,
     });
   } catch (err) {
     log.error(

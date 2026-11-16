@@ -52,6 +52,16 @@ starting another host. No dev or watch command belongs in E2E verification.
   Updates dialog, the Canvas minimap, and offline Download dialog validation.
   UI scenarios navigate with `e2e/navigation.cjs` and save a screenshot per
   surface.
+- Pond 2.8 additions run as shared scenarios: Quick Add capturing into the Inbox
+  and a chosen folder, folder previews, Inbox processing with scoped toast
+  Undo/Redo steps (including a stale step refused under a newer favorite and
+  global Undo reporting its step), Library Health check/recheck/poster retry,
+  the host's app icon appearance, and Split Posts after a carousel split. A UI
+  tour opens the Inbox review deck, runs Check Library, and screenshots the
+  Library settings (Inbox and Devices groups) and Split Posts on both surfaces.
+  `pnpm e2e:live` also exports a page's files to the Library and to a folder
+  (desktop) or as one zip download (browser). The ring over other apps is a
+  host-screen window, so browser Settings hide it.
 - Existing upstream parity scenarios cover carousel and batch splitting, media
   filename encoding, sensitivity overrides, video seeking, keyboard playback,
   arrow-key volume, click-to-pause, setting a carousel image as the thumbnail,

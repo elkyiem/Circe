@@ -19,13 +19,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   IconAlbum2,
-  IconBookmark,
-  IconBookmarkSlash,
   IconClockPlus,
   IconFolderBan,
   IconHistory,
+  IconLayers,
   IconNodes3,
   IconShuffle,
+  IconTag,
+  IconTagSlash,
   IconTrashXmark,
   IconWindowDownload,
 } from "@pond/icons";
@@ -131,15 +132,17 @@ function DestinationIcon({ destination }: { destination: SidebarDestination }) {
     case "uncategorized":
       return <IconFolderBan />;
     case "untagged":
-      return <IconBookmarkSlash />;
+      return <IconTagSlash />;
     case "recentlyAdded":
       return <IconClockPlus />;
     case "recentlyUsed":
       return <IconHistory />;
     case "tags":
-      return <IconBookmark />;
+      return <IconTag />;
     case "random":
       return <IconShuffle />;
+    case "splitPosts":
+      return <IconLayers />;
     case "trash":
       return <IconTrashXmark />;
     case "downloads":
@@ -205,6 +208,8 @@ export function LibraryDestinations({
         return destination.kind === "tags";
       case "random":
         return destination.kind === "random";
+      case "splitPosts":
+        return destination.kind === "splitPosts" || destination.kind === "post";
       case "trash":
         return destination.kind === "trash";
       case "downloads":
@@ -236,6 +241,8 @@ export function LibraryDestinations({
         return counts.recentlyAdded;
       case "recentlyUsed":
         return counts.recentlyUsed;
+      case "splitPosts":
+        return counts.splitPosts;
       case "random":
         return undefined;
     }
@@ -286,7 +293,7 @@ export function LibraryDestinations({
           <BuiltInVisibilityMenu destination={destination} key={destination}>
             <Row
               label="Untagged"
-              icon={<IconBookmarkSlash />}
+              icon={<IconTagSlash />}
               count={counts.untagged}
               badgeStyle={badgeStyle}
               active={isDestinationActive(destination)}
@@ -331,7 +338,7 @@ export function LibraryDestinations({
           <BuiltInVisibilityMenu destination={destination} key={destination}>
             <Row
               label="Tags"
-              icon={<IconBookmark />}
+              icon={<IconTag />}
               count={tags.length}
               badgeStyle={badgeStyle}
               active={isDestinationActive(destination)}
@@ -354,6 +361,20 @@ export function LibraryDestinations({
                 reseedRandomSort();
                 selectLibraryNav({ kind: "random" });
               }}
+            />
+          </BuiltInVisibilityMenu>
+        );
+      case "splitPosts":
+        return (
+          <BuiltInVisibilityMenu destination={destination} key={destination}>
+            <Row
+              label="Split Posts"
+              icon={<IconLayers />}
+              count={counts.splitPosts}
+              badgeStyle={badgeStyle}
+              active={isDestinationActive(destination)}
+              {...dragProps}
+              onClick={() => selectLibraryNav({ kind: "splitPosts" })}
             />
           </BuiltInVisibilityMenu>
         );

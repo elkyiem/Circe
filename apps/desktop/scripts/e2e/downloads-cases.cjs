@@ -40,16 +40,26 @@ exports.downloadsCases = [
       await run(
         '(() => { const field = document.querySelector(\'[data-page="link"] [aria-label="Link"]\'); field.focus(); field.select(); return true; })()',
       );
+      // Since Pond 2.8 the field takes several pasted links, so Pond validates the text itself.
       await type("not a link");
-      const field =
-        'document.querySelector(\'[data-page="link"] [aria-label="Link"]\')';
-      assert.equal(await run(`${field}.validity.typeMismatch`), true);
-      await run(`(() => { ${field}.select(); return true; })()`);
-      // A valid URL that is not a web link reaches Pond's own validation.
-      await type("ftp://example.invalid/clip.mp4");
-      await clickText('[data-page="link"] button', "Continue");
+      // Enter submits the dialog's form; a synthetic keyDown has no implicit submit.
+      await run(
+        "(() => { document.querySelector('[data-page=\\\"link\\\"] form').requestSubmit(); return true; })()",
+      );
       await waitFor(
-        "document.querySelector('[data-page=\"link\"]').innerText.includes('Paste a link that starts with https://.')",
+        'document.querySelector(\'[data-page=\\"link\\"]\').innerText.includes("That\'s not a link.")',
+      );
+      await run(
+        '(() => { const field = document.querySelector(\'[data-page="link"] [aria-label="Link"]\'); field.select(); return true; })()',
+      );
+      // A valid URL that is not a web link is not a downloadable link either.
+      await type("ftp://example.invalid/clip.mp4");
+      // Enter submits the dialog's form; a synthetic keyDown has no implicit submit.
+      await run(
+        "(() => { document.querySelector('[data-page=\\\"link\\\"] form').requestSubmit(); return true; })()",
+      );
+      await waitFor(
+        'document.querySelector(\'[data-page=\\"link\\"]\').innerText.includes("That\'s not a link.")',
       );
       await controls.snapshot(`${controls.mode}-download-dialog`);
       await press("Escape");

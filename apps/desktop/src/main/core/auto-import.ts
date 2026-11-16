@@ -101,6 +101,7 @@ async function createWorker() {
         filePaths: [input.path],
         sourceId: input.sourceId,
         importedFrom: "watched-folder",
+        inboxChannel: "watches",
       });
     },
     trash: (path) => shell.trashItem(path),
