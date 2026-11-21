@@ -291,7 +291,7 @@ exports.verifyUpstreamParity = async function verifyUpstreamParity({
       slides.every((save) => memberships.some((row) => row.saveId === save.id)),
     );
     await query("saves.split", { ids: [original.id] });
-    // Pond 2.8 lists split carousels again as Split Posts.
+    // Pond 2.7.0.1 lists split carousels again as Split Posts.
     assert.ok(
       (await query("saves.splitPosts")).some((post) =>
         slides.every((save) => post.saveIds.includes(save.id)),

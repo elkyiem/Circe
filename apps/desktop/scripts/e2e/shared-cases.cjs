@@ -9,6 +9,7 @@ const { sourceCases } = require("./source-cases.cjs");
 const { libraryCases } = require("./library-cases.cjs");
 const { downloadsCases } = require("./downloads-cases.cjs");
 const { inboxHealthCases } = require("./inbox-health-cases.cjs");
+const { folderImportCases } = require("./folder-import-cases.cjs");
 
 const cases = [
   ...saveCases,
@@ -18,6 +19,7 @@ const cases = [
   ...libraryCases,
   ...downloadsCases,
   ...inboxHealthCases,
+  ...folderImportCases,
 ];
 exports.sharedCases = cases;
 

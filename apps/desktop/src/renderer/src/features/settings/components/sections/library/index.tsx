@@ -262,7 +262,8 @@ function LibraryIdentitySettings({ info }: { info?: LibraryInfo }) {
               }}
               onBlur={() => void saveName()}
               onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Enter" && !event.nativeEvent.isComposing)
+                  event.currentTarget.blur();
                 if (event.key === "Escape" && info) {
                   setName(null);
                   setNameError(null);

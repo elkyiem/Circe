@@ -52,7 +52,7 @@ starting another host. No dev or watch command belongs in E2E verification.
   Updates dialog, the Canvas minimap, and offline Download dialog validation.
   UI scenarios navigate with `e2e/navigation.cjs` and save a screenshot per
   surface.
-- Pond 2.8 additions run as shared scenarios: Quick Add capturing into the Inbox
+- Pond 2.7.0.1 additions (upstream `main` after the v2.7.0 tag) run as shared scenarios: Quick Add capturing into the Inbox
   and a chosen folder, folder previews, Inbox processing with scoped toast
   Undo/Redo steps (including a stale step refused under a newer favorite and
   global Undo reporting its step), Library Health check/recheck/poster retry,
@@ -62,6 +62,23 @@ starting another host. No dev or watch command belongs in E2E verification.
   `pnpm e2e:live` also exports a page's files to the Library and to a folder
   (desktop) or as one zip download (browser). The ring over other apps is a
   host-screen window, so browser Settings hide it.
+- Pond 2.7.0.2 additions run as shared scenarios (`e2e/folder-import-cases.cjs`):
+  files imported into the folder on screen, and a re-import kept as the existing
+  Save adds the new folder without dropping earlier ones; a clipboard image
+  imported from a folder view is filed into that folder (the browser previously
+  ignored the folder). The UI tour screenshots, on both surfaces, an empty
+  folder's Add Files action, a pasted image filed into the open folder with its
+  Show in Library toast returning to and selecting the Save, the pinned section
+  collapsing and persisting `pinnedCollapsed`, View Thumbnail at full size
+  (served from `/web/media` in the browser), and Recently Added → Added Today
+  keeping its filter in the browser URL `/recently-added`. The clipboard
+  scenarios borrow the host's system clipboard and restore its items afterwards.
+  Not covered end to end: Add Files' file picker itself, the date picker behind
+  Choose Date, arrow-key fixes after clicking a viewer tool or Favorite, Enter
+  during IME composition, the Details preview height, the Details inspector
+  clearing when its Save leaves the grid, card-capture design tokens, and the
+  repair of links in posts synced from X (it needs signed-in Source Sync). Each
+  has upstream unit tests.
 - Existing upstream parity scenarios cover carousel and batch splitting, media
   filename encoding, sensitivity overrides, video seeking, keyboard playback,
   arrow-key volume, click-to-pause, setting a carousel image as the thumbnail,

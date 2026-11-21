@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { createNavigation } = require("./navigation.cjs");
 
-/** Pond 2.8 additions: the Inbox, scoped Undo steps, favorites, Library Health and folder previews. */
+/** Pond 2.7.0.1 additions: the Inbox, scoped Undo steps, favorites, Library Health and folder previews. */
 exports.inboxHealthCases = [
   {
     id: "inbox.capture-review-and-scoped-undo",
@@ -20,7 +20,7 @@ exports.inboxHealthCases = [
       });
       let id = null;
       try {
-        // A one-off capture lands in the Inbox and, since 2.8, in the chosen folder.
+        // A one-off capture lands in the Inbox and, since 2.7.0.1, in the chosen folder.
         const added = await query("saves.quickAdd", {
           note: `E2E inbox capture ${nonce}`,
           folderId: folder.id,
@@ -170,7 +170,7 @@ exports.inboxHealthCases = [
     },
   },
   {
-    id: "ui.pond-2-8-tour",
+    id: "ui.pond-2-7-0-1-tour",
     queries: ["saves.quickAdd", "saves.bulkEdit"],
     async verify(controls) {
       const { query, run, waitFor, snapshot, mode, nonce } = controls;

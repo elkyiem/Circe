@@ -40,7 +40,7 @@ exports.downloadsCases = [
       await run(
         '(() => { const field = document.querySelector(\'[data-page="link"] [aria-label="Link"]\'); field.focus(); field.select(); return true; })()',
       );
-      // Since Pond 2.8 the field takes several pasted links, so Pond validates the text itself.
+      // Since Pond 2.7.0.1 the field takes several pasted links, so Pond validates the text itself.
       await type("not a link");
       // Enter submits the dialog's form; a synthetic keyDown has no implicit submit.
       await run(

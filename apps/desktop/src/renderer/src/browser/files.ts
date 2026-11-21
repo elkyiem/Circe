@@ -13,6 +13,13 @@ import { z } from "zod";
 import { createBrowserEagleImport } from "./eagle-import";
 
 type Json = z.infer<ReturnType<typeof z.json>>;
+/** Clipboard imports file into the folder on screen, matching the native handler. */
+type ClipboardFilesInput = {
+  paths: string[];
+  origin: "clipboard";
+  folderIds?: string[];
+};
+type ClipboardLinkInput = { url: string; folderId?: string };
 interface FileTransport {
   request(path: string, body?: string): Promise<WebValue>;
   headers(): Record<string, string>;
@@ -481,6 +488,8 @@ export function createBrowserFiles(transport: FileTransport) {
         return importSelected(name, { paths: picked.map(pathForFile) });
       }
       if (name === "saves.importClipboard") {
+        /** Match the native handler: a paste inside a folder view files every result into that folder. */
+        const folderId = z.string().min(1).nullish().parse(params.folderId);
         const items = await navigator.clipboard.read();
         const selected: string[] = [];
         for (const item of items) {
@@ -496,11 +505,14 @@ export function createBrowserFiles(transport: FileTransport) {
               ),
             );
         }
-        if (selected.length)
-          return importSelected("saves.importFiles", {
+        if (selected.length) {
+          const input: ClipboardFilesInput = {
             paths: selected,
             origin: "clipboard",
-          });
+          };
+          if (folderId) input.folderIds = [folderId];
+          return importSelected("saves.importFiles", input);
+        }
         const text = await navigator.clipboard.readText();
         if (!text.trim())
           return { ok: false, error: "The clipboard is empty." };
@@ -512,17 +524,24 @@ export function createBrowserFiles(transport: FileTransport) {
           const result = z
             .object({ ok: z.boolean(), id: z.string().optional() })
             .parse(await importSelected("saves.createManual", { note: text }));
+          if (result.ok && result.id && folderId)
+            await transport.request(
+              "query",
+              JSON.stringify({
+                name: "folders.addSaves",
+                params: { folderId, saveIds: [result.id] },
+              }),
+            );
           return { ok: result.ok, ids: result.id ? [result.id] : [] };
         }
+        const quickAdd: ClipboardLinkInput = { url: text.trim() };
+        if (folderId) quickAdd.folderId = folderId;
         const added = z
           .object({ ok: z.boolean(), id: z.string().optional() })
           .parse(
             await transport.request(
               "query",
-              JSON.stringify({
-                name: "saves.quickAdd",
-                params: { url: text.trim() },
-              }),
+              JSON.stringify({ name: "saves.quickAdd", params: quickAdd }),
             ),
           );
         return { ok: added.ok, ids: added.id ? [added.id] : [] };

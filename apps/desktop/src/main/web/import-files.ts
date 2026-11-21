@@ -2,7 +2,11 @@ import type { SavesImportFilesResult } from "../../shared/saves-import-contracts
 import { WebFileImportSchema } from "../../shared/web-files-contracts";
 import { reviewImportDuplicates } from "../core/duplicate-import";
 import { withMutationScope } from "../core/executor";
-import { createFolder, setSaveFolders } from "../core/folders";
+import {
+  createFolder,
+  folderIdsForSave,
+  setSaveFolders,
+} from "../core/folders";
 import { importFiles } from "../core/import-files";
 import { runLibraryTransfer } from "../core/library-transfers";
 import { createManualSave } from "../core/manual-import";
@@ -80,6 +84,7 @@ export function importUploadedFiles(
         },
         {
           createFolder,
+          folderIdsForSave,
           assignFolders: setSaveFolders,
           importFile: (data) =>
             createManualSave({ ...data, sourceId: `web-upload:${file.id}` }),
